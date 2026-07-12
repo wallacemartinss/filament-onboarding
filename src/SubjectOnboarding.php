@@ -70,7 +70,10 @@ class SubjectOnboarding
     {
         $flows = $this->flows($panelId);
 
-        return $flows->first(fn (FlowState $state): bool => !$state->isDismissed() && !$state->isCompleted())
+        // "Unfinished" means anything still pending — optional steps included.
+        // A journey whose required work is done but whose tour has not been
+        // taken is still the one to put in front of the subject.
+        return $flows->first(fn (FlowState $state): bool => !$state->isDismissed() && !$state->isFinished())
             ?? $flows->first(fn (FlowState $state): bool => !$state->isDismissed());
     }
 

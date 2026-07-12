@@ -70,7 +70,7 @@
                         @endif
                     </div>
 
-                    @if ($flow->isCompleted())
+                    @if ($flow->isFinished())
                         <div class="fio-complete">
                             <div class="fio-complete-icon">
                                 <x-filament-onboarding::icons.check />
@@ -129,7 +129,7 @@
                     />
                 </svg>
 
-                @if ($flow->isCompleted())
+                @if ($flow->isFinished())
                     <x-filament-onboarding::icons.check />
                 @else
                     <span class="fio-launcher-count">{{ $flow->percentage() }}%</span>

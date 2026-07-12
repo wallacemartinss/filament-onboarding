@@ -67,7 +67,7 @@
                             </div>
                         </div>
 
-                        @if ($flow->isCompleted())
+                        @if ($flow->isFinished())
                             <p class="fio-hero-note">
                                 {{ __('filament-onboarding::onboarding.checklist.completed_description') }}
                             </p>
@@ -113,7 +113,7 @@
                             @endif
                         </div>
 
-                        @if ($flow->isCompleted() && $flow->hasConditionSteps())
+                        @if ($flow->isFinished() && $flow->hasConditionSteps())
                             {{-- Restarting cannot undo what is simply true: a step that
                                  asks the application comes straight back completed. --}}
                             <p class="fio-footer-note" style="margin-block-start: 0.5rem;">

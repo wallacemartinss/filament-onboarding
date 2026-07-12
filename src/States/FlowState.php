@@ -77,8 +77,9 @@ class FlowState
     }
 
     /**
-     * A flow is done once every required step is done; optional steps may be
-     * left behind.
+     * Every required step is done. Optional ones may still be waiting — this is
+     * what decides the flow's completed_at and the FlowCompleted event, not what
+     * the UI shows.
      */
     public function isCompleted(): bool
     {
@@ -89,6 +90,19 @@ class FlowState
         return $this->steps
             ->filter(fn (StepState $step): bool => $step->isRequired())
             ->every(fn (StepState $step): bool => $step->isCompleted());
+    }
+
+    /**
+     * Nothing is left to do — not one step, required or not.
+     *
+     * This is what the UI must ask before it says "you are all set", and the two
+     * are not the same thing: a journey whose only required step is a condition
+     * the account already met would otherwise announce itself as finished and
+     * bury its own video and tour, which is exactly what a new user came for.
+     */
+    public function isFinished(): bool
+    {
+        return $this->total() > 0 && $this->pendingSteps()->isEmpty();
     }
 
     public function isStarted(): bool

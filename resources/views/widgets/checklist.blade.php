@@ -3,7 +3,7 @@
 @endphp
 
 <div class="fio">
-    @if ($flow && ! $flow->isDismissed() && (! $flow->isCompleted() || $showWhenCompleted))
+    @if ($flow && ! $flow->isDismissed() && (! $flow->isFinished() || $showWhenCompleted))
         <div class="fio-card">
             <div class="fio-panel-header">
                 <div class="fio-panel-title-row">
@@ -48,7 +48,7 @@
                 </div>
             </div>
 
-            @if ($flow->isCompleted())
+            @if ($flow->isFinished())
                 <div class="fio-complete">
                     <div class="fio-complete-icon">
                         <x-filament-onboarding::icons.check />

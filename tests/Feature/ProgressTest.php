@@ -130,6 +130,56 @@ class ProgressTest extends TestCase
     }
 
     /**
+     * Having the data is not the same as having seen the tutorial.
+     *
+     * A journey whose only required step is a condition the account already meets
+     * used to announce itself as finished and bury its own video and tour — the
+     * two things a new user actually came for.
+     */
+    public function test_a_met_condition_does_not_bury_the_tutorial(): void
+    {
+        // Required: the thing the account already did.
+        $this->step('has-thing', [
+            'completion_mode' => CompletionMode::Condition,
+            'condition_key'   => 'always_true',
+            'is_required'     => true,
+        ]);
+
+        // Optional: the tutorial.
+        $this->step('watch-the-tour', [
+            'completion_mode' => CompletionMode::Programmatic,
+            'is_required'     => false,
+        ]);
+
+        Onboarding::condition('always_true', AlwaysTrueCondition::class);
+
+        $flow = Onboarding::for($this->subject)->flow('journey');
+
+        // The required work is done...
+        $this->assertTrue($flow->isCompleted());
+
+        // ...but there is still something to do, so the UI must not say "all set",
+        // and this is the journey to keep in front of the subject.
+        $this->assertFalse($flow->isFinished());
+        $this->assertSame(50, $flow->percentage());
+        $this->assertSame('watch-the-tour', $flow->nextStep()->key());
+        $this->assertSame('journey', Onboarding::for($this->subject)->currentFlow()->key());
+    }
+
+    public function test_a_journey_is_finished_only_when_nothing_is_left(): void
+    {
+        $this->step('required-one', ['is_required' => true]);
+        $this->step('optional-one', ['is_required' => false]);
+
+        Onboarding::for($this->subject)->complete('required-one');
+        $this->assertFalse(Onboarding::for($this->subject)->flow('journey')->isFinished());
+
+        // Skipping settles it too — the subject decided.
+        Onboarding::for($this->subject)->skip('optional-one');
+        $this->assertTrue(Onboarding::for($this->subject)->flow('journey')->isFinished());
+    }
+
+    /**
      * @param  array<string, mixed>  $attributes
      */
     private function step(string $key, array $attributes = []): OnboardingStep
