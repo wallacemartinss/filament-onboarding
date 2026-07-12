@@ -8,6 +8,7 @@
  */
 
 const STORAGE_KEY = 'filament-onboarding.tour';
+const WIDGET_PREFIX = '@widget:';
 const SPOTLIGHT_PADDING = 8;
 const POPOVER_GAP = 14;
 const POPOVER_WIDTH = 320;
@@ -247,7 +248,7 @@ export default function onboardingTour() {
          */
         waitForElement(selector) {
             return new Promise((resolve) => {
-                const existing = document.querySelector(selector);
+                const existing = this.find(selector);
 
                 if (existing) {
                     return resolve(existing);
@@ -256,7 +257,7 @@ export default function onboardingTour() {
                 const startedAt = Date.now();
 
                 const poll = setInterval(() => {
-                    const element = document.querySelector(selector);
+                    const element = this.find(selector);
 
                     if (element) {
                         clearInterval(poll);
@@ -271,6 +272,39 @@ export default function onboardingTour() {
                     }
                 }, 100);
             });
+        },
+
+        /**
+         * A CSS selector, or "@widget:App\Filament\...\SomeWidget" — a widget
+         * picked from the panel. Widgets all share one wrapper class, so they
+         * are found by the Livewire component they are rather than by CSS.
+         */
+        find(selector) {
+            if (!selector.startsWith(WIDGET_PREFIX)) {
+                try {
+                    return document.querySelector(selector);
+                } catch {
+                    // A selector the panel can no longer parse: the tour carries
+                    // on without a spotlight rather than throwing.
+                    return null;
+                }
+            }
+
+            const component = selector.slice(WIDGET_PREFIX.length);
+
+            for (const element of document.querySelectorAll('[wire\\:snapshot]')) {
+                try {
+                    const snapshot = JSON.parse(element.getAttribute('wire:snapshot'));
+
+                    if (snapshot?.memo?.name === component) {
+                        return element;
+                    }
+                } catch {
+                    continue;
+                }
+            }
+
+            return null;
         },
 
         scrollIntoView(element) {

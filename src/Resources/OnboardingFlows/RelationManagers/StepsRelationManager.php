@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
 use Wallacemartinss\FilamentOnboarding\Enums\{CompletionMode, StepType};
 use Wallacemartinss\FilamentOnboarding\Facades\Onboarding;
 use Wallacemartinss\FilamentOnboarding\Models\OnboardingStep;
-use Wallacemartinss\FilamentOnboarding\Support\IconInput;
+use Wallacemartinss\FilamentOnboarding\Support\{IconInput, PanelTargets};
 
 class StepsRelationManager extends RelationManager
 {
@@ -27,6 +27,17 @@ class StepsRelationManager extends RelationManager
     public static function getTitle(\Illuminate\Database\Eloquent\Model $ownerRecord, string $pageClass): string
     {
         return __('filament-onboarding::onboarding.resource.steps.title');
+    }
+
+    /**
+     * The panel whose pages and widgets this flow's steps can point at. A flow
+     * left without a panel belongs to all of them, and so do its options.
+     */
+    private function panelId(): ?string
+    {
+        $flow = $this->getOwnerRecord();
+
+        return $flow->panel_id;
     }
 
     public function form(Schema $schema): Schema
@@ -108,16 +119,20 @@ class StepsRelationManager extends RelationManager
                         IconInput::make('icon')
                             ->label(__('filament-onboarding::onboarding.resource.fields.icon')),
 
+                        // Discovered from the panel: the destination can only be
+                        // a page that exists, and it survives a renamed slug.
+                        Select::make('cta_route')
+                            ->label(__('filament-onboarding::onboarding.resource.fields.cta_route'))
+                            ->helperText(__('filament-onboarding::onboarding.resource.fields.cta_route_helper'))
+                            ->options(fn (): array => PanelTargets::pageOptions($this->panelId()))
+                            ->searchable()
+                            ->native(false),
+
                         TextInput::make('cta_url')
                             ->label(__('filament-onboarding::onboarding.resource.fields.cta_url'))
                             ->helperText(__('filament-onboarding::onboarding.resource.fields.cta_url_helper'))
                             ->placeholder('/app/{tenant}/servers/create')
                             ->maxLength(2048),
-
-                        TextInput::make('cta_route')
-                            ->label(__('filament-onboarding::onboarding.resource.fields.cta_route'))
-                            ->helperText(__('filament-onboarding::onboarding.resource.fields.cta_route_helper'))
-                            ->maxLength(255),
                     ]),
 
                     Grid::make(3)->schema([
@@ -150,11 +165,15 @@ class StepsRelationManager extends RelationManager
                         ->defaultItems(1)
                         ->schema([
                             Grid::make(2)->schema([
-                                TextInput::make('selector')
-                                    ->label(__('filament-onboarding::onboarding.resource.tour.selector'))
-                                    ->helperText(__('filament-onboarding::onboarding.resource.tour.selector_helper'))
-                                    ->placeholder('[data-onboarding="create-server"]')
-                                    ->maxLength(255),
+                                // Widgets share one wrapper class, so there is no
+                                // selector to type: pick the widget and the runner
+                                // finds it by the Livewire component it is.
+                                Select::make('widget')
+                                    ->label(__('filament-onboarding::onboarding.resource.tour.widget'))
+                                    ->helperText(__('filament-onboarding::onboarding.resource.tour.widget_helper'))
+                                    ->options(fn (): array => PanelTargets::widgetOptions($this->panelId()))
+                                    ->searchable()
+                                    ->native(false),
 
                                 Select::make('placement')
                                     ->label(__('filament-onboarding::onboarding.resource.tour.placement'))
@@ -166,6 +185,19 @@ class StepsRelationManager extends RelationManager
                                     ->default('auto')
                                     ->native(false),
                             ]),
+
+                            TextInput::make('selector')
+                                ->label(__('filament-onboarding::onboarding.resource.tour.selector'))
+                                ->helperText(__('filament-onboarding::onboarding.resource.tour.selector_helper'))
+                                ->placeholder('[data-onboarding="create-server"]')
+                                ->maxLength(255),
+
+                            Select::make('route')
+                                ->label(__('filament-onboarding::onboarding.resource.tour.route'))
+                                ->helperText(__('filament-onboarding::onboarding.resource.tour.route_helper'))
+                                ->options(fn (): array => PanelTargets::pageOptions($this->panelId()))
+                                ->searchable()
+                                ->native(false),
 
                             TextInput::make('url')
                                 ->label(__('filament-onboarding::onboarding.resource.tour.url'))

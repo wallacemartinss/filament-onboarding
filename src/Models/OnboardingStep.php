@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 use Wallacemartinss\FilamentOnboarding\Concerns\HasTranslatableColumns;
 use Wallacemartinss\FilamentOnboarding\Enums\{CompletionMode, StepType};
 use Wallacemartinss\FilamentOnboarding\Facades\Onboarding;
-use Wallacemartinss\FilamentOnboarding\Support\TranslatableText;
+use Wallacemartinss\FilamentOnboarding\Support\{PanelTargets, TranslatableText};
 
 /**
  * @property string $id
@@ -143,24 +143,68 @@ class OnboardingStep extends Model
         }
 
         return collect($this->tour_steps)
-            ->map(function (array $tourStep) use ($parameters): array {
-                $url = $tourStep['url'] ?? null;
-
-                if (filled($url)) {
-                    foreach ($parameters as $key => $value) {
-                        $url = str_replace('{' . $key . '}', (string) $value, (string) $url);
-                    }
-                }
-
-                return [
-                    'selector'  => $tourStep['selector'] ?? null,
-                    'title'     => TranslatableText::resolve($tourStep['title'] ?? null),
-                    'body'      => TranslatableText::resolve($tourStep['body'] ?? null),
-                    'placement' => $tourStep['placement'] ?? 'auto',
-                    'url'       => filled($url) ? (string) $url : null,
-                ];
-            })
+            ->map(fn (array $tourStep): array => [
+                'selector'  => $this->resolveTourSelector($tourStep),
+                'title'     => TranslatableText::resolve($tourStep['title'] ?? null),
+                'body'      => TranslatableText::resolve($tourStep['body'] ?? null),
+                'placement' => $tourStep['placement'] ?? 'auto',
+                'url'       => $this->resolveTourUrl($tourStep, $parameters),
+            ])
             ->all();
+    }
+
+    /**
+     * A tour stop points at a CSS selector, or at a widget picked from the panel
+     * — widgets have no selector of their own, so they are addressed by the
+     * Livewire component they are and found in the DOM by the tour runner.
+     *
+     * @param  array<string, mixed>  $tourStep
+     */
+    private function resolveTourSelector(array $tourStep): ?string
+    {
+        $selector = $tourStep['selector'] ?? null;
+
+        if (filled($selector)) {
+            return (string) $selector;
+        }
+
+        $widget = $tourStep['widget'] ?? null;
+
+        return filled($widget)
+            ? PanelTargets::widgetSelector((string) $widget)
+            : null;
+    }
+
+    /**
+     * The page a stop lives on: a route picked from the panel, or a URL typed by
+     * hand. The route wins, and it survives a renamed slug.
+     *
+     * @param  array<string, mixed>  $tourStep
+     * @param  array<string, mixed>  $parameters
+     */
+    private function resolveTourUrl(array $tourStep, array $parameters): ?string
+    {
+        $route = $tourStep['route'] ?? null;
+
+        if (filled($route)) {
+            try {
+                return route((string) $route, $parameters);
+            } catch (\Throwable) {
+                return null;
+            }
+        }
+
+        $url = $tourStep['url'] ?? null;
+
+        if (blank($url)) {
+            return null;
+        }
+
+        foreach ($parameters as $key => $value) {
+            $url = str_replace('{' . $key . '}', (string) $value, (string) $url);
+        }
+
+        return Str::contains($url, ['{', '}']) ? null : (string) $url;
     }
 
     /**

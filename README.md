@@ -123,9 +123,31 @@ Conditions are evaluated for pending steps only, and the result is persisted the
 
 A condition that is no longer registered never completes a step; it goes quiet rather than throwing on every request.
 
+## Panel discovery
+
+Nobody types a URL. When a step or a tour stop needs a destination, the dropdown
+is built from the panel itself:
+
+- **Resources** — every list and create page, labelled the way the panel labels
+  them ("Servidores — listagem"). Pages that need a record (edit, view) are left
+  out, since onboarding has no record to hand them.
+- **Pages** — every custom page, by its navigation label.
+- **Widgets** — every widget of the panel, including the ones attached to a page
+  rather than registered on the panel (`$isDiscovered = false`).
+
+What gets stored is the **route name**, not the URL, so renaming a resource slug
+does not break a flow, and `{tenant}` is filled in at render time.
+
+Widgets are the interesting case: they all share one wrapper class, so there is no
+CSS selector to point at. Pick the widget and the package addresses it by the
+Livewire component it is (`@widget:App\Filament\...\OverviewStatsWidget`); the tour
+runner finds it in the page. No `data-` attribute to add, nothing to remember.
+
+A hand-written URL or CSS selector is still accepted for anything outside the panel.
+
 ## Tours
 
-Give the element you want to spotlight a stable hook:
+To spotlight something that is not a widget, give the element a stable hook:
 
 ```php
 Action::make('create')
