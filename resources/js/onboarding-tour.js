@@ -311,6 +311,14 @@ export default function onboardingTour() {
             const prefix = PREFIXES.find((candidate) => selector.startsWith(candidate));
             const component = selector.slice(prefix.length);
 
+            // Livewire puts the component's name straight on the element.
+            const named = document.querySelector(`[wire\\:name="${CSS.escape(component)}"]`);
+
+            if (named) {
+                return named;
+            }
+
+            // Older Livewire only carries it inside the snapshot.
             for (const element of document.querySelectorAll('[wire\\:snapshot]')) {
                 try {
                     const snapshot = JSON.parse(element.getAttribute('wire:snapshot'));
