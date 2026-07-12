@@ -1,0 +1,67 @@
+{{-- The tour runner: dims the page, spotlights one element at a time, and walks
+     the subject through the steps — across pages when a step lives elsewhere. --}}
+<div
+    class="fio"
+    x-data="onboardingTour"
+    x-load
+    x-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('onboarding-tour', 'wallacemartinss/filament-onboarding') }}"
+    x-on:keydown.window="onKeydown($event)"
+>
+    <template x-if="active">
+        <div>
+            <div
+                class="fio-tour-spotlight"
+                :class="{ 'fio-tour-spotlight--empty': ! spotlight.visible }"
+                :style="spotlight.visible
+                    ? `top: ${spotlight.top}px; left: ${spotlight.left}px; width: ${spotlight.width}px; height: ${spotlight.height}px;`
+                    : 'top: 50%; left: 50%; width: 0; height: 0;'"
+            ></div>
+
+            <div
+                class="fio-tour-popover fio-animate-in"
+                x-ref="popover"
+                :style="`top: ${popover.top}px; left: ${popover.left}px;`"
+                role="dialog"
+                aria-modal="true"
+            >
+                <p class="fio-tour-counter">
+                    <span x-text="index + 1"></span>/<span x-text="steps.length"></span>
+                </p>
+
+                <template x-if="step?.title">
+                    <h3 class="fio-tour-title" x-text="step.title"></h3>
+                </template>
+
+                <template x-if="step?.body">
+                    <p class="fio-tour-body" x-text="step.body"></p>
+                </template>
+
+                <div class="fio-tour-actions">
+                    <div class="fio-tour-dots" aria-hidden="true">
+                        <template x-for="(tourStep, dot) in steps" :key="dot">
+                            <span class="fio-tour-dot" :class="{ 'fio-tour-dot--active': dot === index }"></span>
+                        </template>
+                    </div>
+
+                    <div style="display: flex; gap: 0.25rem; align-items: center;">
+                        <button type="button" class="fio-button fio-button--ghost" x-on:click="skip()">
+                            {{ __('filament-onboarding::onboarding.tour.skip') }}
+                        </button>
+
+                        <template x-if="! isFirst">
+                            <button type="button" class="fio-button fio-button--ghost" x-on:click="previous()">
+                                {{ __('filament-onboarding::onboarding.tour.previous') }}
+                            </button>
+                        </template>
+
+                        <button type="button" class="fio-button fio-button--primary" x-on:click="next()">
+                            <span x-text="isLast
+                                ? @js(__('filament-onboarding::onboarding.tour.finish'))
+                                : @js(__('filament-onboarding::onboarding.tour.next'))"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+</div>

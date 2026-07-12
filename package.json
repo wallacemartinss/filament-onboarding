@@ -1,0 +1,12 @@
+{
+    "name": "wallacemartinss/filament-onboarding",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "node bin/build.js",
+        "dev": "node bin/build.js --dev"
+    },
+    "devDependencies": {
+        "esbuild": "^0.20.0"
+    }
+}

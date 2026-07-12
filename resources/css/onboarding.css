@@ -1,0 +1,563 @@
+/**
+ * filament-onboarding
+ *
+ * Self-contained styles: they borrow the panel's colour variables (--primary-*,
+ * --gray-*) so the checklist and tours wear the host theme, but they never rely
+ * on the host's Tailwind build being aware of this package.
+ *
+ * Every value below reads an override first — declare any of the --fio-theme-*
+ * variables in your own stylesheet (:root, or scoped to a panel) and this picks
+ * them up regardless of which file the browser loaded last:
+ *
+ *   :root {
+ *       --fio-theme-accent: var(--color-kronn-600);
+ *       --fio-theme-radius: 1rem;
+ *   }
+ *
+ * For anything deeper, publish the stylesheet:
+ *   php artisan vendor:publish --tag=filament-onboarding-styles
+ */
+
+.fio {
+    --fio-radius: var(--fio-theme-radius, 0.875rem);
+    --fio-radius-sm: var(--fio-theme-radius-sm, 0.625rem);
+    --fio-panel-width: var(--fio-theme-panel-width, 23rem);
+    --fio-surface: var(--fio-theme-surface, white);
+    --fio-surface-muted: var(--fio-theme-surface-muted, var(--gray-50));
+    --fio-border: var(--fio-theme-border, var(--gray-200));
+    --fio-text: var(--fio-theme-text, var(--gray-950));
+    --fio-text-muted: var(--fio-theme-text-muted, var(--gray-500));
+    --fio-shadow: var(--fio-theme-shadow, 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08));
+    --fio-shadow-lg: var(--fio-theme-shadow-lg, 0 24px 48px -12px rgb(0 0 0 / 0.25));
+    --fio-accent: var(--fio-theme-accent, var(--primary-600));
+    --fio-accent-soft: var(--fio-theme-accent-soft, color-mix(in oklch, var(--primary-500) 12%, transparent));
+    --fio-success: var(--fio-theme-success, var(--success-600, oklch(0.627 0.194 149.214)));
+}
+
+.dark .fio {
+    --fio-surface: var(--fio-theme-surface-dark, var(--gray-900));
+    --fio-surface-muted: var(--fio-theme-surface-muted-dark, color-mix(in oklch, var(--gray-800) 60%, transparent));
+    --fio-border: var(--fio-theme-border-dark, var(--gray-800));
+    --fio-text: var(--fio-theme-text-dark, white);
+    --fio-text-muted: var(--fio-theme-text-muted-dark, var(--gray-400));
+    --fio-shadow-lg: var(--fio-theme-shadow-lg-dark, 0 24px 48px -12px rgb(0 0 0 / 0.6));
+    --fio-accent: var(--fio-theme-accent-dark, var(--primary-400));
+    --fio-accent-soft: var(--fio-theme-accent-soft-dark, color-mix(in oklch, var(--primary-400) 16%, transparent));
+    --fio-success: var(--fio-theme-success-dark, var(--success-400, oklch(0.792 0.209 151.711)));
+}
+
+/* ---------------------------------------------------------------- launcher */
+
+.fio-launcher {
+    position: fixed;
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: flex-end;
+}
+
+.fio-launcher--bottom-right {
+    inset-block-end: 1.5rem;
+    inset-inline-end: 1.5rem;
+}
+
+.fio-launcher--bottom-left {
+    inset-block-end: 1.5rem;
+    inset-inline-start: 1.5rem;
+    align-items: flex-start;
+}
+
+.fio-launcher--top-right {
+    inset-block-start: 5rem;
+    inset-inline-end: 1.5rem;
+    flex-direction: column-reverse;
+}
+
+.fio-launcher--top-left {
+    inset-block-start: 5rem;
+    inset-inline-start: 1.5rem;
+    flex-direction: column-reverse;
+    align-items: flex-start;
+}
+
+.fio-launcher-button {
+    position: relative;
+    display: grid;
+    place-items: center;
+    inline-size: 3.5rem;
+    block-size: 3.5rem;
+    border-radius: 9999px;
+    border: 1px solid var(--fio-border);
+    background-color: var(--fio-surface);
+    box-shadow: var(--fio-shadow);
+    color: var(--fio-accent);
+    cursor: pointer;
+    transition:
+        transform 200ms cubic-bezier(0.2, 0, 0, 1),
+        box-shadow 200ms ease;
+}
+
+.fio-launcher-button:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--fio-shadow-lg);
+}
+
+.fio-launcher-button:focus-visible {
+    outline: 2px solid var(--fio-accent);
+    outline-offset: 2px;
+}
+
+.fio-launcher-button svg.fio-ring {
+    position: absolute;
+    inset: 0;
+    inline-size: 100%;
+    block-size: 100%;
+    transform: rotate(-90deg);
+}
+
+.fio-ring-track {
+    fill: none;
+    stroke: var(--fio-border);
+    stroke-width: 3;
+}
+
+.fio-ring-value {
+    fill: none;
+    stroke: var(--fio-accent);
+    stroke-width: 3;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 600ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.fio-launcher-count {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--fio-text);
+    font-variant-numeric: tabular-nums;
+}
+
+.fio-launcher-badge {
+    position: absolute;
+    inset-block-start: -0.125rem;
+    inset-inline-end: -0.125rem;
+    min-inline-size: 1.125rem;
+    block-size: 1.125rem;
+    padding-inline: 0.25rem;
+    display: grid;
+    place-items: center;
+    border-radius: 9999px;
+    background-color: var(--fio-accent);
+    color: white;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    line-height: 1;
+    box-shadow: 0 0 0 2px var(--fio-surface);
+}
+
+/* ------------------------------------------------------------------- panel */
+
+.fio-panel {
+    inline-size: var(--fio-panel-width);
+    max-inline-size: calc(100vw - 2rem);
+    max-block-size: min(32rem, calc(100vh - 8rem));
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: var(--fio-radius);
+    border: 1px solid var(--fio-border);
+    background-color: var(--fio-surface);
+    box-shadow: var(--fio-shadow-lg);
+    color: var(--fio-text);
+}
+
+.fio-panel-header {
+    padding: 1.125rem 1.25rem 1rem;
+    border-block-end: 1px solid var(--fio-border);
+    background: linear-gradient(180deg, var(--fio-accent-soft), transparent);
+}
+
+.fio-panel-title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.fio-panel-title {
+    font-size: 0.9375rem;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    color: var(--fio-text);
+}
+
+.fio-panel-description {
+    margin-block-start: 0.25rem;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    color: var(--fio-text-muted);
+}
+
+.fio-icon-button {
+    display: grid;
+    place-items: center;
+    inline-size: 1.75rem;
+    block-size: 1.75rem;
+    flex-shrink: 0;
+    border-radius: 0.5rem;
+    color: var(--fio-text-muted);
+    cursor: pointer;
+    transition: background-color 150ms ease, color 150ms ease;
+}
+
+.fio-icon-button:hover {
+    background-color: var(--fio-surface-muted);
+    color: var(--fio-text);
+}
+
+.fio-progress {
+    margin-block-start: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+}
+
+.fio-progress-track {
+    position: relative;
+    flex: 1;
+    block-size: 0.375rem;
+    border-radius: 9999px;
+    background-color: color-mix(in oklch, var(--gray-500) 18%, transparent);
+    overflow: hidden;
+}
+
+.fio-progress-value {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, var(--primary-500), var(--primary-400));
+    transition: inline-size 600ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.fio-progress-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--fio-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------- steps */
+
+.fio-steps {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.fio-step {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: var(--fio-radius-sm);
+    transition: background-color 150ms ease;
+}
+
+.fio-step:hover {
+    background-color: var(--fio-surface-muted);
+}
+
+.fio-step-marker {
+    position: relative;
+    display: grid;
+    place-items: center;
+    inline-size: 1.375rem;
+    block-size: 1.375rem;
+    margin-block-start: 0.0625rem;
+    border-radius: 9999px;
+    border: 1.5px solid var(--fio-border);
+    color: transparent;
+    background-color: transparent;
+    transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+button.fio-step-marker {
+    cursor: pointer;
+}
+
+button.fio-step-marker:hover {
+    border-color: var(--fio-accent);
+    background-color: var(--fio-accent-soft);
+}
+
+.fio-step-marker svg {
+    inline-size: 0.875rem;
+    block-size: 0.875rem;
+}
+
+.fio-step--done .fio-step-marker {
+    border-color: transparent;
+    background-color: var(--fio-success);
+    color: white;
+}
+
+.fio-step--skipped .fio-step-marker {
+    border-style: dashed;
+    color: var(--fio-text-muted);
+}
+
+/* The step waiting on the subject right now gets the ring. */
+.fio-step--next .fio-step-marker {
+    border-color: var(--fio-accent);
+    box-shadow: 0 0 0 4px var(--fio-accent-soft);
+}
+
+.fio-step-title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--fio-text);
+}
+
+.fio-step--done .fio-step-title,
+.fio-step--skipped .fio-step-title {
+    color: var(--fio-text-muted);
+    font-weight: 500;
+}
+
+.fio-step-description {
+    margin-block-start: 0.1875rem;
+    font-size: 0.75rem;
+    line-height: 1.45;
+    color: var(--fio-text-muted);
+}
+
+.fio-step-actions {
+    margin-block-start: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    flex-wrap: wrap;
+}
+
+.fio-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3125rem;
+    padding: 0.3125rem 0.625rem;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: background-color 150ms ease, color 150ms ease, opacity 150ms ease;
+    text-decoration: none;
+}
+
+.fio-button svg {
+    inline-size: 0.875rem;
+    block-size: 0.875rem;
+}
+
+.fio-button--primary {
+    background-color: var(--primary-600);
+    color: white;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+
+.fio-button--primary:hover {
+    background-color: var(--primary-500);
+}
+
+.fio-button--ghost {
+    color: var(--fio-text-muted);
+    background-color: transparent;
+}
+
+.fio-button--ghost:hover {
+    background-color: color-mix(in oklch, var(--gray-500) 12%, transparent);
+    color: var(--fio-text);
+}
+
+.fio-panel-footer {
+    padding: 0.625rem 1.25rem;
+    border-block-start: 1px solid var(--fio-border);
+    background-color: var(--fio-surface-muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.fio-footer-note {
+    font-size: 0.6875rem;
+    color: var(--fio-text-muted);
+}
+
+/* ---------------------------------------------------------------- complete */
+
+.fio-complete {
+    padding: 1.5rem 1.25rem;
+    text-align: center;
+}
+
+.fio-complete-icon {
+    display: grid;
+    place-items: center;
+    inline-size: 2.75rem;
+    block-size: 2.75rem;
+    margin: 0 auto 0.75rem;
+    border-radius: 9999px;
+    background-color: color-mix(in oklch, var(--fio-success) 15%, transparent);
+    color: var(--fio-success);
+}
+
+.fio-complete-icon svg {
+    inline-size: 1.5rem;
+    block-size: 1.5rem;
+}
+
+/* ------------------------------------------------------------------ widget */
+
+.fio-card {
+    border-radius: var(--fio-radius);
+    border: 1px solid var(--fio-border);
+    background-color: var(--fio-surface);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+    overflow: hidden;
+    color: var(--fio-text);
+}
+
+.fio-card .fio-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+    gap: 0.25rem;
+    padding: 0.625rem;
+    max-block-size: none;
+}
+
+/* -------------------------------------------------------------------- tour */
+
+.fio-tour-spotlight {
+    position: fixed;
+    z-index: 9998;
+    border-radius: 0.75rem;
+    box-shadow:
+        0 0 0 9999px rgb(0 0 0 / 0.6),
+        0 0 0 3px var(--primary-500);
+    pointer-events: none;
+    transition:
+        inset-block-start 300ms cubic-bezier(0.2, 0, 0, 1),
+        inset-inline-start 300ms cubic-bezier(0.2, 0, 0, 1),
+        inline-size 300ms cubic-bezier(0.2, 0, 0, 1),
+        block-size 300ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* No element to point at: the popover floats over a plain dimmed page. */
+.fio-tour-spotlight--empty {
+    box-shadow: 0 0 0 9999px rgb(0 0 0 / 0.6);
+}
+
+.fio-tour-popover {
+    position: fixed;
+    z-index: 9999;
+    inline-size: 20rem;
+    max-inline-size: calc(100vw - 2rem);
+    padding: 1rem 1.125rem 0.875rem;
+    border-radius: var(--fio-radius);
+    background-color: var(--fio-surface);
+    border: 1px solid var(--fio-border);
+    box-shadow: var(--fio-shadow-lg);
+    color: var(--fio-text);
+    transition:
+        inset-block-start 300ms cubic-bezier(0.2, 0, 0, 1),
+        inset-inline-start 300ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.fio-tour-counter {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--fio-accent);
+}
+
+.fio-tour-title {
+    margin-block-start: 0.25rem;
+    font-size: 0.9375rem;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+}
+
+.fio-tour-body {
+    margin-block-start: 0.375rem;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--fio-text-muted);
+}
+
+.fio-tour-actions {
+    margin-block-start: 0.875rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.fio-tour-dots {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.fio-tour-dot {
+    inline-size: 0.375rem;
+    block-size: 0.375rem;
+    border-radius: 9999px;
+    background-color: var(--fio-border);
+    transition: background-color 200ms ease, inline-size 200ms ease;
+}
+
+.fio-tour-dot--active {
+    inline-size: 1rem;
+    background-color: var(--fio-accent);
+}
+
+/* --------------------------------------------------------------- animation */
+
+@keyframes fio-fade-up {
+    from {
+        opacity: 0;
+        transform: translateY(0.5rem) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.fio-animate-in {
+    animation: fio-fade-up 220ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fio-launcher-button,
+    .fio-ring-value,
+    .fio-progress-value,
+    .fio-tour-spotlight,
+    .fio-tour-popover,
+    .fio-animate-in {
+        transition: none;
+        animation: none;
+    }
+}
+
+@media (max-width: 640px) {
+    .fio-panel {
+        --fio-panel-width: calc(100vw - 2rem);
+    }
+}
