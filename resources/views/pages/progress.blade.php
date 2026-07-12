@@ -216,6 +216,11 @@
                                                 'time' => $step->completedAt()->diffForHumans(),
                                             ]) }}
                                         @endif
+
+                                        {{-- Says why this one keeps coming back done. --}}
+                                        @if ($step->step->completion_mode === \Wallacemartinss\FilamentOnboarding\Enums\CompletionMode::Condition)
+                                            · {{ __('filament-onboarding::onboarding.page.awaiting_condition') }}
+                                        @endif
                                     </span>
 
                                     @if ($step->step->completion_mode->isSelfServed())

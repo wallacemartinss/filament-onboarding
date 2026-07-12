@@ -5,14 +5,16 @@ declare(strict_types = 1);
 namespace Wallacemartinss\FilamentOnboarding\Pages;
 
 use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\On;
 use Wallacemartinss\FilamentOnboarding\Concerns\InteractsWithOnboarding;
+use Wallacemartinss\FilamentOnboarding\Enums\CompletionMode;
 use Wallacemartinss\FilamentOnboarding\Facades\Onboarding;
 use Wallacemartinss\FilamentOnboarding\FilamentOnboardingPlugin;
-use Wallacemartinss\FilamentOnboarding\States\FlowState;
+use Wallacemartinss\FilamentOnboarding\States\{FlowState, StepState};
 
 /**
  * The journey, laid out: what the subject has done, what is next, what is left.
@@ -96,7 +98,26 @@ class OnboardingProgress extends Page
             ->modalDescription(__('filament-onboarding::onboarding.page.restart_confirm'))
             ->modalSubmitActionLabel(__('filament-onboarding::onboarding.page.restart'))
             ->action(function (array $arguments): void {
-                $this->restartFlow($arguments['flow'] ?? null);
+                $flowKey = $arguments['flow'] ?? null;
+
+                $this->restartFlow($flowKey);
+
+                // A journey made of conditions comes back completed the moment it
+                // is asked again — the backup destination still exists. Without
+                // saying so, the button looks broken: you click, and nothing
+                // appears to happen.
+                $reinstated = $this->resolveFlowState($flowKey)
+                    ?->steps
+                    ->filter(fn (StepState $step): bool => $step->isCompleted() && $step->step->completion_mode === CompletionMode::Condition)
+                    ->count() ?? 0;
+
+                Notification::make()
+                    ->title(__('filament-onboarding::onboarding.page.restarted'))
+                    ->body($reinstated > 0
+                        ? __('filament-onboarding::onboarding.page.restarted_reinstated', ['count' => $reinstated])
+                        : null)
+                    ->success()
+                    ->send();
             });
     }
 

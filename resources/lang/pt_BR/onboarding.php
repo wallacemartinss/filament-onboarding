@@ -25,15 +25,17 @@ return [
     ],
 
     'page' => [
-        'title'           => 'Primeiros passos',
-        'subheading'      => 'Onde você está e o que falta.',
-        'next'            => 'A seguir',
-        'hidden'          => 'Oculta',
-        'restore'         => 'Mostrar novamente',
-        'undo'            => 'Desfazer',
-        'restart'         => 'Refazer jornada',
-        'restart_confirm' => 'Refazer esta jornada? O que você marcou, pulou e assistiu será apagado.',
-        'restart_note'    => 'Etapas que concluem sozinhas voltam concluídas: elas respondem ao sistema, não a este botão.',
+        'title'                => 'Primeiros passos',
+        'subheading'           => 'Onde você está e o que falta.',
+        'next'                 => 'A seguir',
+        'hidden'               => 'Oculta',
+        'restore'              => 'Mostrar novamente',
+        'undo'                 => 'Desfazer',
+        'restart'              => 'Refazer jornada',
+        'restarted'            => 'Jornada reiniciada',
+        'restarted_reinstated' => ':count etapa(s) voltaram concluídas: elas já estão feitas de verdade.',
+        'restart_confirm'      => 'Refazer esta jornada? O que você marcou, pulou e assistiu será apagado.',
+        'restart_note'         => 'Etapas que concluem sozinhas voltam concluídas: elas respondem ao sistema, não a este botão.',
 
         'stats' => [
             'completed' => 'Concluídas',
