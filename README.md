@@ -14,6 +14,8 @@ Journeys are authored in the panel, not in code, so product people can rewrite t
 
 Requires PHP 8.2+, Laravel 12 and Filament v5. Runs on PostgreSQL and MySQL/MariaDB.
 
+> Maintaining or extending the package? Read **[ARCHITECTURE.md](ARCHITECTURE.md)** — the data model, panel discovery, the tour runner, the player, asset versioning, and the traps that will bite you if you "clean up" the wrong line.
+
 ---
 
 ## Installation
