@@ -228,3 +228,115 @@ describe('what to draw the spotlight around', () => {
         expect(tour().resolveTarget(checkbox)).toBe(label);
     });
 });
+
+describe('what the scroll listener may and may not do', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '';
+    });
+
+    it('re-measures without dragging the subject back to the spotlight', () => {
+        const field = withBox(document.createElement('input'), { top: -500, left: 0, width: 200, height: 40 });
+        field.id = 'name';
+        document.body.append(field);
+
+        field.scrollIntoView = vi.fn();
+
+        const component = tour();
+
+        component.active = true;
+        component.steps = [{ selector: '#name' }];
+        component.index = 0;
+
+        component.measure();
+
+        // The subject scrolled away from it on purpose. The spotlight follows the
+        // element; the page stays where they put it.
+        expect(field.scrollIntoView).not.toHaveBeenCalled();
+        expect(component.spotlight.top).toBe(-508);
+    });
+
+    it('tells the server which stop was reached once, not once per frame', () => {
+        const dispatch = vi.fn();
+
+        window.Livewire = { dispatch };
+
+        const component = tour();
+
+        component.active = true;
+        component.stepKey = 'a-tour';
+        component.steps = [{ selector: '#a' }, { selector: '#b' }];
+        component.index = 0;
+
+        component.report();
+        component.report();
+        component.report();
+
+        expect(dispatch).toHaveBeenCalledOnce();
+
+        // A new stop is news, and gets reported.
+        component.index = 1;
+        component.report();
+
+        expect(dispatch).toHaveBeenCalledTimes(2);
+
+        delete window.Livewire;
+    });
+
+    it('lets no render act after the subject closes the tour', () => {
+        const component = tour();
+
+        component.active = true;
+        component.stepKey = 'a-tour';
+        component.steps = [{ selector: '#gone' }];
+        component.index = 0;
+
+        const before = component.renderToken;
+
+        component.close();
+
+        // A render in flight checks this token after every await: bumping it is
+        // what stops a dead render from scrolling the page under them.
+        expect(component.renderToken).toBeGreaterThan(before);
+        expect(component.pollTimers).toHaveLength(0);
+    });
+});
+
+describe('the keyboard', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '';
+    });
+
+    it('does not page the tour while the subject is typing in the form', () => {
+        const field = withBox(document.createElement('input'));
+        document.body.append(field);
+
+        const component = tour();
+
+        component.active = true;
+        component.steps = [{ selector: '#a' }, { selector: '#b' }];
+        component.index = 0;
+        component.render = vi.fn();
+        component.close = vi.fn();
+
+        // Moving the caret inside a field is not a request to move the tour.
+        component.onKeydown({ key: 'ArrowRight', target: field });
+        component.onKeydown({ key: 'ArrowLeft', target: field });
+        component.onKeydown({ key: 'Escape', target: field });
+
+        expect(component.index).toBe(0);
+        expect(component.close).not.toHaveBeenCalled();
+    });
+
+    it('still walks the tour from the page itself', () => {
+        const component = tour();
+
+        component.active = true;
+        component.steps = [{ selector: '#a' }, { selector: '#b' }];
+        component.index = 0;
+        component.render = vi.fn();
+
+        component.onKeydown({ key: 'ArrowRight', target: document.body });
+
+        expect(component.index).toBe(1);
+    });
+});

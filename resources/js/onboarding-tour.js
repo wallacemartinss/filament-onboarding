@@ -35,6 +35,8 @@ export default function onboardingTour() {
         observerQueued: false,
         renderToken: 0,
         repositionQueued: false,
+        reportedIndex: null,
+        pollTimers: [],
 
         init() {
             this.resume();
@@ -45,6 +47,17 @@ export default function onboardingTour() {
                 this.start(detail.key, detail.steps ?? []);
             });
 
+            // Scrolling and resizing move the element, so the spotlight has to
+            // follow it. That is *all* they do: re-measure, in place.
+            //
+            // Rendering from here instead was two bugs in one. It scrolled the
+            // subject back — render() pulls the element into view, and the check
+            // for "in view" wants the whole element, so nudging the page one
+            // pixel snapped it back to centre and the subject could not read
+            // around the spotlight. And it reported to the server on every frame:
+            // a two-second scroll was a hundred Livewire round-trips, each one an
+            // UPDATE plus a re-render of every surface, for a stop that never
+            // changed.
             this.reposition = () => {
                 if (!this.active || this.repositionQueued) {
                     return;
@@ -56,7 +69,7 @@ export default function onboardingTour() {
                     this.repositionQueued = false;
 
                     if (this.active) {
-                        this.render();
+                        this.measure();
                     }
                 });
             };
@@ -68,6 +81,7 @@ export default function onboardingTour() {
         destroy() {
             window.removeEventListener('resize', this.reposition);
             window.removeEventListener('scroll', this.reposition, { capture: true });
+            this.stopPolling();
             this.stopObserving();
         },
 
@@ -203,7 +217,13 @@ export default function onboardingTour() {
             this.steps = [];
             this.index = 0;
             this.stepKey = null;
+            this.reportedIndex = null;
             this.spotlight.visible = false;
+
+            // A render already in flight must not act after the tour is gone: it
+            // would scroll the page under a subject who just dismissed it.
+            this.renderToken++;
+            this.stopPolling();
             this.stopObserving();
             this.clearStorage();
         },
@@ -332,6 +352,38 @@ export default function onboardingTour() {
             await this.placePopover(rect, step.placement ?? 'auto');
         },
 
+        /**
+         * Follow the element where it is now — no scrolling, no reporting, no
+         * waiting. Called on scroll and resize, many times a second.
+         */
+        measure() {
+            const step = this.step;
+
+            if (!step?.selector || this.waiting) {
+                return;
+            }
+
+            const found = this.find(step.selector);
+
+            if (!found) {
+                // It went away under us — a Livewire morph, a wizard step left
+                // behind. Go through the full render, which knows how to wait.
+                return this.render();
+            }
+
+            const rect = this.resolveTarget(found).getBoundingClientRect();
+
+            this.spotlight = {
+                top: rect.top - SPOTLIGHT_PADDING,
+                left: rect.left - SPOTLIGHT_PADDING,
+                width: rect.width + SPOTLIGHT_PADDING * 2,
+                height: rect.height + SPOTLIGHT_PADDING * 2,
+                visible: true,
+            };
+
+            this.placePopover(rect, step.placement ?? 'auto');
+        },
+
         persist() {
             if (!this.active) {
                 return;
@@ -356,6 +408,15 @@ export default function onboardingTour() {
             if (!this.stepKey || !window.Livewire) {
                 return;
             }
+
+            // The server only cares which stop was reached. Saying it again
+            // costs a round-trip, a database write, and a re-render of every
+            // surface showing onboarding — so say it once.
+            if (this.reportedIndex === this.index) {
+                return;
+            }
+
+            this.reportedIndex = this.index;
 
             window.Livewire.dispatch('onboarding-tour-progress', {
                 key: this.stepKey,
@@ -562,18 +623,32 @@ export default function onboardingTour() {
                     const element = this.find(selector);
 
                     if (element) {
-                        clearInterval(poll);
+                        this.clearPoll(poll);
 
                         return resolve(element);
                     }
 
                     if (performance.now() - startedAt > ELEMENT_TIMEOUT) {
-                        clearInterval(poll);
+                        this.clearPoll(poll);
 
                         resolve(null);
                     }
                 }, 100);
+
+                this.pollTimers.push(poll);
             });
+        },
+
+        clearPoll(timer) {
+            clearInterval(timer);
+
+            this.pollTimers = this.pollTimers.filter((pending) => pending !== timer);
+        },
+
+        stopPolling() {
+            this.pollTimers.forEach(clearInterval);
+
+            this.pollTimers = [];
         },
 
         /**
@@ -731,8 +806,16 @@ export default function onboardingTour() {
             return Math.min(Math.max(value, min), Math.max(min, max));
         },
 
+        /**
+         * The arrow keys move the tour — unless the subject is typing.
+         *
+         * A tour over a wizard is precisely the case where they are: pressing
+         * left to move the caret inside a field would page the tour backwards,
+         * and Escape — which closes a dropdown, clears a search, ends an IME
+         * composition — would throw the whole tour away.
+         */
         onKeydown(event) {
-            if (!this.active) {
+            if (!this.active || this.isTyping(event)) {
                 return;
             }
 
@@ -747,6 +830,21 @@ export default function onboardingTour() {
             if (event.key === 'ArrowLeft') {
                 this.previous();
             }
+        },
+
+        isTyping(event) {
+            if (event.isComposing) {
+                return true;
+            }
+
+            const target = event.target;
+
+            if (!(target instanceof HTMLElement)) {
+                return false;
+            }
+
+            return target.isContentEditable
+                || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
         },
     };
 }
