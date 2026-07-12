@@ -302,20 +302,22 @@ Watch time is reported every 5 s and once more on pause/end/close. `SubjectOnboa
 
 ### Three bugs that will come back if you "clean up" this file
 
-**1. `wire:ignore` on the modal root is load-bearing.**
-The modal lives inside a Livewire component. Every Livewire round trip morphs the DOM — including the `<iframe>` the video API just created. The player is torn out mid-playback and the API says so: *"The YouTube player is not attached to the DOM."* `wire:ignore` keeps Livewire out of that subtree. The modal is pure Alpine and needs nothing from Livewire's re-render.
+**1. `wire:ignore` on the modal.**
+The player lives inside a Livewire component, and every round-trip morphs its subtree. Without `wire:ignore` the iframe is torn out from under the API and the console fills with *"player is not attached to the DOM"*.
 
-**2. The iframe `src` must not be reactive.**
-An earlier version built the URL from `this.seconds` (`&start=${seconds}`). Alpine rewrote the `src` on every tick of the watch timer, which reloaded the iframe, which detached the player, which restarted the video — forever, reporting nothing. The URL is computed **once** in `show()` (`buildSrc()`), into a non-reactive `src` property.
+**2. Nothing that feeds the player may be reactive.**
+An earlier version bound the iframe `src` to a URL built from `this.seconds`. Alpine rewrote it on every tick of the watch timer, which reloaded the iframe, which detached the player, which restarted the video — forever, reporting nothing. What the markup binds today (`media.url`) is set once in `show()` and never touched again. Resuming is done *through the player* instead: `playerVars.start` for YouTube, `setCurrentTime()` for Vimeo, `loadedmetadata` for a file.
 
 **3. The API must build its own iframe.**
-`new YT.Player(existingIframe)` does not complete the handshake here: the object exists, `playVideo` never appears, `onReady` never fires. The player is given a `<div>` mount (`x-ref="youtube"`) and replaces it with its own iframe. That only survives because of (1).
+`new YT.Player(existingIframe)` does not complete the handshake here: the object exists, `playVideo` never appears, `onReady` never fires. The player is given a `<div>` mount (`x-ref="youtube"`) and replaces it with its own iframe. That only survives because of (2).
 
-Also: autoplay is blocked without a user gesture (`getPlayerState() === 5`, "cued"), so a test that expects playback must click the player.
+Also: autoplay is blocked without a user gesture (`getPlayerState() === 5`, "cued"), so a test that expects playback must click the player. And `mount()` swallows a provider that never loads (a blocked CDN): the modal opens, the copy reads, there is simply no player — an unhandled rejection would be the only other outcome.
 
 ### `MediaUrl` and private disks
 
-An upload on a **private** disk is signed with `temporaryUrl()` (TTL from config). Local disks cannot sign, so it falls back to `url()` rather than showing a broken image. A bucket kept closed stays closed.
+An upload on a **private** disk is signed with `temporaryUrl()` (TTL from config).
+
+**Nothing in `MediaUrl` may throw, and nothing may leak.** It runs while rendering the checklist, which renders in the layout of every page: a disk driver that cannot build a URL — several cannot — would take the panel down over a picture on a step. Every path is caught and reports; a failure costs the image, not the page. And a private disk that cannot sign hands back **nothing**: falling back to a public URL would defeat the reason the file was put somewhere closed.
 
 ### `VideoEmbed`
 

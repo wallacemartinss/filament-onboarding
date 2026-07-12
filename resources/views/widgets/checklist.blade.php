@@ -12,7 +12,7 @@
                             @if ($flow->icon())
                                 <x-filament::icon
                                     :icon="$flow->icon()"
-                                    style="display: inline-block; width: 1.125rem; height: 1.125rem; vertical-align: -3px; margin-inline-end: 0.375rem;"
+                                    class="fio-inline-icon"
                                 />
                             @endif
 

@@ -27,6 +27,7 @@ return [
     ],
 
     'page' => [
+        'open_image'           => 'Abrir la imagen: :title',
         'title'                => 'Primeros pasos',
         'subheading'           => 'Dónde estás y qué falta.',
         'next'                 => 'A continuación',

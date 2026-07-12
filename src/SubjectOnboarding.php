@@ -337,6 +337,21 @@ class SubjectOnboarding
     }
 
     /**
+     * How many steps of a flow this subject has any progress on — what a reset
+     * would actually wipe.
+     */
+    public function progressCount(OnboardingFlow|string $flow): int
+    {
+        $flow = $this->resolveFlow($flow);
+
+        if (!$flow instanceof OnboardingFlow) {
+            return 0;
+        }
+
+        return $this->stepProgressQuery()->where('flow_id', $flow->getKey())->count();
+    }
+
+    /**
      * Complete every step waiting on the subject reaching this URL.
      */
     public function handleVisit(string $path, ?string $panelId = null): void

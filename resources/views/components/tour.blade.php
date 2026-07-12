@@ -2,6 +2,10 @@
      the subject through the steps — across pages when a step lives elsewhere. --}}
 <div
     class="fio"
+    {{-- The runner lives inside the launcher, and every Livewire round-trip morphs
+         its subtree: without this, the spotlight and the popover are torn out and
+         rebuilt underneath a tour that is running. --}}
+    wire:ignore
     x-data="onboardingTour"
     x-load
     x-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('onboarding-tour', 'wallacemartinss/filament-onboarding') }}"
@@ -54,7 +58,7 @@
                         </template>
                     </div>
 
-                    <div style="display: flex; gap: 0.25rem; align-items: center;">
+                    <div class="fio-inline-actions">
                         <button type="button" class="fio-button fio-button--ghost" x-on:click="skip()">
                             {{ __('filament-onboarding::onboarding.tour.skip') }}
                         </button>

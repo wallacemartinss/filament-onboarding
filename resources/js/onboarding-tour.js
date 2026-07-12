@@ -31,6 +31,7 @@ export default function onboardingTour() {
         spotlight: { top: 0, left: 0, width: 0, height: 0, visible: false },
         popover: { top: 0, left: 0 },
         reposition: null,
+        onPageShow: null,
         observer: null,
         observerQueued: false,
         renderToken: 0,
@@ -76,11 +77,30 @@ export default function onboardingTour() {
 
             window.addEventListener('resize', this.reposition, { passive: true });
             window.addEventListener('scroll', this.reposition, { passive: true, capture: true });
+
+            // Coming back through the browser's history can restore this page
+            // from the back-forward cache, script and all: init() does not run
+            // again, so the tour would carry on exactly as it was — including on
+            // a page it does not belong to. Ask the question again.
+            this.onPageShow = (event) => {
+                if (!event.persisted) {
+                    return;
+                }
+
+                if (this.active) {
+                    this.close();
+                }
+
+                this.resume();
+            };
+
+            window.addEventListener('pageshow', this.onPageShow);
         },
 
         destroy() {
             window.removeEventListener('resize', this.reposition);
             window.removeEventListener('scroll', this.reposition, { capture: true });
+            window.removeEventListener('pageshow', this.onPageShow);
             this.stopPolling();
             this.stopObserving();
         },

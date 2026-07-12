@@ -180,6 +180,33 @@ class OnboardingTest extends TestCase
     }
 
     /**
+     * Progress belongs to a subject *within a scope*. Reset without naming one, in
+     * an application that has them, and you wipe nobody's progress — the command
+     * used to report success either way.
+     */
+    public function test_the_reset_command_says_when_it_wiped_nothing(): void
+    {
+        $this->step('first');
+
+        Onboarding::for($this->subject)->complete('first');
+
+        $this->artisan('onboarding:reset', [
+            'flow'            => 'journey',
+            '--subject'       => (string) $this->subject->getKey(),
+            '--subject-model' => Subject::class,
+            '--scope'         => (string) $this->subject->getKey(),
+            '--scope-model'   => Subject::class,
+        ])
+            ->expectsOutputToContain('Nothing to reset')
+            ->assertSuccessful();
+
+        // And the progress it did not name is still there.
+        $this->assertTrue(
+            Onboarding::for($this->subject)->flow('journey')->step('first')->isCompleted()
+        );
+    }
+
+    /**
      * @param  array<string, mixed>  $attributes
      */
     private function step(string $key, array $attributes = []): OnboardingStep

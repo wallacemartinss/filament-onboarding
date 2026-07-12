@@ -85,7 +85,7 @@
                             </p>
 
                             @if ($flow->isDismissible())
-                                <div style="margin-block-start: 1rem;">
+                                <div class="fio-stack">
                                     <button type="button" class="fio-button fio-button--primary" wire:click="dismissFlow">
                                         {{ __('filament-onboarding::onboarding.checklist.done') }}
                                     </button>

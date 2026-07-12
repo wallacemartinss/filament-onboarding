@@ -42,7 +42,7 @@
                     @if ($step->icon())
                         <x-filament::icon
                             :icon="$step->icon()"
-                            style="display: inline-block; width: 0.9375rem; height: 0.9375rem; vertical-align: -2px; margin-inline-end: 0.25rem;"
+                            class="fio-inline-icon fio-inline-icon--sm"
                         />
                     @endif
 
@@ -53,14 +53,18 @@
                     <p class="fio-step-description">{{ $step->description() }}</p>
                 @endif
 
+                {{-- A button, not a clickable image: an <img> with a click handler
+                     cannot be reached by keyboard and is announced to a screen
+                     reader as decoration. --}}
                 @if ($step->hasImage())
-                    <img
-                        src="{{ $step->imageUrl() }}"
-                        alt="{{ $step->title() }}"
-                        class="fio-thumb"
-                        style="margin-block-start: 0.5rem;"
+                    <button
+                        type="button"
+                        class="fio-thumb-button fio-stack-tight"
                         wire:click="openMedia(@js($step->key()))"
-                    />
+                        aria-label="{{ __('filament-onboarding::onboarding.page.open_image', ['title' => $step->title()]) }}"
+                    >
+                        <img src="{{ $step->imageUrl() }}" alt="{{ $step->title() }}" class="fio-thumb" />
+                    </button>
                 @endif
 
                 {{-- A finished step is not a dead end: the tour can be watched

@@ -32,7 +32,7 @@
                                 @if ($flow->icon())
                                     <x-filament::icon
                                         :icon="$flow->icon()"
-                                        style="display: inline-block; width: 1.25rem; height: 1.25rem; vertical-align: -3px; margin-inline-end: 0.375rem;"
+                                        class="fio-inline-icon fio-inline-icon--lg"
                                     />
                                 @endif
 
@@ -116,7 +116,7 @@
                         @if ($flow->isFinished() && $flow->hasConditionSteps())
                             {{-- Restarting cannot undo what is simply true: a step that
                                  asks the application comes straight back completed. --}}
-                            <p class="fio-footer-note" style="margin-block-start: 0.5rem;">
+                            <p class="fio-footer-note" class="fio-stack-tight">
                                 {{ __('filament-onboarding::onboarding.page.restart_note') }}
                             </p>
                         @endif
@@ -143,7 +143,7 @@
                                     @elseif ($step->isSkipped())
                                         <x-filament-onboarding::icons.minus />
                                     @elseif ($step->icon())
-                                        <x-filament::icon :icon="$step->icon()" style="width: 1rem; height: 1rem;" />
+                                        <x-filament::icon :icon="$step->icon()" class="fio-icon-sm" />
                                     @else
                                         <span class="fio-tile-index">{{ $index + 1 }}</span>
                                     @endif
@@ -163,12 +163,14 @@
                             </header>
 
                             @if ($step->hasImage())
-                                <img
-                                    src="{{ $step->imageUrl() }}"
-                                    alt="{{ $step->title() }}"
-                                    class="fio-thumb"
+                                <button
+                                    type="button"
+                                    class="fio-thumb-button"
                                     wire:click="openMedia(@js($step->key()))"
-                                />
+                                    aria-label="{{ __('filament-onboarding::onboarding.page.open_image', ['title' => $step->title()]) }}"
+                                >
+                                    <img src="{{ $step->imageUrl() }}" alt="{{ $step->title() }}" class="fio-thumb" />
+                                </button>
                             @endif
 
                             <h3 class="fio-tile-title">{{ $step->title() }}</h3>

@@ -20,7 +20,6 @@ export default function onboardingMedia() {
         stepKey: null,
         media: null,
         position: 'center',
-        src: '',
         seconds: 0,
         duration: 0,
         player: null,
@@ -65,7 +64,6 @@ export default function onboardingMedia() {
             this.position = media.position ?? 'center';
             this.seconds = Number(media.watched ?? 0);
             this.duration = 0;
-            this.src = this.buildSrc();
             this.open = true;
 
             this.$nextTick(() => this.mount());
@@ -78,24 +76,36 @@ export default function onboardingMedia() {
             this.open = false;
             this.media = null;
             this.stepKey = null;
-            this.src = '';
         },
 
-        mount() {
+        /**
+         * Build the player for whatever this step carries.
+         *
+         * A provider's script can fail to arrive — a blocked CDN, an ad blocker,
+         * a network that gave up — and the promise rejects. Nobody is waiting on
+         * it, so it would surface as an unhandled rejection in the console and
+         * nothing else. Catch it: the modal still opens, the copy still reads,
+         * and there is simply no player.
+         */
+        async mount() {
             if (!this.isVideo) {
                 return;
             }
 
-            if (this.media.provider === 'file') {
-                return this.mountFile();
-            }
+            try {
+                if (this.media.provider === 'file') {
+                    return this.mountFile();
+                }
 
-            if (this.media.provider === 'youtube') {
-                return this.mountYouTube();
-            }
+                if (this.media.provider === 'youtube') {
+                    return await this.mountYouTube();
+                }
 
-            if (this.media.provider === 'vimeo') {
-                return this.mountVimeo();
+                if (this.media.provider === 'vimeo') {
+                    return await this.mountVimeo();
+                }
+            } catch (error) {
+                console.warn('[filament-onboarding] the video player could not be built', error);
             }
         },
 
@@ -126,33 +136,6 @@ export default function onboardingMedia() {
             });
 
             video.addEventListener('pause', () => this.report(true));
-        },
-
-        /**
-         * The embed URL, worked out once when the modal opens.
-         *
-         * It must NOT be reactive. A src that reads `seconds` is rewritten by
-         * Alpine on every tick of the watch timer, which reloads the iframe and
-         * detaches the player from the API — the video would restart forever and
-         * never report a thing.
-         */
-        buildSrc() {
-            const start = Math.floor(this.seconds) || 0;
-
-            if (this.media?.provider === 'youtube') {
-                // enablejsapi lets the API attach to this iframe and report watch
-                // time; origin is what the handshake answers to. Without it the
-                // player object exists but never becomes ready.
-                const origin = encodeURIComponent(window.location.origin);
-
-                return `https://www.youtube.com/embed/${this.media.video_id}?enablejsapi=1&origin=${origin}&rel=0&modestbranding=1&playsinline=1&start=${start}`;
-            }
-
-            if (this.media?.provider === 'vimeo') {
-                return `https://player.vimeo.com/video/${this.media.video_id}#t=${start}s`;
-            }
-
-            return this.media?.url ?? '';
         },
 
         async mountYouTube() {
@@ -287,24 +270,6 @@ export default function onboardingMedia() {
 
             this.player = null;
             this.lastReportedAt = 0;
-        },
-
-        whenFrameLoaded(iframe, timeout = 5000) {
-            return new Promise((resolve) => {
-                let settled = false;
-
-                const done = () => {
-                    if (!settled) {
-                        settled = true;
-                        resolve();
-                    }
-                };
-
-                iframe.addEventListener('load', done, { once: true });
-
-                // A cached iframe may already be loaded, and nothing would fire.
-                setTimeout(done, timeout);
-            });
         },
 
         loadScript(src) {

@@ -50,9 +50,36 @@ class ResetOnboardingCommand extends Command
             ? $this->resolve((string) $this->option('scope-model'), $this->option('scope'))
             : null;
 
-        Onboarding::for($subject, $scope)->reset($flowKey);
+        if ($this->option('scope') && !$scope instanceof Model) {
+            $this->components->error('Could not find the scope. Pass --scope-model alongside --scope.');
 
-        $this->components->info("Reset [{$flowKey}] for {$subject->getMorphClass()} {$subject->getKey()}.");
+            return self::FAILURE;
+        }
+
+        $onboarding = Onboarding::for($subject, $scope);
+
+        // Progress belongs to a subject *within a scope*. Reset without naming
+        // one and you are resetting the subject's progress outside every tenant —
+        // which, in a tenanted application, is nobody's progress at all. Saying
+        // "done" to that is how a person runs this command three times and
+        // watches nothing happen.
+        $wiped = $onboarding->progressCount($flowKey);
+
+        $onboarding->reset($flowKey);
+
+        $where = $scope instanceof Model
+            ? "{$subject->getMorphClass()} {$subject->getKey()} in {$scope->getMorphClass()} {$scope->getKey()}"
+            : "{$subject->getMorphClass()} {$subject->getKey()} (no scope)";
+
+        if ($wiped === 0) {
+            $this->components->warn("Nothing to reset: [{$flowKey}] has no progress for {$where}." . ($scope === null
+                ? ' If this application scopes onboarding to a tenant, pass --scope.'
+                : ''));
+
+            return self::SUCCESS;
+        }
+
+        $this->components->info("Reset [{$flowKey}] for {$where} — {$wiped} step(s) wiped.");
 
         if (Onboarding::for($subject, $scope)->flow($flowKey)?->hasConditionSteps()) {
             $this->components->warn('Steps completed by a condition will come back completed — they answer to the application, not to this command.');

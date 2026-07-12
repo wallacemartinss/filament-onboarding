@@ -980,11 +980,15 @@ button.fio-step-marker:hover {
         0 0 0 9999px rgb(0 0 0 / 0.6),
         0 0 0 3px var(--primary-500);
     pointer-events: none;
+    /* The runner writes top/left/width/height (it measures with
+       getBoundingClientRect, which is physical). A transition declared on the
+       logical longhands never fires for them — the spotlight jumped instead of
+       gliding, for a whole release. */
     transition:
-        inset-block-start 300ms cubic-bezier(0.2, 0, 0, 1),
-        inset-inline-start 300ms cubic-bezier(0.2, 0, 0, 1),
-        inline-size 300ms cubic-bezier(0.2, 0, 0, 1),
-        block-size 300ms cubic-bezier(0.2, 0, 0, 1);
+        top 300ms cubic-bezier(0.2, 0, 0, 1),
+        left 300ms cubic-bezier(0.2, 0, 0, 1),
+        width 300ms cubic-bezier(0.2, 0, 0, 1),
+        height 300ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 /* No element to point at: the popover floats over a plain dimmed page. */
@@ -1011,8 +1015,8 @@ button.fio-step-marker:hover {
     box-shadow: var(--fio-shadow-lg);
     color: var(--fio-text);
     transition:
-        inset-block-start 300ms cubic-bezier(0.2, 0, 0, 1),
-        inset-inline-start 300ms cubic-bezier(0.2, 0, 0, 1);
+        top 300ms cubic-bezier(0.2, 0, 0, 1),
+        left 300ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 .fio-button--primary[disabled] {
@@ -1046,6 +1050,14 @@ button.fio-step-marker:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
+    .fio-tab,
+    .fio-step-marker,
+    .fio-tile,
+    .fio-thumb {
+        transition: none;
+        transform: none;
+    }
+
     .fio-tour-waiting-pulse {
         animation: none;
     }
@@ -1133,4 +1145,61 @@ button.fio-step-marker:hover {
     .fio-panel {
         --fio-panel-width: calc(100vw - 2rem);
     }
+}
+
+/* ------------------------------------------- layout the blades used inline */
+
+/* These were style="" attributes on the markup: presentation nobody could
+   restyle without forking the view, and a strict style-src CSP would refuse to
+   apply at all. The data-driven ones (a progress bar's width) stay inline — they
+   are a value, not a rule. */
+
+.fio-stack {
+    margin-block-start: 1rem;
+}
+
+.fio-stack-tight {
+    margin-block-start: 0.5rem;
+}
+
+/* An icon sitting on a line of text: the flow's own icon, in front of its title. */
+.fio-inline-icon {
+    display: inline-block;
+    inline-size: 1.125rem;
+    block-size: 1.125rem;
+    vertical-align: -3px;
+    margin-inline-end: 0.375rem;
+}
+
+.fio-inline-icon--sm {
+    inline-size: 0.9375rem;
+    block-size: 0.9375rem;
+    vertical-align: -2px;
+    margin-inline-end: 0.25rem;
+}
+
+.fio-inline-icon--lg {
+    inline-size: 1.25rem;
+    block-size: 1.25rem;
+}
+
+.fio-inline-actions {
+    display: flex;
+    gap: 0.25rem;
+    align-items: center;
+}
+
+.fio-thumb-button {
+    display: block;
+    inline-size: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+}
+
+.fio-thumb-button:focus-visible {
+    outline: 2px solid var(--fio-accent);
+    outline-offset: 2px;
+    border-radius: var(--fio-radius);
 }
