@@ -91,6 +91,23 @@ class SubjectOnboarding
     }
 
     /**
+     * A step by key, looked for across every journey of the panel — a caller
+     * holding a key rarely knows (or cares) which flow it lives in.
+     */
+    public function stepState(string $stepKey, ?string $panelId = null): ?StepState
+    {
+        foreach ($this->flows($panelId) as $flow) {
+            $step = $flow->step($stepKey);
+
+            if ($step instanceof StepState) {
+                return $step;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * The flow to put in front of the subject: the first one still unfinished
      * and not dismissed, falling back to the first that is merely unfinished.
      */

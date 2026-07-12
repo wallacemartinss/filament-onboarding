@@ -190,6 +190,24 @@ A selector that no longer matches does not break the tour: the page dims and the
 
 Tours report the stop the user reached, so a tour abandoned half-way shows as half-way — and can be resumed.
 
+### A "how does it work?" button on the page itself
+
+The launcher starts tours from the checklist. For the pages that deserve their own invitation, drop a header action on them:
+
+```php
+use Wallacemartinss\FilamentOnboarding\Actions\StartTourAction;
+
+protected function getHeaderActions(): array
+{
+    return [
+        StartTourAction::make('servers-tour'),
+        Actions\CreateAction::make(),
+    ];
+}
+```
+
+It renders a "How does it work?" button (relabel it like any Filament action) that starts that one tour in place. The button only exists when the tour does: an unknown key, a step without a tour, or a journey hidden from this subject by a visibility condition all make it disappear — a plan that cannot see the journey never sees the invitation.
+
 ### Tours that walk through a wizard
 
 The field a stop points at often does not exist yet: it lives on the next step of a wizard, or inside a section that is still closed. The tour handles both directions, without ever taking the mouse away from the user.

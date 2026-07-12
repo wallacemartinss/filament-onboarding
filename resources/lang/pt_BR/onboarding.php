@@ -18,6 +18,7 @@ return [
     ],
 
     'tour' => [
+        'start'    => 'Como funciona?',
         'waiting'  => 'Esperando isso aparecer na tela — siga no formulário que o tutorial acompanha você.',
         'skip'     => 'Pular',
         'previous' => 'Voltar',

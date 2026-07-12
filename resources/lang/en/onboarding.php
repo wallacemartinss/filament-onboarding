@@ -18,6 +18,7 @@ return [
     ],
 
     'tour' => [
+        'start'    => 'How does it work?',
         'waiting'  => 'Waiting for this to show up on the page — carry on with the form and the tour follows you.',
         'skip'     => 'Skip',
         'previous' => 'Back',

@@ -196,21 +196,7 @@ trait InteractsWithOnboarding
      */
     protected function findStepState(string $stepKey): ?StepState
     {
-        $onboarding = $this->onboarding();
-
-        if (!$onboarding instanceof SubjectOnboarding) {
-            return null;
-        }
-
-        foreach ($onboarding->flows($this->onboardingPanelId()) as $flow) {
-            $step = $flow->step($stepKey);
-
-            if ($step instanceof StepState) {
-                return $step;
-            }
-        }
-
-        return null;
+        return $this->onboarding()?->stepState($stepKey, $this->onboardingPanelId());
     }
 
     protected function onboarding(): ?SubjectOnboarding
