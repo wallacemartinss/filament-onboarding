@@ -18,6 +18,7 @@ use Illuminate\Support\Str;
 use Wallacemartinss\FilamentOnboarding\Enums\{CompletionMode, StepType};
 use Wallacemartinss\FilamentOnboarding\Facades\Onboarding;
 use Wallacemartinss\FilamentOnboarding\Models\OnboardingStep;
+use Wallacemartinss\FilamentOnboarding\Support\IconInput;
 
 class StepsRelationManager extends RelationManager
 {
@@ -104,10 +105,8 @@ class StepsRelationManager extends RelationManager
                             ->alphaDash()
                             ->maxLength(255),
 
-                        TextInput::make('icon')
-                            ->label(__('filament-onboarding::onboarding.resource.fields.icon'))
-                            ->placeholder('heroicon-o-server')
-                            ->maxLength(255),
+                        IconInput::make('icon')
+                            ->label(__('filament-onboarding::onboarding.resource.fields.icon')),
 
                         TextInput::make('cta_url')
                             ->label(__('filament-onboarding::onboarding.resource.fields.cta_url'))

@@ -19,6 +19,7 @@ use Wallacemartinss\FilamentOnboarding\FilamentOnboardingPlugin;
 use Wallacemartinss\FilamentOnboarding\Models\OnboardingFlow;
 use Wallacemartinss\FilamentOnboarding\Resources\OnboardingFlows\Pages\{CreateOnboardingFlow, EditOnboardingFlow, ListOnboardingFlows};
 use Wallacemartinss\FilamentOnboarding\Resources\OnboardingFlows\RelationManagers\StepsRelationManager;
+use Wallacemartinss\FilamentOnboarding\Support\IconInput;
 
 class OnboardingFlowResource extends Resource
 {
@@ -113,10 +114,8 @@ class OnboardingFlowResource extends Resource
                             ->searchable()
                             ->native(false),
 
-                        TextInput::make('icon')
-                            ->label(__('filament-onboarding::onboarding.resource.fields.icon'))
-                            ->placeholder('heroicon-o-rocket-launch')
-                            ->maxLength(255),
+                        IconInput::make('icon')
+                            ->label(__('filament-onboarding::onboarding.resource.fields.icon')),
 
                         Select::make('color')
                             ->label(__('filament-onboarding::onboarding.resource.fields.color'))

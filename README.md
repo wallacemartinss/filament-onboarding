@@ -24,6 +24,20 @@ The migrations run on **PostgreSQL and MySQL/MariaDB** alike — the morph colum
 carry explicit lengths so the composite unique keys stay inside InnoDB's
 3072-byte limit.
 
+### Icons
+
+The icon field of a flow or a step takes any Blade icon name — `heroicon-o-server`,
+`phosphor-rocket`, whatever your app has installed. Add
+[`wallacemartinss/filament-icon-picker`](https://github.com/wallacemartinss/filament-icon-picker)
+and the field becomes a visual picker on its own; the package detects it and needs
+no configuration:
+
+```bash
+composer require wallacemartinss/filament-icon-picker
+```
+
+Without it, the field stays a plain text input and everything else works the same.
+
 Everything is publishable:
 
 | Tag | What it gives you |
