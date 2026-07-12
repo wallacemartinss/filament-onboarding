@@ -25,7 +25,10 @@ class FilamentOnboardingServiceProvider extends PackageServiceProvider
             ->hasConfigFile()
             ->hasViews()
             ->hasTranslations()
-            ->hasMigration('create_onboarding_tables');
+            ->hasMigrations([
+                'create_onboarding_tables',
+                'add_media_to_onboarding_steps',
+            ]);
     }
 
     public function packageRegistered(): void
@@ -62,6 +65,7 @@ class FilamentOnboardingServiceProvider extends PackageServiceProvider
     {
         $assets = [
             AlpineComponent::make('onboarding-tour', __DIR__ . '/../resources/dist/js/onboarding-tour.js'),
+            AlpineComponent::make('onboarding-media', __DIR__ . '/../resources/dist/js/onboarding-media.js'),
         ];
 
         if (!config('filament-onboarding.styles.enabled', true)) {

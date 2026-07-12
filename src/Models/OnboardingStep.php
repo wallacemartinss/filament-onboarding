@@ -9,9 +9,9 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Relations\{BelongsTo, HasMany};
 use Illuminate\Support\Str;
 use Wallacemartinss\FilamentOnboarding\Concerns\HasTranslatableColumns;
-use Wallacemartinss\FilamentOnboarding\Enums\{CompletionMode, StepType};
+use Wallacemartinss\FilamentOnboarding\Enums\{CompletionMode, MediaSource, MediaType, ModalPosition, StepType};
 use Wallacemartinss\FilamentOnboarding\Facades\Onboarding;
-use Wallacemartinss\FilamentOnboarding\Support\{PanelTargets, TranslatableText};
+use Wallacemartinss\FilamentOnboarding\Support\{MediaUrl, PanelTargets, TranslatableText, VideoEmbed};
 
 /**
  * @property string $id
@@ -153,6 +153,74 @@ class OnboardingStep extends Model
             ->all();
     }
 
+    public function hasMedia(): bool
+    {
+        return $this->media_type !== MediaType::None
+            && (filled($this->media_path) || filled($this->media_url));
+    }
+
+    /**
+     * The media of this step, ready for the browser: the file addressed (signed,
+     * when the disk is private), the provider named, the caption translated.
+     *
+     * @return array{type: string, source: string, url: string|null, provider: string|null, video_id: string|null, caption: string|null, position: string, threshold: int, trackable: bool}|null
+     */
+    public function resolveMedia(): ?array
+    {
+        if (!$this->hasMedia()) {
+            return null;
+        }
+
+        $source = $this->media_source ?? MediaSource::Url;
+
+        $url = $source->isUpload()
+            ? MediaUrl::resolve($this->media_disk, $this->media_path)
+            : $this->media_url;
+
+        if (blank($url)) {
+            return null;
+        }
+
+        $media = [
+            'type'      => $this->media_type->value,
+            'source'    => $source->value,
+            'url'       => $url,
+            'provider'  => null,
+            'video_id'  => null,
+            'caption'   => $this->translate('media_caption'),
+            'position'  => $this->resolveModalPosition()->value,
+            'threshold' => (int) $this->video_completion_threshold,
+            'trackable' => $this->media_type === MediaType::Video && $source->tracksWatchTime(),
+        ];
+
+        if ($this->media_type !== MediaType::Video) {
+            return $media;
+        }
+
+        $embed = VideoEmbed::forSource($source, $url);
+
+        if ($embed === null) {
+            return null;
+        }
+
+        return [
+            ...$media,
+            'provider' => $embed['provider'],
+            'video_id' => $embed['id'],
+            'url'      => $embed['src'] ?? $url,
+        ];
+    }
+
+    /**
+     * Where the modal opens for this step: its own choice, or the panel's.
+     */
+    public function resolveModalPosition(): ModalPosition
+    {
+        return $this->modal_position
+            ?? ModalPosition::tryFrom((string) config('filament-onboarding.modal.position', 'center'))
+            ?? ModalPosition::Center;
+    }
+
     /**
      * A tour stop points at a CSS selector, or at a widget picked from the panel
      * — widgets have no selector of their own, so they are addressed by the
@@ -213,15 +281,20 @@ class OnboardingStep extends Model
     protected function casts(): array
     {
         return [
-            'type'            => StepType::class,
-            'completion_mode' => CompletionMode::class,
-            'title'           => 'array',
-            'description'     => 'array',
-            'cta_label'       => 'array',
-            'tour_steps'      => 'array',
-            'is_required'     => 'boolean',
-            'is_active'       => 'boolean',
-            'sort_order'      => 'integer',
+            'type'                       => StepType::class,
+            'completion_mode'            => CompletionMode::class,
+            'media_type'                 => MediaType::class,
+            'media_source'               => MediaSource::class,
+            'modal_position'             => ModalPosition::class,
+            'title'                      => 'array',
+            'description'                => 'array',
+            'cta_label'                  => 'array',
+            'media_caption'              => 'array',
+            'tour_steps'                 => 'array',
+            'is_required'                => 'boolean',
+            'is_active'                  => 'boolean',
+            'sort_order'                 => 'integer',
+            'video_completion_threshold' => 'integer',
         ];
     }
 }

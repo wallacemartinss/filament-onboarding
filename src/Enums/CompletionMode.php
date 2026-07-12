@@ -25,6 +25,11 @@ enum CompletionMode: string implements HasDescription, HasLabel
     case Visit = 'visit';
 
     /**
+     * Watching the step's video completes it, once enough of it has been seen.
+     */
+    case Video = 'video';
+
+    /**
      * Only application code completes it, through Onboarding::for($user)->complete('key').
      */
     case Programmatic = 'programmatic';

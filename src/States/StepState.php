@@ -4,7 +4,7 @@ declare(strict_types = 1);
 
 namespace Wallacemartinss\FilamentOnboarding\States;
 
-use Wallacemartinss\FilamentOnboarding\Enums\{CompletionMode, StepType};
+use Wallacemartinss\FilamentOnboarding\Enums\{CompletionMode, MediaType, StepType};
 use Wallacemartinss\FilamentOnboarding\Models\{OnboardingStep, OnboardingStepProgress};
 
 /**
@@ -136,15 +136,69 @@ class StepState
     }
 
     /**
+     * @return array{type: string, source: string, url: string|null, provider: string|null, video_id: string|null, caption: string|null, position: string, threshold: int, trackable: bool}|null
+     */
+    public function media(): ?array
+    {
+        return $this->step->resolveMedia();
+    }
+
+    public function hasImage(): bool
+    {
+        return $this->step->media_type === MediaType::Image && $this->media() !== null;
+    }
+
+    public function hasVideo(): bool
+    {
+        return $this->step->media_type === MediaType::Video && $this->media() !== null;
+    }
+
+    /**
+     * The image itself, for a step that carries one — shown inline on the card
+     * and opened in the modal when clicked.
+     */
+    public function imageUrl(): ?string
+    {
+        return $this->hasImage() ? $this->media()['url'] : null;
+    }
+
+    /**
+     * How much of the video the subject has watched.
+     *
+     * @return array{seconds: float, duration: float, percent: int}|null
+     */
+    public function videoProgress(): ?array
+    {
+        $duration = (float) ($this->progress?->meta['video_duration'] ?? 0);
+
+        if (!$this->hasVideo() || $duration <= 0) {
+            return null;
+        }
+
+        return [
+            'seconds'  => (float) ($this->progress?->meta['video_seconds'] ?? 0),
+            'duration' => $duration,
+            'percent'  => (int) ($this->progress?->meta['video_percent'] ?? 0),
+        ];
+    }
+
+    /**
      * How far the subject got into this step, as a percentage.
      *
-     * A task is all or nothing. A tour is not: it has stops, the runner reports
-     * each one, and a tour left half-way says so.
+     * A task is all or nothing. A tour and a video are not: a tour has stops and
+     * a video has minutes, both are reported as they happen, and a step left
+     * half-way says so.
      */
     public function percentage(): int
     {
         if ($this->isCompleted()) {
             return 100;
+        }
+
+        $video = $this->videoProgress();
+
+        if ($video !== null) {
+            return $video['percent'];
         }
 
         $total = (int) ($this->progress?->meta['tour_total'] ?? 0);

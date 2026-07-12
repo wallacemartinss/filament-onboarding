@@ -750,6 +750,168 @@ button.fio-step-marker:hover {
     }
 }
 
+/* ------------------------------------------------------------- media modal */
+
+.fio-modal-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 9990;
+    display: flex;
+    padding: 1.5rem;
+    pointer-events: none;
+}
+
+.fio-modal-layer--center {
+    align-items: center;
+    justify-content: center;
+}
+
+.fio-modal-layer--top {
+    align-items: flex-start;
+    justify-content: center;
+}
+
+.fio-modal-layer--bottom {
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.fio-modal-layer--top-left {
+    align-items: flex-start;
+    justify-content: flex-start;
+}
+
+.fio-modal-layer--top-right {
+    align-items: flex-start;
+    justify-content: flex-end;
+}
+
+.fio-modal-layer--bottom-left {
+    align-items: flex-end;
+    justify-content: flex-start;
+}
+
+.fio-modal-layer--bottom-right {
+    align-items: flex-end;
+    justify-content: flex-end;
+}
+
+.fio-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgb(0 0 0 / 0.6);
+    pointer-events: auto;
+}
+
+.fio-modal {
+    position: relative;
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    inline-size: min(44rem, 100%);
+    max-block-size: calc(100vh - 3rem);
+    overflow: hidden;
+    border-radius: var(--fio-radius);
+    border: 1px solid var(--fio-border);
+    background-color: var(--fio-surface);
+    box-shadow: var(--fio-shadow-lg);
+    color: var(--fio-text);
+}
+
+/* Docked in a corner: smaller, so the page behind it stays workable — the point
+   of not centring is being able to follow along. */
+.fio-modal--top-left,
+.fio-modal--top-right,
+.fio-modal--bottom-left,
+.fio-modal--bottom-right {
+    inline-size: min(26rem, 100%);
+}
+
+.fio-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border-block-end: 1px solid var(--fio-border);
+}
+
+.fio-modal-title {
+    font-size: 0.9375rem;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+}
+
+.fio-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    background-color: var(--fio-surface-muted);
+}
+
+.fio-modal-image,
+.fio-modal-video {
+    display: block;
+    inline-size: 100%;
+    block-size: auto;
+    max-block-size: 70vh;
+    background-color: black;
+}
+
+.fio-modal-frame {
+    position: relative;
+    inline-size: 100%;
+    aspect-ratio: 16 / 9;
+    background-color: black;
+}
+
+.fio-modal-frame :is(iframe, div) {
+    position: absolute;
+    inset: 0;
+    inline-size: 100%;
+    block-size: 100%;
+    border: 0;
+}
+
+.fio-modal-caption {
+    padding: 0.875rem 1rem;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--fio-text-muted);
+    background-color: var(--fio-surface);
+}
+
+.fio-modal-footer {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.75rem 1rem;
+    border-block-start: 1px solid var(--fio-border);
+    background-color: var(--fio-surface);
+}
+
+/* ----------------------------------------------------------- media on cards */
+
+.fio-thumb {
+    display: block;
+    inline-size: 100%;
+    block-size: 8rem;
+    margin-block-end: 0.875rem;
+    object-fit: cover;
+    border-radius: var(--fio-radius-sm);
+    border: 1px solid var(--fio-border);
+    cursor: pointer;
+    transition: transform 200ms cubic-bezier(0.2, 0, 0, 1), box-shadow 200ms ease;
+}
+
+.fio-thumb:hover {
+    transform: scale(1.01);
+    box-shadow: var(--fio-shadow);
+}
+
+.fio-step .fio-thumb {
+    block-size: 5.5rem;
+}
+
 /* -------------------------------------------------------------------- tour */
 
 .fio-tour-spotlight {

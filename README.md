@@ -202,6 +202,60 @@ Set `enabled => false` instead and no stylesheet ships at all — the markup kee
 php artisan vendor:publish --tag=filament-onboarding-views
 ```
 
+## Images and videos
+
+A step can carry an image to show or a video to watch. Both open in a modal over
+the panel — the launcher hosts it, so it works from the checklist, the dashboard
+widget and the progress page alike.
+
+**Images** are uploaded to the configured disk (S3, R2, local — any Laravel disk)
+or addressed by URL. A private disk is **signed at render time** rather than made
+public, so a bucket kept closed stays closed. The image shows as a thumbnail on
+the step and opens full size when clicked.
+
+**Videos** come from an upload, a direct `.mp4`, YouTube or Vimeo — paste the link
+however it came, the id is dug out of watch, share and shorts URLs alike. Any other
+provider can be embedded in an iframe.
+
+```php
+// config/filament-onboarding.php
+'media' => [
+    'disk'       => env('FILESYSTEM_DISK', 's3'),
+    'directory'  => 'onboarding',
+    'visibility' => 'private',   // signs a temporary URL instead of exposing the file
+    'url_ttl'    => 30,
+],
+```
+
+### Watch time is real
+
+The player reports where the subject actually is — the `<video>` element for a
+file, the IFrame API for YouTube, the SDK for Vimeo — every few seconds and once
+more on the way out. What is kept is the **furthest point reached**, so rewinding
+to rewatch a bit does not undo the ground covered, and a video resumes where it
+stopped.
+
+That makes a new completion mode possible: **Watching the video**. Set the
+threshold (90% by default, since nobody sits through the credits) and the step
+completes itself when the subject gets there. The progress page shows the partial
+percentage until then, rather than calling a half-watched video untouched.
+
+An iframe embed from an unknown provider cannot be measured, so nothing is
+invented about it: the video plays, and the step completes some other way.
+
+### Where the modal opens
+
+Centred by default. Docked in a corner, it leaves the page usable behind it —
+which is the point when the video is something to follow along with.
+
+```php
+FilamentOnboardingPlugin::make()
+    ->modalPosition('bottom-right'),   // panel default
+```
+
+Positions: `center`, `top`, `bottom`, `top-left`, `top-right`, `bottom-left`,
+`bottom-right`. Any step may override the panel's choice from the admin.
+
 ## The dashboard widget
 
 ```php

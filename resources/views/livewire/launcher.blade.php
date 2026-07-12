@@ -10,6 +10,10 @@
         @include('filament-onboarding::components.tour')
     @endif
 
+    {{-- Always present: a step anywhere in the panel may carry an image or a
+         video, and this is what opens it. --}}
+    @include('filament-onboarding::components.media')
+
     @if ($hasLauncher && $flow && ! $flow->isDismissed())
         <div class="fio-launcher fio-launcher--{{ $position }}">
             @if ($isOpen)

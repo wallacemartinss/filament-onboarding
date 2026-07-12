@@ -50,6 +50,16 @@ class OnboardingLauncher extends Component
         $this->tourProgress($key, $index, $total);
     }
 
+    /**
+     * The player lives here too, so this is where watch time lands — whichever
+     * surface the subject opened the video from.
+     */
+    #[On('onboarding-video-progress')]
+    public function onVideoProgress(string $key, float $seconds, float $duration): void
+    {
+        $this->videoProgress($key, $seconds, $duration);
+    }
+
     #[On('onboarding-open')]
     public function open(): void
     {

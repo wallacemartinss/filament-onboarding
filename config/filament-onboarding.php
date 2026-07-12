@@ -64,6 +64,49 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Media
+    |--------------------------------------------------------------------------
+    |
+    | Images and videos uploaded while authoring a step land on this disk — any
+    | Laravel disk will do, including S3 and R2 (S3-compatible). A private disk
+    | is signed at render time, so the file is never public.
+    |
+    */
+
+    'media' => [
+        'disk'       => 'public',
+        'directory'  => 'onboarding',
+        'visibility' => 'public', // 'private' signs a temporary URL instead
+        'url_ttl'    => 30,       // minutes, for private disks
+
+        'accept' => [
+            'image' => ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'],
+            'video' => ['video/mp4', 'video/webm', 'video/ogg'],
+        ],
+
+        'max_size' => [
+            'image' => 5120,    // KB
+            'video' => 102400,  // KB
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Modal
+    |--------------------------------------------------------------------------
+    |
+    | Where the media modal opens: center, top, bottom, top-left, top-right,
+    | bottom-left, bottom-right. A step may override it; a docked modal leaves
+    | the page usable behind it, so the subject can follow along.
+    |
+    */
+
+    'modal' => [
+        'position' => 'center',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Styles
     |--------------------------------------------------------------------------
     |

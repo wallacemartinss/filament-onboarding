@@ -55,9 +55,11 @@ abstract class TestCase extends Orchestra
 
     private function runPackageMigrations(): void
     {
-        $migration = include __DIR__ . '/../database/migrations/create_onboarding_tables.php.stub';
+        foreach (['create_onboarding_tables', 'add_media_to_onboarding_steps'] as $name) {
+            $migration = include __DIR__ . "/../database/migrations/{$name}.php.stub";
 
-        $migration->up();
+            $migration->up();
+        }
     }
 
     /**

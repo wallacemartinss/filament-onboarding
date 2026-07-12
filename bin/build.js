@@ -11,8 +11,8 @@ const isDev = process.argv.includes('--dev');
 
 esbuild
     .build({
-        entryPoints: ['./resources/js/onboarding-tour.js'],
-        outfile: './resources/dist/js/onboarding-tour.js',
+        entryPoints: ['./resources/js/onboarding-tour.js', './resources/js/onboarding-media.js'],
+        outdir: './resources/dist/js',
         bundle: true,
         minify: !isDev,
         platform: 'neutral',
@@ -20,9 +20,9 @@ esbuild
         format: 'esm',
         sourcemap: isDev,
     })
-    .then(() => console.log('Alpine tour component built successfully'))
+    .then(() => console.log('Alpine components built successfully'))
     .catch((error) => {
-        console.error('Failed to build Alpine tour component:', error);
+        console.error('Failed to build Alpine components:', error);
         process.exit(1);
     });
 

@@ -53,9 +53,28 @@
                     <p class="fio-step-description">{{ $step->description() }}</p>
                 @endif
 
-                @if ($step->isPending() && $step->hasAction())
+                @if ($step->hasImage())
+                    <img
+                        src="{{ $step->imageUrl() }}"
+                        alt="{{ $step->title() }}"
+                        class="fio-thumb"
+                        style="margin-block-start: 0.5rem;"
+                        wire:click="openMedia(@js($step->key()))"
+                    />
+                @endif
+
+                @if ($step->isPending() && ($step->hasAction() || $step->hasVideo()))
                     <div class="fio-step-actions">
-                        @if ($step->hasTour())
+                        @if ($step->hasVideo())
+                            <button
+                                type="button"
+                                class="fio-button fio-button--primary"
+                                wire:click="openMedia(@js($step->key()))"
+                            >
+                                <x-filament-onboarding::icons.play />
+                                {{ $step->ctaLabel() ?? __('filament-onboarding::onboarding.media.watch') }}
+                            </button>
+                        @elseif ($step->hasTour())
                             <button
                                 type="button"
                                 class="fio-button fio-button--primary"

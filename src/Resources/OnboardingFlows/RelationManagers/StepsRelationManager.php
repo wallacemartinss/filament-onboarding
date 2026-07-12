@@ -5,17 +5,17 @@ declare(strict_types = 1);
 namespace Wallacemartinss\FilamentOnboarding\Resources\OnboardingFlows\RelationManagers;
 
 use Filament\Actions\{BulkActionGroup, CreateAction, DeleteAction, DeleteBulkAction, EditAction};
-use Filament\Forms\Components\{Repeater, Select, TextInput, Textarea, Toggle, ToggleButtons};
+use Filament\Forms\Components\{FileUpload, Hidden, Repeater, Select, TextInput, Textarea, Toggle, ToggleButtons};
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\{Grid, Section};
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
-use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\{Get, Set};
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\{IconColumn, TextColumn};
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
-use Wallacemartinss\FilamentOnboarding\Enums\{CompletionMode, StepType};
+use Wallacemartinss\FilamentOnboarding\Enums\{CompletionMode, MediaSource, MediaType, ModalPosition, StepType};
 use Wallacemartinss\FilamentOnboarding\Facades\Onboarding;
 use Wallacemartinss\FilamentOnboarding\Models\OnboardingStep;
 use Wallacemartinss\FilamentOnboarding\Support\{IconInput, PanelTargets};
@@ -27,6 +27,15 @@ class StepsRelationManager extends RelationManager
     public static function getTitle(\Illuminate\Database\Eloquent\Model $ownerRecord, string $pageClass): string
     {
         return __('filament-onboarding::onboarding.resource.steps.title');
+    }
+
+    /**
+     * Whether this step carries media at all — everything in the section hangs
+     * off this answer.
+     */
+    private static function wantsMedia(Get $get): bool
+    {
+        return filled($get('media_type')) && $get('media_type') !== MediaType::None->value;
     }
 
     /**
@@ -149,6 +158,102 @@ class StepsRelationManager extends RelationManager
                             ->label(__('filament-onboarding::onboarding.resource.fields.sort_order'))
                             ->numeric()
                             ->default(0),
+                    ]),
+                ]),
+
+            Section::make(__('filament-onboarding::onboarding.resource.sections.media'))
+                ->description(__('filament-onboarding::onboarding.resource.sections.media_description'))
+                ->collapsed(fn (?OnboardingStep $record): bool => !($record?->hasMedia() ?? false))
+                ->schema([
+                    Grid::make(2)->schema([
+                        Select::make('media_type')
+                            ->label(__('filament-onboarding::onboarding.resource.fields.media_type'))
+                            ->options(MediaType::class)
+                            ->default(MediaType::None)
+                            ->native(false)
+                            ->live()
+                            ->afterStateUpdated(fn (Set $set): mixed => $set('media_source', null)),
+
+                        Select::make('media_source')
+                            ->label(__('filament-onboarding::onboarding.resource.fields.media_source'))
+                            ->options(fn (Get $get): array => collect(
+                                $get('media_type') === MediaType::Image->value
+                                    ? MediaSource::forImage()
+                                    : MediaSource::forVideo()
+                            )
+                                ->mapWithKeys(fn (MediaSource $source): array => [$source->value => $source->getLabel()])
+                                ->all())
+                            ->native(false)
+                            ->live()
+                            ->required(fn (Get $get): bool => static::wantsMedia($get))
+                            ->visible(fn (Get $get): bool => static::wantsMedia($get)),
+                    ]),
+
+                    // Uploads land on the configured disk — S3, R2, local — and a
+                    // private disk is signed at render time rather than opened up.
+                    FileUpload::make('media_path')
+                        ->label(__('filament-onboarding::onboarding.resource.fields.media_file'))
+                        ->disk(fn (): string => config('filament-onboarding.media.disk', 'public'))
+                        ->directory(fn (): string => config('filament-onboarding.media.directory', 'onboarding'))
+                        ->visibility(fn (): string => config('filament-onboarding.media.visibility', 'public'))
+                        ->acceptedFileTypes(fn (Get $get): array => config(
+                            'filament-onboarding.media.accept.' . ($get('media_type') === MediaType::Video->value ? 'video' : 'image'),
+                            [],
+                        ))
+                        ->maxSize(fn (Get $get): int => (int) config(
+                            'filament-onboarding.media.max_size.' . ($get('media_type') === MediaType::Video->value ? 'video' : 'image'),
+                            5120,
+                        ))
+                        ->image(fn (Get $get): bool => $get('media_type') === MediaType::Image->value)
+                        ->required(fn (Get $get): bool => $get('media_source') === MediaSource::Upload->value)
+                        ->visible(fn (Get $get): bool => static::wantsMedia($get) && $get('media_source') === MediaSource::Upload->value)
+                        ->afterStateUpdated(fn (Set $set): mixed => $set('media_disk', config('filament-onboarding.media.disk', 'public'))),
+
+                    Hidden::make('media_disk')
+                        ->default(fn (): string => config('filament-onboarding.media.disk', 'public')),
+
+                    TextInput::make('media_url')
+                        ->label(__('filament-onboarding::onboarding.resource.fields.media_url'))
+                        ->helperText(__('filament-onboarding::onboarding.resource.fields.media_url_helper'))
+                        ->placeholder('https://youtu.be/dQw4w9WgXcQ')
+                        ->url(fn (Get $get): bool => $get('media_source') === MediaSource::Url->value)
+                        ->required(fn (Get $get): bool => static::wantsMedia($get) && $get('media_source') !== MediaSource::Upload->value && filled($get('media_source')))
+                        ->visible(fn (Get $get): bool => static::wantsMedia($get) && $get('media_source') !== MediaSource::Upload->value && filled($get('media_source')))
+                        ->maxLength(2048),
+
+                    Tabs::make('media_translations')
+                        ->visible(fn (Get $get): bool => static::wantsMedia($get))
+                        ->tabs(
+                            collect($locales)
+                                ->map(fn (string $locale): Tab => Tab::make($locale)
+                                    ->label(Str::upper(str_replace('_', '-', $locale)))
+                                    ->schema([
+                                        Textarea::make("media_caption.{$locale}")
+                                            ->label(__('filament-onboarding::onboarding.resource.fields.media_caption'))
+                                            ->rows(2)
+                                            ->maxLength(500),
+                                    ]))
+                                ->all()
+                        ),
+
+                    Grid::make(2)->schema([
+                        Select::make('modal_position')
+                            ->label(__('filament-onboarding::onboarding.resource.fields.modal_position'))
+                            ->helperText(__('filament-onboarding::onboarding.resource.fields.modal_position_helper'))
+                            ->options(ModalPosition::class)
+                            ->placeholder(__('filament-onboarding::onboarding.resource.fields.modal_position_default'))
+                            ->native(false)
+                            ->visible(fn (Get $get): bool => static::wantsMedia($get)),
+
+                        TextInput::make('video_completion_threshold')
+                            ->label(__('filament-onboarding::onboarding.resource.fields.video_threshold'))
+                            ->helperText(__('filament-onboarding::onboarding.resource.fields.video_threshold_helper'))
+                            ->numeric()
+                            ->minValue(1)
+                            ->maxValue(100)
+                            ->suffix('%')
+                            ->default(90)
+                            ->visible(fn (Get $get): bool => $get('media_type') === MediaType::Video->value),
                     ]),
                 ]),
 

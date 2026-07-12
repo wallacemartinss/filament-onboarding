@@ -52,10 +52,55 @@ return [
         'empty_description'  => 'There is no journey for you right now.',
     ],
 
+    'media' => [
+        'watch'   => 'Watch',
+        'resume'  => 'Resume',
+        'watched' => 'watched',
+    ],
+
     'enums' => [
         'step_type' => [
             'task' => 'Task',
             'tour' => 'Tour',
+        ],
+
+        'media_type' => [
+            'none'  => 'None',
+            'image' => 'Image',
+            'video' => 'Video',
+        ],
+
+        'media_source' => [
+            'upload' => [
+                'label'       => 'Upload',
+                'description' => 'Stored on the configured disk (S3, R2, local).',
+            ],
+            'url' => [
+                'label'       => 'Direct URL',
+                'description' => 'A file hosted elsewhere.',
+            ],
+            'youtube' => [
+                'label'       => 'YouTube',
+                'description' => 'Watch time is tracked.',
+            ],
+            'vimeo' => [
+                'label'       => 'Vimeo',
+                'description' => 'Watch time is tracked.',
+            ],
+            'embed' => [
+                'label'       => 'Other provider (iframe)',
+                'description' => 'Plays, but watch time cannot be tracked.',
+            ],
+        ],
+
+        'modal_position' => [
+            'center'       => 'Centre',
+            'top'          => 'Top',
+            'bottom'       => 'Bottom',
+            'top-left'     => 'Top left',
+            'top-right'    => 'Top right',
+            'bottom-left'  => 'Bottom left',
+            'bottom-right' => 'Bottom right',
         ],
 
         'completion_mode' => [
@@ -71,6 +116,10 @@ return [
                 'label'       => 'Page visit',
                 'description' => 'Completed when the user reaches a URL.',
             ],
+            'video' => [
+                'label'       => 'Watching the video',
+                'description' => 'Completed once enough of the step\'s video has been watched.',
+            ],
             'programmatic' => [
                 'label'       => 'Programmatic',
                 'description' => 'Only application code completes it.',
@@ -84,11 +133,13 @@ return [
         'all_panels' => 'All panels',
 
         'sections' => [
-            'content'          => 'Content',
-            'settings'         => 'Settings',
-            'behaviour'        => 'Behaviour',
-            'tour'             => 'Tour',
-            'tour_description' => 'The elements this tour spotlights, in order.',
+            'content'           => 'Content',
+            'settings'          => 'Settings',
+            'behaviour'         => 'Behaviour',
+            'media'             => 'Media',
+            'media_description' => 'An image to show, or a video to watch. Opens in a modal over the panel.',
+            'tour'              => 'Tour',
+            'tour_description'  => 'The elements this tour spotlights, in order.',
         ],
 
         'steps' => [
@@ -124,6 +175,18 @@ return [
             'cta_route_helper'      => 'A page of the panel. Preferred over a URL: it survives a renamed slug.',
             'is_required'           => 'Required',
             'is_required_helper'    => 'Optional steps can be skipped.',
+
+            'media_type'             => 'Media',
+            'media_source'           => 'Source',
+            'media_file'             => 'File',
+            'media_url'              => 'URL',
+            'media_url_helper'       => 'Paste the link as it comes: watch, share or short URLs all work.',
+            'media_caption'          => 'Caption',
+            'modal_position'         => 'Modal position',
+            'modal_position_helper'  => 'A modal in a corner leaves the page usable behind it.',
+            'modal_position_default' => 'Panel default',
+            'video_threshold'        => 'Counts as watched at',
+            'video_threshold_helper' => 'Percentage that completes the step, when it is completed by watching.',
         ],
 
         'tour' => [

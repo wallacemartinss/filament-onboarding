@@ -152,10 +152,34 @@
                                 </span>
                             </header>
 
+                            @if ($step->hasImage())
+                                <img
+                                    src="{{ $step->imageUrl() }}"
+                                    alt="{{ $step->title() }}"
+                                    class="fio-thumb"
+                                    wire:click="openMedia(@js($step->key()))"
+                                />
+                            @endif
+
                             <h3 class="fio-tile-title">{{ $step->title() }}</h3>
 
                             @if ($step->description())
                                 <p class="fio-tile-description">{{ $step->description() }}</p>
+                            @endif
+
+                            @php $video = $step->videoProgress(); @endphp
+
+                            @if ($video && ! $step->isCompleted())
+                                {{-- Watch time is real: the player reported it. --}}
+                                <div class="fio-tile-progress">
+                                    <div class="fio-progress-track">
+                                        <div class="fio-progress-value" style="width: {{ $video['percent'] }}%"></div>
+                                    </div>
+
+                                    <span class="fio-progress-label">
+                                        {{ $video['percent'] }}% {{ __('filament-onboarding::onboarding.media.watched') }}
+                                    </span>
+                                </div>
                             @endif
 
                             @if ($tour)
@@ -190,7 +214,14 @@
                                         </button>
                                     @endif
                                 @else
-                                    @if ($step->hasTour())
+                                    @if ($step->hasVideo())
+                                        <button type="button" class="fio-button fio-button--primary" wire:click="openMedia(@js($step->key()))">
+                                            <x-filament-onboarding::icons.play />
+                                            {{ $step->ctaLabel() ?? ($video
+                                                ? __('filament-onboarding::onboarding.media.resume')
+                                                : __('filament-onboarding::onboarding.media.watch')) }}
+                                        </button>
+                                    @elseif ($step->hasTour())
                                         <button type="button" class="fio-button fio-button--primary" wire:click="startTour(@js($step->key()))">
                                             <x-filament-onboarding::icons.sparkles />
                                             {{ $step->ctaLabel() ?? __('filament-onboarding::onboarding.checklist.start_tour') }}

@@ -52,10 +52,55 @@ return [
         'empty_description'  => 'Não há nenhuma jornada para você no momento.',
     ],
 
+    'media' => [
+        'watch'   => 'Assistir',
+        'resume'  => 'Retomar',
+        'watched' => 'assistido',
+    ],
+
     'enums' => [
         'step_type' => [
             'task' => 'Tarefa',
             'tour' => 'Tour',
+        ],
+
+        'media_type' => [
+            'none'  => 'Nenhuma',
+            'image' => 'Imagem',
+            'video' => 'Vídeo',
+        ],
+
+        'media_source' => [
+            'upload' => [
+                'label'       => 'Upload',
+                'description' => 'Guardado no disco configurado (S3, R2, local).',
+            ],
+            'url' => [
+                'label'       => 'URL direta',
+                'description' => 'Um arquivo hospedado em outro lugar.',
+            ],
+            'youtube' => [
+                'label'       => 'YouTube',
+                'description' => 'O tempo assistido é registrado.',
+            ],
+            'vimeo' => [
+                'label'       => 'Vimeo',
+                'description' => 'O tempo assistido é registrado.',
+            ],
+            'embed' => [
+                'label'       => 'Outro provedor (iframe)',
+                'description' => 'Reproduz, mas o tempo assistido não pode ser registrado.',
+            ],
+        ],
+
+        'modal_position' => [
+            'center'       => 'Centro',
+            'top'          => 'Topo',
+            'bottom'       => 'Rodapé',
+            'top-left'     => 'Canto superior esquerdo',
+            'top-right'    => 'Canto superior direito',
+            'bottom-left'  => 'Canto inferior esquerdo',
+            'bottom-right' => 'Canto inferior direito',
         ],
 
         'completion_mode' => [
@@ -71,6 +116,10 @@ return [
                 'label'       => 'Visita de página',
                 'description' => 'Concluída quando o usuário acessa uma URL.',
             ],
+            'video' => [
+                'label'       => 'Assistir ao vídeo',
+                'description' => 'Concluída quando o vídeo da etapa é assistido o suficiente.',
+            ],
             'programmatic' => [
                 'label'       => 'Programática',
                 'description' => 'Somente o código da aplicação conclui a etapa.',
@@ -84,11 +133,13 @@ return [
         'all_panels' => 'Todos os painéis',
 
         'sections' => [
-            'content'          => 'Conteúdo',
-            'settings'         => 'Configurações',
-            'behaviour'        => 'Comportamento',
-            'tour'             => 'Tour',
-            'tour_description' => 'Os elementos que o tour destaca, na ordem.',
+            'content'           => 'Conteúdo',
+            'settings'          => 'Configurações',
+            'behaviour'         => 'Comportamento',
+            'media'             => 'Mídia',
+            'media_description' => 'Uma imagem para mostrar ou um vídeo para assistir. Abre em um modal sobre o painel.',
+            'tour'              => 'Tour',
+            'tour_description'  => 'Os elementos que o tour destaca, na ordem.',
         ],
 
         'steps' => [
@@ -124,6 +175,18 @@ return [
             'cta_route_helper'      => 'Uma página do painel. Preferível à URL: sobrevive à renomeação do slug.',
             'is_required'           => 'Obrigatória',
             'is_required_helper'    => 'Etapas opcionais podem ser puladas.',
+
+            'media_type'             => 'Mídia',
+            'media_source'           => 'Origem',
+            'media_file'             => 'Arquivo',
+            'media_url'              => 'URL',
+            'media_url_helper'       => 'Cole o link como ele vem: watch, share ou URL curta funcionam.',
+            'media_caption'          => 'Legenda',
+            'modal_position'         => 'Posição do modal',
+            'modal_position_helper'  => 'Um modal num canto deixa a página utilizável por trás dele.',
+            'modal_position_default' => 'Padrão do painel',
+            'video_threshold'        => 'Conta como assistido em',
+            'video_threshold_helper' => 'Percentual que conclui a etapa, quando ela é concluída por assistir.',
         ],
 
         'tour' => [

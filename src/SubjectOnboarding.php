@@ -172,6 +172,52 @@ class SubjectOnboarding
         return $progress;
     }
 
+    /**
+     * How much of a step's video the subject has watched.
+     *
+     * The furthest point reached is what is kept — skipping back to rewatch a bit
+     * does not undo the ground already covered — and a video watched past its
+     * threshold completes the step when that is how the step is meant to finish.
+     */
+    public function recordVideoProgress(
+        OnboardingStep|string $step,
+        float $seconds,
+        float $duration,
+    ): ?OnboardingStepProgress {
+        $step = $this->resolveStep($step);
+
+        if (!$step instanceof OnboardingStep || $duration <= 0) {
+            return null;
+        }
+
+        $progress = $this->progressFor($step);
+
+        $watched = max((float) ($progress->meta['video_seconds'] ?? 0), min($seconds, $duration));
+        $percent = (int) round(($watched / $duration) * 100);
+
+        $progress->forceFill([
+            'seen_at' => $progress->seen_at ?? now(),
+            'meta'    => [
+                ...($progress->meta ?? []),
+                'video_seconds'  => round($watched, 1),
+                'video_duration' => round($duration, 1),
+                'video_percent'  => min($percent, 100),
+            ],
+        ])->save();
+
+        $this->stepProgress?->put($step->getKey(), $progress);
+
+        if (
+            $step->completion_mode === CompletionMode::Video
+            && $percent >= (int) $step->video_completion_threshold
+            && $progress->completed_at === null
+        ) {
+            return $this->complete($step, ['completed_by' => 'video']);
+        }
+
+        return $progress;
+    }
+
     public function uncomplete(OnboardingStep|string $step): void
     {
         $step = $this->resolveStep($step);

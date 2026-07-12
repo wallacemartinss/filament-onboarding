@@ -52,10 +52,55 @@ return [
         'empty_description'  => 'No hay ningún recorrido para ti por ahora.',
     ],
 
+    'media' => [
+        'watch'   => 'Ver',
+        'resume'  => 'Reanudar',
+        'watched' => 'visto',
+    ],
+
     'enums' => [
         'step_type' => [
             'task' => 'Tarea',
             'tour' => 'Recorrido',
+        ],
+
+        'media_type' => [
+            'none'  => 'Ninguna',
+            'image' => 'Imagen',
+            'video' => 'Vídeo',
+        ],
+
+        'media_source' => [
+            'upload' => [
+                'label'       => 'Subida',
+                'description' => 'Guardado en el disco configurado (S3, R2, local).',
+            ],
+            'url' => [
+                'label'       => 'URL directa',
+                'description' => 'Un archivo alojado en otro sitio.',
+            ],
+            'youtube' => [
+                'label'       => 'YouTube',
+                'description' => 'Se registra el tiempo visto.',
+            ],
+            'vimeo' => [
+                'label'       => 'Vimeo',
+                'description' => 'Se registra el tiempo visto.',
+            ],
+            'embed' => [
+                'label'       => 'Otro proveedor (iframe)',
+                'description' => 'Se reproduce, pero no se puede registrar el tiempo visto.',
+            ],
+        ],
+
+        'modal_position' => [
+            'center'       => 'Centro',
+            'top'          => 'Arriba',
+            'bottom'       => 'Abajo',
+            'top-left'     => 'Arriba a la izquierda',
+            'top-right'    => 'Arriba a la derecha',
+            'bottom-left'  => 'Abajo a la izquierda',
+            'bottom-right' => 'Abajo a la derecha',
         ],
 
         'completion_mode' => [
@@ -71,6 +116,10 @@ return [
                 'label'       => 'Visita de página',
                 'description' => 'Se completa cuando el usuario llega a una URL.',
             ],
+            'video' => [
+                'label'       => 'Ver el vídeo',
+                'description' => 'Se completa cuando se ha visto suficiente del vídeo del paso.',
+            ],
             'programmatic' => [
                 'label'       => 'Programática',
                 'description' => 'Solo el código de la aplicación la completa.',
@@ -84,11 +133,13 @@ return [
         'all_panels' => 'Todos los paneles',
 
         'sections' => [
-            'content'          => 'Contenido',
-            'settings'         => 'Configuración',
-            'behaviour'        => 'Comportamiento',
-            'tour'             => 'Recorrido',
-            'tour_description' => 'Los elementos que destaca el recorrido, en orden.',
+            'content'           => 'Contenido',
+            'settings'          => 'Configuración',
+            'behaviour'         => 'Comportamiento',
+            'media'             => 'Medios',
+            'media_description' => 'Una imagen para mostrar o un vídeo para ver. Se abre en un modal sobre el panel.',
+            'tour'              => 'Recorrido',
+            'tour_description'  => 'Los elementos que destaca el recorrido, en orden.',
         ],
 
         'steps' => [
@@ -124,6 +175,18 @@ return [
             'cta_route_helper'      => 'Una página del panel. Preferible a la URL: sobrevive al cambio de slug.',
             'is_required'           => 'Obligatorio',
             'is_required_helper'    => 'Los pasos opcionales se pueden omitir.',
+
+            'media_type'             => 'Medios',
+            'media_source'           => 'Origen',
+            'media_file'             => 'Archivo',
+            'media_url'              => 'URL',
+            'media_url_helper'       => 'Pega el enlace tal cual: watch, share o URL corta funcionan.',
+            'media_caption'          => 'Leyenda',
+            'modal_position'         => 'Posición del modal',
+            'modal_position_helper'  => 'Un modal en una esquina deja la página utilizable detrás.',
+            'modal_position_default' => 'Predeterminado del panel',
+            'video_threshold'        => 'Cuenta como visto al',
+            'video_threshold_helper' => 'Porcentaje que completa el paso, cuando se completa viéndolo.',
         ],
 
         'tour' => [

@@ -10,6 +10,7 @@ use Filament\Panel;
 use Filament\Support\Concerns\EvaluatesClosures;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Support\Facades\Blade;
+use Wallacemartinss\FilamentOnboarding\Enums\ModalPosition;
 use Wallacemartinss\FilamentOnboarding\Facades\Onboarding;
 use Wallacemartinss\FilamentOnboarding\Pages\OnboardingProgress;
 use Wallacemartinss\FilamentOnboarding\Resources\OnboardingFlows\OnboardingFlowResource;
@@ -43,6 +44,8 @@ class FilamentOnboardingPlugin implements Plugin
     protected string|Closure|null $navigationIcon = null;
 
     protected int|Closure|null $navigationSort = null;
+
+    protected ?ModalPosition $modalPosition = null;
 
     protected bool $hasProgressPage = false;
 
@@ -104,6 +107,11 @@ class FilamentOnboardingPlugin implements Plugin
      */
     public function boot(Panel $panel): void
     {
+        if ($this->modalPosition !== null) {
+            // The panel's default, which a step may still override.
+            config(['filament-onboarding.modal.position' => $this->modalPosition->value]);
+        }
+
         if ($this->subjectResolver !== null) {
             Onboarding::resolveSubjectUsing($this->subjectResolver);
         }
@@ -214,6 +222,27 @@ class FilamentOnboardingPlugin implements Plugin
         $this->hasProgressPageNavigation = $shouldRegisterNavigation;
 
         return $this;
+    }
+
+    /**
+     * Where the media modal opens, for every step that does not say otherwise:
+     * center, top, bottom, top-left, top-right, bottom-left, bottom-right.
+     *
+     * Docking it in a corner leaves the page usable behind it, which is what you
+     * want when the video is meant to be followed along with.
+     */
+    public function modalPosition(ModalPosition|string $position): static
+    {
+        $this->modalPosition = $position instanceof ModalPosition
+            ? $position
+            : (ModalPosition::tryFrom($position) ?? ModalPosition::Center);
+
+        return $this;
+    }
+
+    public function getModalPosition(): ?ModalPosition
+    {
+        return $this->modalPosition;
     }
 
     public function progressPageSlug(string $slug): static
