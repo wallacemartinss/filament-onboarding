@@ -8,7 +8,7 @@
  */
 
 const STORAGE_KEY = 'filament-onboarding.tour';
-const WIDGET_PREFIX = '@widget:';
+const PREFIXES = ['@widget:', '@livewire:'];
 const SPOTLIGHT_PADDING = 8;
 const POPOVER_GAP = 14;
 const POPOVER_WIDTH = 320;
@@ -292,12 +292,13 @@ export default function onboardingTour() {
         },
 
         /**
-         * A CSS selector, or "@widget:App\Filament\...\SomeWidget" — a widget
-         * picked from the panel. Widgets all share one wrapper class, so they
-         * are found by the Livewire component they are rather than by CSS.
+         * A CSS selector, or a Livewire component — "@widget:some-widget",
+         * "@livewire:edit_password_form". Widgets all share one wrapper class,
+         * and a form section rendered by a plugin has no hook of its own, so
+         * both are found by the component they are rather than by CSS.
          */
         find(selector) {
-            if (!selector.startsWith(WIDGET_PREFIX)) {
+            if (!PREFIXES.some((prefix) => selector.startsWith(prefix))) {
                 try {
                     return document.querySelector(selector);
                 } catch {
@@ -307,7 +308,8 @@ export default function onboardingTour() {
                 }
             }
 
-            const component = selector.slice(WIDGET_PREFIX.length);
+            const prefix = PREFIXES.find((candidate) => selector.startsWith(candidate));
+            const component = selector.slice(prefix.length);
 
             for (const element of document.querySelectorAll('[wire\\:snapshot]')) {
                 try {

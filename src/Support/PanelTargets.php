@@ -144,11 +144,26 @@ final class PanelTargets
     }
 
     /**
-     * The selector a widget answers to, understood by the tour runner.
+     * The selector a Livewire component answers to, understood by the tour runner.
+     *
+     * What ends up in the DOM is the component's *name*, and a name is not always
+     * the class: Filament widgets go by their class, but a component registered
+     * under an alias (`edit_password_form`, say) goes by the alias. Asking
+     * Livewire keeps the two in step — and makes any Livewire component
+     * spotlightable, not just widgets.
      */
-    public static function widgetSelector(string $widgetClass): string
+    public static function widgetSelector(string $componentClass): string
     {
-        return '@widget:' . $widgetClass;
+        return '@widget:' . self::livewireName($componentClass);
+    }
+
+    public static function livewireName(string $componentClass): string
+    {
+        try {
+            return app('livewire.factory')->resolveComponentName($componentClass);
+        } catch (\Throwable) {
+            return $componentClass;
+        }
     }
 
     /**

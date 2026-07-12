@@ -6,7 +6,7 @@ namespace Wallacemartinss\FilamentOnboarding\Conditions;
 
 use Closure;
 use Illuminate\Database\Eloquent\Model;
-use Wallacemartinss\FilamentOnboarding\Contracts\OnboardingCondition;
+use Wallacemartinss\FilamentOnboarding\Contracts\{HasConditionLabel, OnboardingCondition};
 
 /**
  * Named checks the application exposes so a step authored in the panel can ask
@@ -90,8 +90,27 @@ class ConditionRegistry
     {
         return collect($this->conditions)
             ->keys()
-            ->mapWithKeys(fn (string $key): array => [$key => $this->labels[$key] ?? $key])
+            ->mapWithKeys(fn (string $key): array => [$key => $this->label($key)])
             ->all();
+    }
+
+    /**
+     * The label given when registering, or the one the condition names itself
+     * with — falling back to the key, which at least says something.
+     */
+    public function label(string $key): string
+    {
+        if (isset($this->labels[$key])) {
+            return $this->labels[$key];
+        }
+
+        $condition = $this->conditions[$key] ?? null;
+
+        if (is_string($condition) && is_a($condition, HasConditionLabel::class, true)) {
+            return $condition::label();
+        }
+
+        return $key;
     }
 
     /**
