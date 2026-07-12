@@ -23,6 +23,7 @@ export default function onboardingTour() {
         spotlight: { top: 0, left: 0, width: 0, height: 0, visible: false },
         popover: { top: 0, left: 0 },
         reposition: null,
+        observer: null,
 
         init() {
             this.resume();
@@ -46,6 +47,7 @@ export default function onboardingTour() {
         destroy() {
             window.removeEventListener('resize', this.reposition);
             window.removeEventListener('scroll', this.reposition, { capture: true });
+            this.stopObserving();
         },
 
         /**
@@ -158,6 +160,7 @@ export default function onboardingTour() {
             this.index = 0;
             this.stepKey = null;
             this.spotlight.visible = false;
+            this.stopObserving();
             this.clearStorage();
         },
 
@@ -206,16 +209,30 @@ export default function onboardingTour() {
             const element = step.selector ? await this.waitForElement(step.selector) : null;
 
             if (!element) {
-                // Nothing to point at — dim the page and centre the popover, so a
-                // tour still reads rather than breaking on a renamed selector.
+                // Nothing to point at *yet*. Two very different reasons, one
+                // behaviour: centre the popover so the copy still reads, and keep
+                // watching the DOM.
+                //
+                // It may be a renamed selector — in which case nothing will ever
+                // show up, and the tour degrades to a plain explanation. Or the
+                // element may live on a step of a wizard the subject has not
+                // reached: the tour then simply waits, and snaps onto it the
+                // moment they get there. A tour that gave up after three seconds
+                // could never walk anybody through a multi-step form.
                 this.spotlight.visible = false;
                 this.popover = {
                     top: window.innerHeight / 2 - 100,
                     left: window.innerWidth / 2 - POPOVER_WIDTH / 2,
                 };
 
+                if (step.selector) {
+                    this.observeFor(step.selector);
+                }
+
                 return;
             }
+
+            this.stopObserving();
 
             this.scrollIntoView(element);
 
@@ -257,6 +274,31 @@ export default function onboardingTour() {
                 index: this.index,
                 total: this.steps.length,
             });
+        },
+
+        /**
+         * Watch the DOM until the element shows up, then anchor to it.
+         *
+         * This is what lets a tour walk somebody through a wizard: the field on
+         * step 3 does not exist until they get to step 3, and the tour is
+         * content to wait for them.
+         */
+        observeFor(selector) {
+            this.stopObserving();
+
+            this.observer = new MutationObserver(() => {
+                if (this.active && this.find(selector)) {
+                    this.stopObserving();
+                    this.render();
+                }
+            });
+
+            this.observer.observe(document.body, { childList: true, subtree: true });
+        },
+
+        stopObserving() {
+            this.observer?.disconnect();
+            this.observer = null;
         },
 
         /**
