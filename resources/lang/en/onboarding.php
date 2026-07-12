@@ -155,6 +155,9 @@ return [
         ],
 
         'sections' => [
+            'overview'                => 'Overview',
+            'publishing_description'  => 'Who sees this journey, where, and in what order.',
+            'appearance_description'  => 'How the journey is announced in the checklist.',
             'content_description'     => 'What the user reads, in each language you support.',
             'publishing'              => 'Publishing',
             'appearance'              => 'Appearance',

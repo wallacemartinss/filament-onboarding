@@ -155,6 +155,9 @@ return [
         ],
 
         'sections' => [
+            'overview'                => 'Resumen',
+            'publishing_description'  => 'Quién ve este recorrido, dónde y en qué orden.',
+            'appearance_description'  => 'Cómo se anuncia el recorrido en la lista.',
             'content_description'     => 'Lo que el usuario lee, en cada idioma que soportas.',
             'publishing'              => 'Publicación',
             'appearance'              => 'Apariencia',

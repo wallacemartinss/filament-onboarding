@@ -155,6 +155,9 @@ return [
         ],
 
         'sections' => [
+            'overview'                => 'Visão geral',
+            'publishing_description'  => 'Quem vê esta jornada, onde e em que ordem.',
+            'appearance_description'  => 'Como a jornada se anuncia no checklist.',
             'content_description'     => 'O que o usuário lê, em cada idioma que você suporta.',
             'publishing'              => 'Publicação',
             'appearance'              => 'Aparência',

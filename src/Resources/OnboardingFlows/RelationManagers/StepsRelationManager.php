@@ -4,7 +4,7 @@ declare(strict_types = 1);
 
 namespace Wallacemartinss\FilamentOnboarding\Resources\OnboardingFlows\RelationManagers;
 
-use Filament\Actions\{BulkActionGroup, CreateAction, DeleteAction, DeleteBulkAction, EditAction};
+use Filament\Actions\{ActionGroup, BulkActionGroup, CreateAction, DeleteAction, DeleteBulkAction, EditAction};
 use Filament\Forms\Components\{FileUpload, Hidden, Repeater, Select, TextInput, Textarea, Toggle, ToggleButtons};
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\{Grid, Section, Tabs};
@@ -12,6 +12,7 @@ use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\{Get, Set};
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\{FontWeight, Width};
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\{IconColumn, TextColumn};
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
@@ -42,22 +43,22 @@ class StepsRelationManager extends RelationManager
                 ->columnSpanFull()
                 ->tabs([
                     Tab::make(__('filament-onboarding::onboarding.resource.sections.content'))
-                        ->icon('heroicon-o-language')
+                        ->icon(Heroicon::OutlinedLanguage)
                         ->schema($this->contentFields()),
 
                     Tab::make(__('filament-onboarding::onboarding.resource.sections.behaviour'))
-                        ->icon('heroicon-o-cog-6-tooth')
+                        ->icon(Heroicon::OutlinedCog6Tooth)
                         ->schema($this->behaviourFields()),
 
                     Tab::make(__('filament-onboarding::onboarding.resource.sections.media'))
-                        ->icon('heroicon-o-photo')
+                        ->icon(Heroicon::OutlinedPhoto)
                         ->badge(fn (?OnboardingStep $record): ?string => $record?->hasMedia()
                             ? $record->media_type->getLabel()
                             : null)
                         ->schema($this->mediaFields()),
 
                     Tab::make(__('filament-onboarding::onboarding.resource.sections.tour'))
-                        ->icon('heroicon-o-sparkles')
+                        ->icon(Heroicon::OutlinedSparkles)
                         ->badge(fn (Get $get): ?int => $get('type') === StepType::Tour->value
                             ? count($get('tour_steps') ?? [])
                             : null)
@@ -85,6 +86,7 @@ class StepsRelationManager extends RelationManager
                             ->schema([
                                 TextInput::make("title.{$locale}")
                                     ->label(__('filament-onboarding::onboarding.resource.fields.title'))
+                                    ->prefixIcon(Heroicon::OutlinedFlag)
                                     ->placeholder(__('filament-onboarding::onboarding.resource.placeholders.step_title'))
                                     ->required($locale === $locales[0])
                                     ->maxLength(255),
@@ -97,6 +99,7 @@ class StepsRelationManager extends RelationManager
 
                                 TextInput::make("cta_label.{$locale}")
                                     ->label(__('filament-onboarding::onboarding.resource.fields.cta_label'))
+                                    ->prefixIcon(Heroicon::OutlinedCursorArrowRays)
                                     ->placeholder(__('filament-onboarding::onboarding.checklist.go'))
                                     ->maxLength(255),
                             ]))
@@ -109,6 +112,7 @@ class StepsRelationManager extends RelationManager
 
                 TextInput::make('key')
                     ->label(__('filament-onboarding::onboarding.resource.fields.key'))
+                    ->prefixIcon(Heroicon::OutlinedKey)
                     ->helperText(__('filament-onboarding::onboarding.resource.fields.step_key_helper'))
                     ->placeholder('connect-server')
                     ->required()
@@ -136,6 +140,7 @@ class StepsRelationManager extends RelationManager
 
                 Select::make('completion_mode')
                     ->label(__('filament-onboarding::onboarding.resource.fields.completion_mode'))
+                    ->prefixIcon(Heroicon::OutlinedCheckCircle)
                     ->helperText(__('filament-onboarding::onboarding.resource.fields.completion_mode_helper'))
                     ->options(CompletionMode::class)
                     ->default(CompletionMode::Manual)
@@ -147,6 +152,7 @@ class StepsRelationManager extends RelationManager
             // Only the field the chosen mode actually needs.
             Select::make('condition_key')
                 ->label(__('filament-onboarding::onboarding.resource.fields.condition'))
+                ->prefixIcon(Heroicon::OutlinedBolt)
                 ->helperText(__('filament-onboarding::onboarding.resource.fields.condition_helper'))
                 ->options(fn (): array => Onboarding::conditions()->options())
                 ->searchable()
@@ -157,6 +163,7 @@ class StepsRelationManager extends RelationManager
 
             TextInput::make('visit_url')
                 ->label(__('filament-onboarding::onboarding.resource.fields.visit_url'))
+                ->prefixIcon(Heroicon::OutlinedLink)
                 ->helperText(__('filament-onboarding::onboarding.resource.fields.visit_url_helper'))
                 ->placeholder('/app/*/servers/create')
                 ->columnSpanFull()
@@ -165,11 +172,12 @@ class StepsRelationManager extends RelationManager
 
             Section::make(__('filament-onboarding::onboarding.resource.sections.destination'))
                 ->description(__('filament-onboarding::onboarding.resource.sections.destination_description'))
-                ->icon('heroicon-o-arrow-top-right-on-square')
+                ->icon(Heroicon::OutlinedArrowTopRightOnSquare)
                 ->collapsed(fn (?OnboardingStep $record): bool => blank($record?->cta_route) && blank($record?->cta_url))
                 ->schema([
                     Select::make('cta_route')
                         ->label(__('filament-onboarding::onboarding.resource.fields.cta_route'))
+                        ->prefixIcon(Heroicon::OutlinedWindow)
                         ->helperText(__('filament-onboarding::onboarding.resource.fields.cta_route_helper'))
                         ->options(fn (): array => PanelTargets::pageOptions($this->panelId()))
                         ->searchable()
@@ -177,16 +185,18 @@ class StepsRelationManager extends RelationManager
 
                     TextInput::make('cta_url')
                         ->label(__('filament-onboarding::onboarding.resource.fields.cta_url'))
+                        ->prefixIcon(Heroicon::OutlinedLink)
                         ->helperText(__('filament-onboarding::onboarding.resource.fields.cta_url_helper'))
                         ->placeholder('/app/{tenant}/servers/create')
                         ->maxLength(2048),
                 ]),
 
             Section::make(__('filament-onboarding::onboarding.resource.sections.rules'))
-                ->icon('heroicon-o-adjustments-horizontal')
+                ->icon(Heroicon::OutlinedAdjustmentsHorizontal)
                 ->schema([
                     Select::make('visibility_condition')
                         ->label(__('filament-onboarding::onboarding.resource.fields.visibility'))
+                        ->prefixIcon(Heroicon::OutlinedFunnel)
                         ->helperText(__('filament-onboarding::onboarding.resource.fields.visibility_helper'))
                         ->options(fn (): array => Onboarding::conditions()->options())
                         ->placeholder(__('filament-onboarding::onboarding.resource.fields.visibility_everyone'))
@@ -206,6 +216,7 @@ class StepsRelationManager extends RelationManager
 
                         TextInput::make('sort_order')
                             ->label(__('filament-onboarding::onboarding.resource.fields.sort_order'))
+                            ->prefixIcon(Heroicon::OutlinedBars3BottomLeft)
                             ->numeric()
                             ->default(0),
                     ]),
@@ -224,6 +235,7 @@ class StepsRelationManager extends RelationManager
             Grid::make(2)->schema([
                 Select::make('media_type')
                     ->label(__('filament-onboarding::onboarding.resource.fields.media_type'))
+                    ->prefixIcon(Heroicon::OutlinedPhoto)
                     ->options(MediaType::class)
                     ->default(MediaType::None)
                     ->selectablePlaceholder(false)
@@ -233,6 +245,7 @@ class StepsRelationManager extends RelationManager
 
                 Select::make('media_source')
                     ->label(__('filament-onboarding::onboarding.resource.fields.media_source'))
+                    ->prefixIcon(Heroicon::OutlinedCloudArrowUp)
                     ->options(fn (Get $get): array => collect(
                         $get('media_type') === MediaType::Image->value
                             ? MediaSource::forImage()
@@ -271,6 +284,7 @@ class StepsRelationManager extends RelationManager
 
             TextInput::make('media_url')
                 ->label(__('filament-onboarding::onboarding.resource.fields.media_url'))
+                ->prefixIcon(Heroicon::OutlinedLink)
                 ->helperText(__('filament-onboarding::onboarding.resource.fields.media_url_helper'))
                 ->placeholder('https://youtu.be/dQw4w9WgXcQ')
                 ->columnSpanFull()
@@ -301,6 +315,7 @@ class StepsRelationManager extends RelationManager
                 ->schema([
                     Select::make('modal_position')
                         ->label(__('filament-onboarding::onboarding.resource.fields.modal_position'))
+                        ->prefixIcon(Heroicon::OutlinedSquares2x2)
                         ->helperText(__('filament-onboarding::onboarding.resource.fields.modal_position_helper'))
                         ->options(ModalPosition::class)
                         ->placeholder(__('filament-onboarding::onboarding.resource.fields.modal_position_default'))
@@ -341,6 +356,7 @@ class StepsRelationManager extends RelationManager
                     Grid::make(2)->schema([
                         Select::make('widget')
                             ->label(__('filament-onboarding::onboarding.resource.tour.widget'))
+                            ->prefixIcon(Heroicon::OutlinedSquares2x2)
                             ->helperText(__('filament-onboarding::onboarding.resource.tour.widget_helper'))
                             ->options(fn (): array => PanelTargets::widgetOptions($this->panelId()))
                             ->searchable()
@@ -348,6 +364,7 @@ class StepsRelationManager extends RelationManager
 
                         TextInput::make('selector')
                             ->label(__('filament-onboarding::onboarding.resource.tour.selector'))
+                            ->prefixIcon(Heroicon::OutlinedViewfinderCircle)
                             ->helperText(__('filament-onboarding::onboarding.resource.tour.selector_helper'))
                             ->placeholder('[data-onboarding="create-server"]')
                             ->maxLength(255),
@@ -356,6 +373,7 @@ class StepsRelationManager extends RelationManager
                     Grid::make(3)->schema([
                         Select::make('route')
                             ->label(__('filament-onboarding::onboarding.resource.tour.route'))
+                            ->prefixIcon(Heroicon::OutlinedWindow)
                             ->helperText(__('filament-onboarding::onboarding.resource.tour.route_helper'))
                             ->options(fn (): array => PanelTargets::pageOptions($this->panelId()))
                             ->searchable()
@@ -376,6 +394,7 @@ class StepsRelationManager extends RelationManager
 
                     Select::make('condition')
                         ->label(__('filament-onboarding::onboarding.resource.tour.visibility'))
+                        ->prefixIcon(Heroicon::OutlinedFunnel)
                         ->helperText(__('filament-onboarding::onboarding.resource.tour.visibility_helper'))
                         ->options(fn (): array => Onboarding::conditions()->options())
                         ->placeholder(__('filament-onboarding::onboarding.resource.fields.visibility_everyone'))
@@ -441,7 +460,16 @@ class StepsRelationManager extends RelationManager
                     ->state(fn (OnboardingStep $record): ?string => $record->hasMedia()
                         ? $record->media_type->getLabel()
                         : null)
-                    ->placeholder('—'),
+                    ->placeholder('—')
+                    ->visibleFrom('lg'),
+
+                TextColumn::make('visibility_condition')
+                    ->label(__('filament-onboarding::onboarding.resource.fields.visibility'))
+                    ->badge()
+                    ->color('warning')
+                    ->formatStateUsing(fn (string $state): string => Onboarding::conditions()->options()[$state] ?? $state)
+                    ->placeholder(__('filament-onboarding::onboarding.resource.fields.visibility_everyone'))
+                    ->visibleFrom('xl'),
 
                 IconColumn::make('is_required')
                     ->label(__('filament-onboarding::onboarding.resource.fields.is_required'))
@@ -456,18 +484,24 @@ class StepsRelationManager extends RelationManager
             ])
             ->headerActions([
                 CreateAction::make()
+                    ->icon(Heroicon::OutlinedPlus)
                     ->modalWidth(Width::FiveExtraLarge),
             ])
             ->recordActions([
-                EditAction::make()
-                    ->modalWidth(Width::FiveExtraLarge),
-                DeleteAction::make(),
+                ActionGroup::make([
+                    EditAction::make()
+                        ->icon(Heroicon::OutlinedPencilSquare)
+                        ->modalWidth(Width::FiveExtraLarge),
+                    DeleteAction::make()
+                        ->icon(Heroicon::OutlinedTrash),
+                ])->icon(Heroicon::OutlinedEllipsisVertical),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
             ])
+            ->emptyStateIcon(Heroicon::OutlinedListBullet)
             ->emptyStateHeading(__('filament-onboarding::onboarding.resource.steps.empty_heading'))
             ->emptyStateDescription(__('filament-onboarding::onboarding.resource.steps.empty_description'));
     }
