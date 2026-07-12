@@ -2,7 +2,10 @@
 
 All notable changes to `filament-onboarding` are documented here.
 
-## 1.0.0 — first release
+Versions follow Filament: **2.x targets Filament v5**, and 1.x is reserved for a Filament v4
+backport. That is why the first release is 2.0.0 — there is no 1.0.0 to upgrade from.
+
+## 2.0.0 — first release
 
 Database-driven onboarding for Filament v5.
 

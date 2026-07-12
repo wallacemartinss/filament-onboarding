@@ -14,6 +14,11 @@ Journeys are authored in the panel, not in code, so product people can rewrite t
 
 Requires PHP 8.2+, Laravel 12 and Filament v5. Runs on PostgreSQL and MySQL/MariaDB.
 
+| Package | Filament |
+|---|---|
+| `^2.0` | v5 |
+| `^1.0` | v4 (planned) |
+
 > Maintaining or extending the package? Read **[ARCHITECTURE.md](ARCHITECTURE.md)** — the data model, panel discovery, the tour runner, the player, asset versioning, and the traps that will bite you if you "clean up" the wrong line.
 
 ---
@@ -21,7 +26,7 @@ Requires PHP 8.2+, Laravel 12 and Filament v5. Runs on PostgreSQL and MySQL/Mari
 ## Installation
 
 ```bash
-composer require wallacemartinss/filament-onboarding
+composer require wallacemartinss/filament-onboarding:^2.0
 
 php artisan vendor:publish --tag=filament-onboarding-migrations
 php artisan vendor:publish --tag=filament-onboarding-config
