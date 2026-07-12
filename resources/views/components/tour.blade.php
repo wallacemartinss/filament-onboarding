@@ -46,7 +46,9 @@
                 </template>
 
                 <div class="fio-tour-actions">
-                    <div class="fio-tour-dots" aria-hidden="true">
+                    {{-- With many stops the dots outgrow the popover; the
+                         counter above already says where the subject is. --}}
+                    <div class="fio-tour-dots" aria-hidden="true" x-show="steps.length <= 8">
                         <template x-for="(tourStep, dot) in steps" :key="dot">
                             <span class="fio-tour-dot" :class="{ 'fio-tour-dot--active': dot === index }"></span>
                         </template>
@@ -63,7 +65,12 @@
                             </button>
                         </template>
 
-                        <button type="button" class="fio-button fio-button--primary" x-on:click="next()">
+                        <button
+                            type="button"
+                            class="fio-button fio-button--primary"
+                            :disabled="waiting"
+                            x-on:click="next()"
+                        >
                             <span x-text="isLast
                                 ? @js(__('filament-onboarding::onboarding.tour.finish'))
                                 : @js(__('filament-onboarding::onboarding.tour.next'))"></span>

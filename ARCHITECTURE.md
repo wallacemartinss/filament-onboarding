@@ -245,7 +245,9 @@ Cross-page state lives in `sessionStorage['filament-onboarding.tour']` as `{key,
 
 **2. Positioning a box whose size you guessed.** The popover's height depends on the copy and its width on the viewport. `placePopover()` awaits `$nextTick()`, reads `offsetWidth`/`offsetHeight` off the real node, and clamps inside the viewport — below, above, or *beside* the element, in that order. The old code used a 320px constant and last render's height, which is how the "next" button ended up off the right edge of the screen. (The CSS caps the box at `calc(100vh - 2rem)` and scrolls it, so long copy on a short screen cannot push the buttons out either.)
 
-**3. Pointing at an input nobody can see.** A styled toggle keeps its real `<input>` `sr-only` behind the control the subject looks at — spotlighting it draws a dot next to the thing it means. `resolveTarget()` walks from the matched element to its `<label>` (the whole row, for a toggle), and failing that up the tree until an ancestor has real size.
+**3. Pointing at an input nobody can see.** A styled toggle keeps its real `<input>` `sr-only` behind the control the subject looks at — spotlighting it draws a dot next to the thing it means. `resolveTarget()` walks from the matched element to its `<label>` (the whole row, for a toggle), and failing that up the tree until an ancestor has real size. **The guard on that walk matters as much as the walk**: a *visible* input must be returned as-is, because climbing from it finds its caption label — the sliver of text above the field — and for one release the spotlight sat on the word "Name" instead of the name field. Substantial element first, climbing only for the hidden ones.
+
+**3b. Rendering twice at once.** The runner's own smooth scroll fires scroll events, the scroll listener fires renders, and two async renders interleave — the *older* one finishes last and writes a stale rectangle. Every render takes a `renderToken` and checks it after each await; only the newest may commit. The scroll listener is also rAF-debounced.
 
 ### Tour and application, walking together (`advance` + `firstStopOnScreenAhead()`)
 
@@ -256,7 +258,7 @@ Both directions are handled, and neither takes control away from the subject:
 - **Application → tour.** When the current stop's element is missing, the `MutationObserver` also looks *ahead*: if a later stop's element is on screen, the subject has moved past this one, and the tour jumps to them. Advancing the wizard advances the tour.
 - **Tour → application.** A stop may carry `advance`, a selector for the control that gets the app there (`[wire\:click="nextStep"]`). It is clicked in `next()` — on the subject's intent, never on autopilot, and never when the element is already on screen.
 
-While waiting, `waiting` is true: the popover says so instead of leaving a spotlight pointing at nothing. If the application refuses to advance (a required field is empty), the tour simply waits — which is the honest thing to do.
+While waiting, `waiting` is true: the popover says so, and **the next button is disabled** (the guard in `next()` also covers the arrow key). A waiting tour cannot be paged through — pressing next five times on a form that has not moved would walk the popover through five stops of nothing. The way forward is the form; the observer brings the tour along. Escape hatches stay live: back, and skip.
 
 ### Selector resolution (`find()`)
 

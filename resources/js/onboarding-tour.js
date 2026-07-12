@@ -33,6 +33,8 @@ export default function onboardingTour() {
         reposition: null,
         observer: null,
         observerQueued: false,
+        renderToken: 0,
+        repositionQueued: false,
 
         init() {
             this.resume();
@@ -44,9 +46,19 @@ export default function onboardingTour() {
             });
 
             this.reposition = () => {
-                if (this.active) {
-                    this.render();
+                if (!this.active || this.repositionQueued) {
+                    return;
                 }
+
+                this.repositionQueued = true;
+
+                requestAnimationFrame(() => {
+                    this.repositionQueued = false;
+
+                    if (this.active) {
+                        this.render();
+                    }
+                });
             };
 
             window.addEventListener('resize', this.reposition, { passive: true });
@@ -127,6 +139,13 @@ export default function onboardingTour() {
         },
 
         next() {
+            // The element of this stop is not on screen: the way forward is the
+            // form, not the tour. The button is disabled too — this guards the
+            // arrow key.
+            if (this.waiting) {
+                return;
+            }
+
             if (this.isLast) {
                 return this.finish();
             }
@@ -248,6 +267,12 @@ export default function onboardingTour() {
         },
 
         async render() {
+            // Renders overlap: our own smooth scroll fires scroll events, which
+            // fire more renders. Only the newest one may write the spotlight —
+            // an older render finishing last would place it where the element
+            // used to be.
+            const token = ++this.renderToken;
+
             const step = this.step;
 
             if (!step) {
@@ -258,6 +283,10 @@ export default function onboardingTour() {
             this.report();
 
             const found = step.selector ? await this.waitForElement(step.selector) : null;
+
+            if (token !== this.renderToken) {
+                return;
+            }
 
             if (!found) {
                 // Nothing to point at *yet*. The copy still reads, centred, and
@@ -287,6 +316,10 @@ export default function onboardingTour() {
             // position the element had before the page moved, and the spotlight
             // lands on whatever used to be there.
             const rect = await this.scrollIntoView(element);
+
+            if (token !== this.renderToken) {
+                return;
+            }
 
             this.spotlight = {
                 top: rect.top - SPOTLIGHT_PADDING,
@@ -340,8 +373,15 @@ export default function onboardingTour() {
          * until there is something worth pointing at.
          */
         resolveTarget(element) {
-            // The visible control for a hidden input is its label — and the label
-            // is the whole row the subject reads, not just the switch.
+            // A field the subject can see is the thing to point at. Climbing from
+            // a visible input finds its caption label — a sliver of text above
+            // the field — which is precisely what must not be spotlighted.
+            if (this.isSubstantial(element)) {
+                return element;
+            }
+
+            // A hidden input (a styled toggle keeps its real checkbox sr-only)
+            // is represented by its label: the whole row the subject reads.
             if (element instanceof HTMLInputElement) {
                 const label = element.closest('label')
                     ?? (element.id ? document.querySelector(`label[for="${CSS.escape(element.id)}"]`) : null);
