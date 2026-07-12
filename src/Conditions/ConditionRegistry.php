@@ -52,9 +52,19 @@ class ConditionRegistry
     }
 
     /**
-     * A condition that is not registered never completes a step on its own — a
-     * flow authored against a condition the application later dropped goes
-     * quiet instead of throwing on every panel request.
+     * Whether a named check holds for this subject.
+     *
+     * Onboarding is not the product, and it must never be the reason the product
+     * is down. This runs on every panel page — the launcher sits in the layout —
+     * so a condition that throws would 500 every screen the subject opens, not
+     * merely the checklist. A condition can throw for reasons that have nothing
+     * to do with onboarding: a relation renamed in a deploy, a database that
+     * blinked, an external call that timed out, a class deleted from the code
+     * while a flow in the database still names it.
+     *
+     * So the answer to a broken question is the same as the answer to a question
+     * nobody registered: **no**. The step stays pending, the guarded content
+     * stays hidden, the failure is logged, and the panel keeps working.
      */
     public function passes(string $key, Model $subject, ?Model $scope = null): bool
     {
@@ -64,6 +74,20 @@ class ConditionRegistry
             return false;
         }
 
+        try {
+            return $this->evaluate($condition, $subject, $scope);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return false;
+        }
+    }
+
+    /**
+     * @param  Closure|class-string  $condition
+     */
+    protected function evaluate(Closure|string $condition, Model $subject, ?Model $scope): bool
+    {
         if ($condition instanceof Closure) {
             return (bool) $condition($subject, $scope);
         }

@@ -154,6 +154,32 @@ class OnboardingTest extends TestCase
     }
 
     /**
+     * The launcher sits in the layout of every page. A condition that throws must
+     * not take the product down with it — a renamed relation, a database that
+     * blinked, a class deleted while a flow still names it.
+     */
+    public function test_a_condition_that_throws_does_not_take_the_panel_down(): void
+    {
+        $this->step('has-server', [
+            'completion_mode' => CompletionMode::Condition,
+            'condition_key'   => 'explodes',
+        ]);
+
+        $this->step('visible-to-nobody', ['visibility_condition' => 'explodes']);
+
+        Onboarding::condition('explodes', function (): bool {
+            throw new \RuntimeException('the servers table is gone');
+        });
+
+        $flow = Onboarding::for($this->subject)->flow('journey');
+
+        // Answered "no", both times: the step stays pending, the guarded step
+        // stays hidden, and the page renders.
+        $this->assertFalse($flow->step('has-server')->isCompleted());
+        $this->assertNull($flow->step('visible-to-nobody'));
+    }
+
+    /**
      * @param  array<string, mixed>  $attributes
      */
     private function step(string $key, array $attributes = []): OnboardingStep
