@@ -12,6 +12,7 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\{Get, Set};
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\{FontWeight, Width};
 use Filament\Tables\Columns\{IconColumn, TextColumn};
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
@@ -20,6 +21,11 @@ use Wallacemartinss\FilamentOnboarding\Facades\Onboarding;
 use Wallacemartinss\FilamentOnboarding\Models\OnboardingStep;
 use Wallacemartinss\FilamentOnboarding\Support\{IconInput, PanelTargets};
 
+/**
+ * Authoring a step used to mean scrolling through four stacked sections, most of
+ * them empty for any given step. It is four tabs now — content, behaviour, media,
+ * tour — so what you are working on is on screen and the rest is out of the way.
+ */
 class StepsRelationManager extends RelationManager
 {
     protected static string $relationship = 'steps';
@@ -29,121 +35,156 @@ class StepsRelationManager extends RelationManager
         return __('filament-onboarding::onboarding.resource.steps.title');
     }
 
-    /**
-     * Whether this step carries media at all — everything in the section hangs
-     * off this answer.
-     */
-    private static function wantsMedia(Get $get): bool
-    {
-        return filled($get('media_type')) && $get('media_type') !== MediaType::None->value;
-    }
-
-    /**
-     * The panel whose pages and widgets this flow's steps can point at. A flow
-     * left without a panel belongs to all of them, and so do its options.
-     */
-    private function panelId(): ?string
-    {
-        $flow = $this->getOwnerRecord();
-
-        return $flow->panel_id;
-    }
-
     public function form(Schema $schema): Schema
     {
-        $locales     = Onboarding::locales();
-        $firstLocale = $locales[0];
-
         return $schema->components([
-            Section::make(__('filament-onboarding::onboarding.resource.sections.content'))
+            Tabs::make('step')
+                ->columnSpanFull()
+                ->tabs([
+                    Tab::make(__('filament-onboarding::onboarding.resource.sections.content'))
+                        ->icon('heroicon-o-language')
+                        ->schema($this->contentFields()),
+
+                    Tab::make(__('filament-onboarding::onboarding.resource.sections.behaviour'))
+                        ->icon('heroicon-o-cog-6-tooth')
+                        ->schema($this->behaviourFields()),
+
+                    Tab::make(__('filament-onboarding::onboarding.resource.sections.media'))
+                        ->icon('heroicon-o-photo')
+                        ->badge(fn (?OnboardingStep $record): ?string => $record?->hasMedia()
+                            ? $record->media_type->getLabel()
+                            : null)
+                        ->schema($this->mediaFields()),
+
+                    Tab::make(__('filament-onboarding::onboarding.resource.sections.tour'))
+                        ->icon('heroicon-o-sparkles')
+                        ->badge(fn (Get $get): ?int => $get('type') === StepType::Tour->value
+                            ? count($get('tour_steps') ?? [])
+                            : null)
+                        ->visible(fn (Get $get): bool => $get('type') === StepType::Tour->value)
+                        ->schema($this->tourFields()),
+                ]),
+        ]);
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
+    private function contentFields(): array
+    {
+        $locales = Onboarding::locales();
+
+        return [
+            Tabs::make('translations')
+                ->contained(false)
+                ->columnSpanFull()
+                ->tabs(
+                    collect($locales)
+                        ->map(fn (string $locale): Tab => Tab::make($locale)
+                            ->label(Str::upper(str_replace('_', '-', $locale)))
+                            ->schema([
+                                TextInput::make("title.{$locale}")
+                                    ->label(__('filament-onboarding::onboarding.resource.fields.title'))
+                                    ->placeholder(__('filament-onboarding::onboarding.resource.placeholders.step_title'))
+                                    ->required($locale === $locales[0])
+                                    ->maxLength(255),
+
+                                Textarea::make("description.{$locale}")
+                                    ->label(__('filament-onboarding::onboarding.resource.fields.description'))
+                                    ->placeholder(__('filament-onboarding::onboarding.resource.placeholders.step_description'))
+                                    ->rows(2)
+                                    ->maxLength(500),
+
+                                TextInput::make("cta_label.{$locale}")
+                                    ->label(__('filament-onboarding::onboarding.resource.fields.cta_label'))
+                                    ->placeholder(__('filament-onboarding::onboarding.checklist.go'))
+                                    ->maxLength(255),
+                            ]))
+                        ->all()
+                ),
+
+            Grid::make(2)->schema([
+                IconInput::make('icon')
+                    ->label(__('filament-onboarding::onboarding.resource.fields.icon')),
+
+                TextInput::make('key')
+                    ->label(__('filament-onboarding::onboarding.resource.fields.key'))
+                    ->helperText(__('filament-onboarding::onboarding.resource.fields.step_key_helper'))
+                    ->placeholder('connect-server')
+                    ->required()
+                    ->alphaDash()
+                    ->maxLength(255),
+            ]),
+        ];
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
+    private function behaviourFields(): array
+    {
+        return [
+            Grid::make(2)->schema([
+                ToggleButtons::make('type')
+                    ->label(__('filament-onboarding::onboarding.resource.fields.type'))
+                    ->helperText(__('filament-onboarding::onboarding.resource.fields.type_helper'))
+                    ->options(StepType::class)
+                    ->default(StepType::Task)
+                    ->inline()
+                    ->live()
+                    ->required(),
+
+                Select::make('completion_mode')
+                    ->label(__('filament-onboarding::onboarding.resource.fields.completion_mode'))
+                    ->helperText(__('filament-onboarding::onboarding.resource.fields.completion_mode_helper'))
+                    ->options(CompletionMode::class)
+                    ->default(CompletionMode::Manual)
+                    ->native(false)
+                    ->live()
+                    ->required(),
+            ]),
+
+            // Only the field the chosen mode actually needs.
+            Select::make('condition_key')
+                ->label(__('filament-onboarding::onboarding.resource.fields.condition'))
+                ->helperText(__('filament-onboarding::onboarding.resource.fields.condition_helper'))
+                ->options(fn (): array => Onboarding::conditions()->options())
+                ->searchable()
+                ->native(false)
+                ->columnSpanFull()
+                ->required(fn (Get $get): bool => $get('completion_mode') === CompletionMode::Condition->value)
+                ->visible(fn (Get $get): bool => $get('completion_mode') === CompletionMode::Condition->value),
+
+            TextInput::make('visit_url')
+                ->label(__('filament-onboarding::onboarding.resource.fields.visit_url'))
+                ->helperText(__('filament-onboarding::onboarding.resource.fields.visit_url_helper'))
+                ->placeholder('/app/*/servers/create')
+                ->columnSpanFull()
+                ->required(fn (Get $get): bool => $get('completion_mode') === CompletionMode::Visit->value)
+                ->visible(fn (Get $get): bool => $get('completion_mode') === CompletionMode::Visit->value),
+
+            Section::make(__('filament-onboarding::onboarding.resource.sections.destination'))
+                ->description(__('filament-onboarding::onboarding.resource.sections.destination_description'))
+                ->icon('heroicon-o-arrow-top-right-on-square')
+                ->collapsed(fn (?OnboardingStep $record): bool => blank($record?->cta_route) && blank($record?->cta_url))
                 ->schema([
-                    Tabs::make('translations')
-                        ->tabs(
-                            collect($locales)
-                                ->map(fn (string $locale): Tab => Tab::make($locale)
-                                    ->label(Str::upper(str_replace('_', '-', $locale)))
-                                    ->schema([
-                                        TextInput::make("title.{$locale}")
-                                            ->label(__('filament-onboarding::onboarding.resource.fields.title'))
-                                            ->required($locale === $firstLocale)
-                                            ->maxLength(255),
+                    Select::make('cta_route')
+                        ->label(__('filament-onboarding::onboarding.resource.fields.cta_route'))
+                        ->helperText(__('filament-onboarding::onboarding.resource.fields.cta_route_helper'))
+                        ->options(fn (): array => PanelTargets::pageOptions($this->panelId()))
+                        ->searchable()
+                        ->native(false),
 
-                                        Textarea::make("description.{$locale}")
-                                            ->label(__('filament-onboarding::onboarding.resource.fields.description'))
-                                            ->rows(2)
-                                            ->maxLength(500),
-
-                                        TextInput::make("cta_label.{$locale}")
-                                            ->label(__('filament-onboarding::onboarding.resource.fields.cta_label'))
-                                            ->placeholder(__('filament-onboarding::onboarding.checklist.go'))
-                                            ->maxLength(255),
-                                    ]))
-                                ->all()
-                        )
-                        ->columnSpanFull(),
+                    TextInput::make('cta_url')
+                        ->label(__('filament-onboarding::onboarding.resource.fields.cta_url'))
+                        ->helperText(__('filament-onboarding::onboarding.resource.fields.cta_url_helper'))
+                        ->placeholder('/app/{tenant}/servers/create')
+                        ->maxLength(2048),
                 ]),
 
-            Section::make(__('filament-onboarding::onboarding.resource.sections.behaviour'))
+            Section::make(__('filament-onboarding::onboarding.resource.sections.rules'))
+                ->icon('heroicon-o-adjustments-horizontal')
                 ->schema([
-                    ToggleButtons::make('type')
-                        ->label(__('filament-onboarding::onboarding.resource.fields.type'))
-                        ->options(StepType::class)
-                        ->default(StepType::Task)
-                        ->inline()
-                        ->live()
-                        ->required(),
-
-                    Select::make('completion_mode')
-                        ->label(__('filament-onboarding::onboarding.resource.fields.completion_mode'))
-                        ->options(CompletionMode::class)
-                        ->default(CompletionMode::Manual)
-                        ->native(false)
-                        ->live()
-                        ->required(),
-
-                    Select::make('condition_key')
-                        ->label(__('filament-onboarding::onboarding.resource.fields.condition'))
-                        ->helperText(__('filament-onboarding::onboarding.resource.fields.condition_helper'))
-                        ->options(fn (): array => Onboarding::conditions()->options())
-                        ->searchable()
-                        ->native(false)
-                        ->required(fn (Get $get): bool => $get('completion_mode') === CompletionMode::Condition->value)
-                        ->visible(fn (Get $get): bool => $get('completion_mode') === CompletionMode::Condition->value),
-
-                    TextInput::make('visit_url')
-                        ->label(__('filament-onboarding::onboarding.resource.fields.visit_url'))
-                        ->helperText(__('filament-onboarding::onboarding.resource.fields.visit_url_helper'))
-                        ->placeholder('/app/*/servers/create')
-                        ->required(fn (Get $get): bool => $get('completion_mode') === CompletionMode::Visit->value)
-                        ->visible(fn (Get $get): bool => $get('completion_mode') === CompletionMode::Visit->value),
-
-                    Grid::make(2)->schema([
-                        TextInput::make('key')
-                            ->label(__('filament-onboarding::onboarding.resource.fields.key'))
-                            ->helperText(__('filament-onboarding::onboarding.resource.fields.step_key_helper'))
-                            ->required()
-                            ->alphaDash()
-                            ->maxLength(255),
-
-                        IconInput::make('icon')
-                            ->label(__('filament-onboarding::onboarding.resource.fields.icon')),
-
-                        // Discovered from the panel: the destination can only be
-                        // a page that exists, and it survives a renamed slug.
-                        Select::make('cta_route')
-                            ->label(__('filament-onboarding::onboarding.resource.fields.cta_route'))
-                            ->helperText(__('filament-onboarding::onboarding.resource.fields.cta_route_helper'))
-                            ->options(fn (): array => PanelTargets::pageOptions($this->panelId()))
-                            ->searchable()
-                            ->native(false),
-
-                        TextInput::make('cta_url')
-                            ->label(__('filament-onboarding::onboarding.resource.fields.cta_url'))
-                            ->helperText(__('filament-onboarding::onboarding.resource.fields.cta_url_helper'))
-                            ->placeholder('/app/{tenant}/servers/create')
-                            ->maxLength(2048),
-                    ]),
-
                     Grid::make(3)->schema([
                         Toggle::make('is_required')
                             ->label(__('filament-onboarding::onboarding.resource.fields.is_required'))
@@ -160,176 +201,190 @@ class StepsRelationManager extends RelationManager
                             ->default(0),
                     ]),
                 ]),
+        ];
+    }
 
-            Section::make(__('filament-onboarding::onboarding.resource.sections.media'))
-                ->description(__('filament-onboarding::onboarding.resource.sections.media_description'))
-                ->collapsed(fn (?OnboardingStep $record): bool => !($record?->hasMedia() ?? false))
+    /**
+     * @return array<int, mixed>
+     */
+    private function mediaFields(): array
+    {
+        $locales = Onboarding::locales();
+
+        return [
+            Grid::make(2)->schema([
+                Select::make('media_type')
+                    ->label(__('filament-onboarding::onboarding.resource.fields.media_type'))
+                    ->options(MediaType::class)
+                    ->default(MediaType::None)
+                    ->selectablePlaceholder(false)
+                    ->native(false)
+                    ->live()
+                    ->afterStateUpdated(fn (Set $set): mixed => $set('media_source', null)),
+
+                Select::make('media_source')
+                    ->label(__('filament-onboarding::onboarding.resource.fields.media_source'))
+                    ->options(fn (Get $get): array => collect(
+                        $get('media_type') === MediaType::Image->value
+                            ? MediaSource::forImage()
+                            : MediaSource::forVideo()
+                    )
+                        ->mapWithKeys(fn (MediaSource $source): array => [$source->value => $source->getLabel()])
+                        ->all())
+                    ->native(false)
+                    ->live()
+                    ->required(fn (Get $get): bool => static::wantsMedia($get))
+                    ->visible(fn (Get $get): bool => static::wantsMedia($get)),
+            ]),
+
+            FileUpload::make('media_path')
+                ->label(__('filament-onboarding::onboarding.resource.fields.media_file'))
+                ->disk(fn (): string => config('filament-onboarding.media.disk', 'public'))
+                ->directory(fn (): string => config('filament-onboarding.media.directory', 'onboarding'))
+                ->visibility(fn (): string => config('filament-onboarding.media.visibility', 'public'))
+                ->acceptedFileTypes(fn (Get $get): array => config(
+                    'filament-onboarding.media.accept.' . ($get('media_type') === MediaType::Video->value ? 'video' : 'image'),
+                    [],
+                ))
+                ->maxSize(fn (Get $get): int => (int) config(
+                    'filament-onboarding.media.max_size.' . ($get('media_type') === MediaType::Video->value ? 'video' : 'image'),
+                    5120,
+                ))
+                ->image(fn (Get $get): bool => $get('media_type') === MediaType::Image->value)
+                ->imageEditor(fn (Get $get): bool => $get('media_type') === MediaType::Image->value)
+                ->columnSpanFull()
+                ->required(fn (Get $get): bool => $get('media_source') === MediaSource::Upload->value)
+                ->visible(fn (Get $get): bool => static::wantsMedia($get) && $get('media_source') === MediaSource::Upload->value)
+                ->afterStateUpdated(fn (Set $set): mixed => $set('media_disk', config('filament-onboarding.media.disk', 'public'))),
+
+            Hidden::make('media_disk')
+                ->default(fn (): string => config('filament-onboarding.media.disk', 'public')),
+
+            TextInput::make('media_url')
+                ->label(__('filament-onboarding::onboarding.resource.fields.media_url'))
+                ->helperText(__('filament-onboarding::onboarding.resource.fields.media_url_helper'))
+                ->placeholder('https://youtu.be/dQw4w9WgXcQ')
+                ->columnSpanFull()
+                ->url(fn (Get $get): bool => $get('media_source') === MediaSource::Url->value)
+                ->required(fn (Get $get): bool => static::wantsMedia($get) && filled($get('media_source')) && $get('media_source') !== MediaSource::Upload->value)
+                ->visible(fn (Get $get): bool => static::wantsMedia($get) && filled($get('media_source')) && $get('media_source') !== MediaSource::Upload->value)
+                ->maxLength(2048),
+
+            Tabs::make('media_translations')
+                ->contained(false)
+                ->columnSpanFull()
+                ->visible(fn (Get $get): bool => static::wantsMedia($get))
+                ->tabs(
+                    collect($locales)
+                        ->map(fn (string $locale): Tab => Tab::make($locale)
+                            ->label(Str::upper(str_replace('_', '-', $locale)))
+                            ->schema([
+                                Textarea::make("media_caption.{$locale}")
+                                    ->label(__('filament-onboarding::onboarding.resource.fields.media_caption'))
+                                    ->rows(2)
+                                    ->maxLength(500),
+                            ]))
+                        ->all()
+                ),
+
+            Grid::make(2)
+                ->visible(fn (Get $get): bool => static::wantsMedia($get))
+                ->schema([
+                    Select::make('modal_position')
+                        ->label(__('filament-onboarding::onboarding.resource.fields.modal_position'))
+                        ->helperText(__('filament-onboarding::onboarding.resource.fields.modal_position_helper'))
+                        ->options(ModalPosition::class)
+                        ->placeholder(__('filament-onboarding::onboarding.resource.fields.modal_position_default'))
+                        ->native(false),
+
+                    TextInput::make('video_completion_threshold')
+                        ->label(__('filament-onboarding::onboarding.resource.fields.video_threshold'))
+                        ->helperText(__('filament-onboarding::onboarding.resource.fields.video_threshold_helper'))
+                        ->numeric()
+                        ->minValue(1)
+                        ->maxValue(100)
+                        ->suffix('%')
+                        ->default(90)
+                        ->visible(fn (Get $get): bool => $get('media_type') === MediaType::Video->value),
+                ]),
+        ];
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
+    private function tourFields(): array
+    {
+        $locales = Onboarding::locales();
+
+        return [
+            Repeater::make('tour_steps')
+                ->hiddenLabel()
+                ->addActionLabel(__('filament-onboarding::onboarding.resource.tour.add'))
+                ->reorderableWithButtons()
+                ->collapsible()
+                ->collapsed()
+                ->cloneable()
+                ->itemLabel(fn (array $state): string => static::tourStopLabel($state))
+                ->defaultItems(1)
+                ->columnSpanFull()
                 ->schema([
                     Grid::make(2)->schema([
-                        Select::make('media_type')
-                            ->label(__('filament-onboarding::onboarding.resource.fields.media_type'))
-                            ->options(MediaType::class)
-                            ->default(MediaType::None)
-                            ->native(false)
-                            ->live()
-                            ->afterStateUpdated(fn (Set $set): mixed => $set('media_source', null)),
+                        Select::make('widget')
+                            ->label(__('filament-onboarding::onboarding.resource.tour.widget'))
+                            ->helperText(__('filament-onboarding::onboarding.resource.tour.widget_helper'))
+                            ->options(fn (): array => PanelTargets::widgetOptions($this->panelId()))
+                            ->searchable()
+                            ->native(false),
 
-                        Select::make('media_source')
-                            ->label(__('filament-onboarding::onboarding.resource.fields.media_source'))
-                            ->options(fn (Get $get): array => collect(
-                                $get('media_type') === MediaType::Image->value
-                                    ? MediaSource::forImage()
-                                    : MediaSource::forVideo()
-                            )
-                                ->mapWithKeys(fn (MediaSource $source): array => [$source->value => $source->getLabel()])
-                                ->all())
-                            ->native(false)
-                            ->live()
-                            ->required(fn (Get $get): bool => static::wantsMedia($get))
-                            ->visible(fn (Get $get): bool => static::wantsMedia($get)),
+                        TextInput::make('selector')
+                            ->label(__('filament-onboarding::onboarding.resource.tour.selector'))
+                            ->helperText(__('filament-onboarding::onboarding.resource.tour.selector_helper'))
+                            ->placeholder('[data-onboarding="create-server"]')
+                            ->maxLength(255),
                     ]),
 
-                    // Uploads land on the configured disk — S3, R2, local — and a
-                    // private disk is signed at render time rather than opened up.
-                    FileUpload::make('media_path')
-                        ->label(__('filament-onboarding::onboarding.resource.fields.media_file'))
-                        ->disk(fn (): string => config('filament-onboarding.media.disk', 'public'))
-                        ->directory(fn (): string => config('filament-onboarding.media.directory', 'onboarding'))
-                        ->visibility(fn (): string => config('filament-onboarding.media.visibility', 'public'))
-                        ->acceptedFileTypes(fn (Get $get): array => config(
-                            'filament-onboarding.media.accept.' . ($get('media_type') === MediaType::Video->value ? 'video' : 'image'),
-                            [],
-                        ))
-                        ->maxSize(fn (Get $get): int => (int) config(
-                            'filament-onboarding.media.max_size.' . ($get('media_type') === MediaType::Video->value ? 'video' : 'image'),
-                            5120,
-                        ))
-                        ->image(fn (Get $get): bool => $get('media_type') === MediaType::Image->value)
-                        ->required(fn (Get $get): bool => $get('media_source') === MediaSource::Upload->value)
-                        ->visible(fn (Get $get): bool => static::wantsMedia($get) && $get('media_source') === MediaSource::Upload->value)
-                        ->afterStateUpdated(fn (Set $set): mixed => $set('media_disk', config('filament-onboarding.media.disk', 'public'))),
+                    Grid::make(3)->schema([
+                        Select::make('route')
+                            ->label(__('filament-onboarding::onboarding.resource.tour.route'))
+                            ->helperText(__('filament-onboarding::onboarding.resource.tour.route_helper'))
+                            ->options(fn (): array => PanelTargets::pageOptions($this->panelId()))
+                            ->searchable()
+                            ->native(false)
+                            ->columnSpan(2),
 
-                    Hidden::make('media_disk')
-                        ->default(fn (): string => config('filament-onboarding.media.disk', 'public')),
+                        Select::make('placement')
+                            ->label(__('filament-onboarding::onboarding.resource.tour.placement'))
+                            ->options([
+                                'auto'   => __('filament-onboarding::onboarding.resource.tour.placements.auto'),
+                                'top'    => __('filament-onboarding::onboarding.resource.tour.placements.top'),
+                                'bottom' => __('filament-onboarding::onboarding.resource.tour.placements.bottom'),
+                            ])
+                            ->default('auto')
+                            ->selectablePlaceholder(false)
+                            ->native(false),
+                    ]),
 
-                    TextInput::make('media_url')
-                        ->label(__('filament-onboarding::onboarding.resource.fields.media_url'))
-                        ->helperText(__('filament-onboarding::onboarding.resource.fields.media_url_helper'))
-                        ->placeholder('https://youtu.be/dQw4w9WgXcQ')
-                        ->url(fn (Get $get): bool => $get('media_source') === MediaSource::Url->value)
-                        ->required(fn (Get $get): bool => static::wantsMedia($get) && $get('media_source') !== MediaSource::Upload->value && filled($get('media_source')))
-                        ->visible(fn (Get $get): bool => static::wantsMedia($get) && $get('media_source') !== MediaSource::Upload->value && filled($get('media_source')))
-                        ->maxLength(2048),
-
-                    Tabs::make('media_translations')
-                        ->visible(fn (Get $get): bool => static::wantsMedia($get))
+                    Tabs::make('tour_translations')
+                        ->contained(false)
                         ->tabs(
                             collect($locales)
                                 ->map(fn (string $locale): Tab => Tab::make($locale)
                                     ->label(Str::upper(str_replace('_', '-', $locale)))
                                     ->schema([
-                                        Textarea::make("media_caption.{$locale}")
-                                            ->label(__('filament-onboarding::onboarding.resource.fields.media_caption'))
+                                        TextInput::make("title.{$locale}")
+                                            ->label(__('filament-onboarding::onboarding.resource.fields.title'))
+                                            ->maxLength(255),
+
+                                        Textarea::make("body.{$locale}")
+                                            ->label(__('filament-onboarding::onboarding.resource.tour.body'))
                                             ->rows(2)
                                             ->maxLength(500),
                                     ]))
                                 ->all()
                         ),
-
-                    Grid::make(2)->schema([
-                        Select::make('modal_position')
-                            ->label(__('filament-onboarding::onboarding.resource.fields.modal_position'))
-                            ->helperText(__('filament-onboarding::onboarding.resource.fields.modal_position_helper'))
-                            ->options(ModalPosition::class)
-                            ->placeholder(__('filament-onboarding::onboarding.resource.fields.modal_position_default'))
-                            ->native(false)
-                            ->visible(fn (Get $get): bool => static::wantsMedia($get)),
-
-                        TextInput::make('video_completion_threshold')
-                            ->label(__('filament-onboarding::onboarding.resource.fields.video_threshold'))
-                            ->helperText(__('filament-onboarding::onboarding.resource.fields.video_threshold_helper'))
-                            ->numeric()
-                            ->minValue(1)
-                            ->maxValue(100)
-                            ->suffix('%')
-                            ->default(90)
-                            ->visible(fn (Get $get): bool => $get('media_type') === MediaType::Video->value),
-                    ]),
                 ]),
-
-            Section::make(__('filament-onboarding::onboarding.resource.sections.tour'))
-                ->description(__('filament-onboarding::onboarding.resource.sections.tour_description'))
-                ->visible(fn (Get $get): bool => $get('type') === StepType::Tour->value)
-                ->schema([
-                    Repeater::make('tour_steps')
-                        ->hiddenLabel()
-                        ->addActionLabel(__('filament-onboarding::onboarding.resource.tour.add'))
-                        ->reorderable()
-                        ->collapsible()
-                        ->itemLabel(fn (array $state): ?string => $state['selector'] ?? null)
-                        ->defaultItems(1)
-                        ->schema([
-                            Grid::make(2)->schema([
-                                // Widgets share one wrapper class, so there is no
-                                // selector to type: pick the widget and the runner
-                                // finds it by the Livewire component it is.
-                                Select::make('widget')
-                                    ->label(__('filament-onboarding::onboarding.resource.tour.widget'))
-                                    ->helperText(__('filament-onboarding::onboarding.resource.tour.widget_helper'))
-                                    ->options(fn (): array => PanelTargets::widgetOptions($this->panelId()))
-                                    ->searchable()
-                                    ->native(false),
-
-                                Select::make('placement')
-                                    ->label(__('filament-onboarding::onboarding.resource.tour.placement'))
-                                    ->options([
-                                        'auto'   => __('filament-onboarding::onboarding.resource.tour.placements.auto'),
-                                        'top'    => __('filament-onboarding::onboarding.resource.tour.placements.top'),
-                                        'bottom' => __('filament-onboarding::onboarding.resource.tour.placements.bottom'),
-                                    ])
-                                    ->default('auto')
-                                    ->native(false),
-                            ]),
-
-                            TextInput::make('selector')
-                                ->label(__('filament-onboarding::onboarding.resource.tour.selector'))
-                                ->helperText(__('filament-onboarding::onboarding.resource.tour.selector_helper'))
-                                ->placeholder('[data-onboarding="create-server"]')
-                                ->maxLength(255),
-
-                            Select::make('route')
-                                ->label(__('filament-onboarding::onboarding.resource.tour.route'))
-                                ->helperText(__('filament-onboarding::onboarding.resource.tour.route_helper'))
-                                ->options(fn (): array => PanelTargets::pageOptions($this->panelId()))
-                                ->searchable()
-                                ->native(false),
-
-                            TextInput::make('url')
-                                ->label(__('filament-onboarding::onboarding.resource.tour.url'))
-                                ->helperText(__('filament-onboarding::onboarding.resource.tour.url_helper'))
-                                ->placeholder('/app/{tenant}/servers')
-                                ->maxLength(2048),
-
-                            Tabs::make('tour_translations')
-                                ->tabs(
-                                    collect($locales)
-                                        ->map(fn (string $locale): Tab => Tab::make($locale)
-                                            ->label(Str::upper(str_replace('_', '-', $locale)))
-                                            ->schema([
-                                                TextInput::make("title.{$locale}")
-                                                    ->label(__('filament-onboarding::onboarding.resource.fields.title'))
-                                                    ->maxLength(255),
-
-                                                Textarea::make("body.{$locale}")
-                                                    ->label(__('filament-onboarding::onboarding.resource.tour.body'))
-                                                    ->rows(2)
-                                                    ->maxLength(500),
-                                            ]))
-                                        ->all()
-                                ),
-                        ]),
-                ]),
-        ]);
+        ];
     }
 
     public function table(Table $table): Table
@@ -341,7 +396,10 @@ class StepsRelationManager extends RelationManager
                 TextColumn::make('title')
                     ->label(__('filament-onboarding::onboarding.resource.fields.title'))
                     ->state(fn (OnboardingStep $record): ?string => $record->translate('title'))
-                    ->description(fn (OnboardingStep $record): string => $record->key),
+                    ->description(fn (OnboardingStep $record): string => $record->key)
+                    ->icon(fn (OnboardingStep $record): ?string => $record->icon)
+                    ->weight(FontWeight::Medium)
+                    ->wrap(),
 
                 TextColumn::make('type')
                     ->label(__('filament-onboarding::onboarding.resource.fields.type'))
@@ -350,27 +408,91 @@ class StepsRelationManager extends RelationManager
                 TextColumn::make('completion_mode')
                     ->label(__('filament-onboarding::onboarding.resource.fields.completion_mode'))
                     ->badge()
-                    ->color('gray'),
+                    ->color('gray')
+                    // What the mode hangs off, so a step's wiring is visible from
+                    // the list rather than two clicks away.
+                    ->description(fn (OnboardingStep $record): ?string => match (true) {
+                        filled($record->condition_key) => $record->condition_key,
+                        filled($record->visit_url)     => $record->visit_url,
+                        default                        => null,
+                    }),
+
+                TextColumn::make('media_type')
+                    ->label(__('filament-onboarding::onboarding.resource.fields.media_type'))
+                    ->badge()
+                    ->color('info')
+                    ->state(fn (OnboardingStep $record): ?string => $record->hasMedia()
+                        ? $record->media_type->getLabel()
+                        : null)
+                    ->placeholder('—'),
 
                 IconColumn::make('is_required')
                     ->label(__('filament-onboarding::onboarding.resource.fields.is_required'))
-                    ->boolean(),
+                    ->boolean()
+                    ->alignCenter()
+                    ->toggleable(),
 
                 IconColumn::make('is_active')
                     ->label(__('filament-onboarding::onboarding.resource.fields.is_active'))
-                    ->boolean(),
+                    ->boolean()
+                    ->alignCenter(),
             ])
             ->headerActions([
-                CreateAction::make(),
+                CreateAction::make()
+                    ->modalWidth(Width::FiveExtraLarge),
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()
+                    ->modalWidth(Width::FiveExtraLarge),
                 DeleteAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->emptyStateHeading(__('filament-onboarding::onboarding.resource.steps.empty_heading'))
+            ->emptyStateDescription(__('filament-onboarding::onboarding.resource.steps.empty_description'));
+    }
+
+    /**
+     * A tour stop names itself by what it points at, so a collapsed repeater
+     * still reads as a list of stops rather than "Item 1, Item 2".
+     *
+     * @param  array<string, mixed>  $state
+     */
+    private static function tourStopLabel(array $state): string
+    {
+        $target = $state['selector'] ?? null;
+
+        if (blank($target) && filled($state['widget'] ?? null)) {
+            $target = class_basename((string) $state['widget']);
+        }
+
+        $title = collect($state['title'] ?? [])->filter()->first();
+
+        return collect([$title, $target])
+            ->filter()
+            ->implode(' — ') ?: __('filament-onboarding::onboarding.resource.tour.add');
+    }
+
+    /**
+     * Whether this step carries media at all — everything in the tab hangs off
+     * this answer.
+     */
+    private static function wantsMedia(Get $get): bool
+    {
+        return filled($get('media_type')) && $get('media_type') !== MediaType::None->value;
+    }
+
+    /**
+     * The panel whose pages and widgets this flow's steps can point at. A flow
+     * left without a panel belongs to all of them, and so do its options.
+     */
+    private function panelId(): ?string
+    {
+        $flow = $this->getOwnerRecord();
+
+        return $flow->panel_id;
     }
 }

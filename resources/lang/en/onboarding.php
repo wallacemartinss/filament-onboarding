@@ -140,18 +140,40 @@ return [
         'plural'     => 'Onboarding',
         'all_panels' => 'All panels',
 
+        'placeholders' => [
+            'flow_title'       => 'Getting started with …',
+            'flow_description' => 'One line on what the user gets out of this.',
+            'step_title'       => 'Connect your first server',
+            'step_description' => 'One or two lines. Say why, not just what.',
+        ],
+
+        'no_steps_warning' => 'This journey has no steps, so nobody sees it.',
+
+        'empty' => [
+            'heading'     => 'No journeys yet',
+            'description' => 'A journey is a checklist your users walk through. Create one and add its steps.',
+        ],
+
         'sections' => [
-            'content'           => 'Content',
-            'settings'          => 'Settings',
-            'behaviour'         => 'Behaviour',
-            'media'             => 'Media',
-            'media_description' => 'An image to show, or a video to watch. Opens in a modal over the panel.',
-            'tour'              => 'Tour',
-            'tour_description'  => 'The elements this tour spotlights, in order.',
+            'content_description'     => 'What the user reads, in each language you support.',
+            'publishing'              => 'Publishing',
+            'appearance'              => 'Appearance',
+            'rules'                   => 'Rules',
+            'destination'             => 'Destination',
+            'destination_description' => 'Where the button takes the user. Pick a page of the panel; a URL is the fallback.',
+            'content'                 => 'Content',
+            'settings'                => 'Settings',
+            'behaviour'               => 'Behaviour',
+            'media'                   => 'Media',
+            'media_description'       => 'An image to show, or a video to watch. Opens in a modal over the panel.',
+            'tour'                    => 'Tour',
+            'tour_description'        => 'The elements this tour spotlights, in order.',
         ],
 
         'steps' => [
-            'title' => 'Steps',
+            'title'             => 'Steps',
+            'empty_heading'     => 'No steps yet',
+            'empty_description' => 'Add the first step. Without steps, this journey shows up for nobody.',
         ],
 
         'fields' => [
@@ -195,6 +217,10 @@ return [
             'modal_position_default' => 'Panel default',
             'video_threshold'        => 'Counts as watched at',
             'video_threshold_helper' => 'Percentage that completes the step, when it is completed by watching.',
+            'is_active_helper'       => 'Inactive journeys disappear from every panel.',
+            'sort_order_helper'      => 'Lower comes first.',
+            'type_helper'            => 'A task is done; a tour is walked.',
+            'completion_mode_helper' => 'What marks this step as done.',
         ],
 
         'tour' => [

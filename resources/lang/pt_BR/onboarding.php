@@ -140,18 +140,40 @@ return [
         'plural'     => 'Onboarding',
         'all_panels' => 'Todos os painéis',
 
+        'placeholders' => [
+            'flow_title'       => 'Comece por aqui…',
+            'flow_description' => 'Uma linha sobre o que o usuário ganha com isso.',
+            'step_title'       => 'Conecte seu primeiro servidor',
+            'step_description' => 'Uma ou duas linhas. Diga o porquê, não só o quê.',
+        ],
+
+        'no_steps_warning' => 'Esta jornada não tem etapas, então ninguém a vê.',
+
+        'empty' => [
+            'heading'     => 'Nenhuma jornada ainda',
+            'description' => 'Uma jornada é uma checklist que seus usuários percorrem. Crie uma e adicione as etapas.',
+        ],
+
         'sections' => [
-            'content'           => 'Conteúdo',
-            'settings'          => 'Configurações',
-            'behaviour'         => 'Comportamento',
-            'media'             => 'Mídia',
-            'media_description' => 'Uma imagem para mostrar ou um vídeo para assistir. Abre em um modal sobre o painel.',
-            'tour'              => 'Tour',
-            'tour_description'  => 'Os elementos que o tour destaca, na ordem.',
+            'content_description'     => 'O que o usuário lê, em cada idioma que você suporta.',
+            'publishing'              => 'Publicação',
+            'appearance'              => 'Aparência',
+            'rules'                   => 'Regras',
+            'destination'             => 'Destino',
+            'destination_description' => 'Para onde o botão leva. Escolha uma página do painel; a URL é o plano B.',
+            'content'                 => 'Conteúdo',
+            'settings'                => 'Configurações',
+            'behaviour'               => 'Comportamento',
+            'media'                   => 'Mídia',
+            'media_description'       => 'Uma imagem para mostrar ou um vídeo para assistir. Abre em um modal sobre o painel.',
+            'tour'                    => 'Tour',
+            'tour_description'        => 'Os elementos que o tour destaca, na ordem.',
         ],
 
         'steps' => [
-            'title' => 'Etapas',
+            'title'             => 'Etapas',
+            'empty_heading'     => 'Nenhuma etapa ainda',
+            'empty_description' => 'Adicione a primeira etapa. Sem etapas, esta jornada não aparece para ninguém.',
         ],
 
         'fields' => [
@@ -195,6 +217,10 @@ return [
             'modal_position_default' => 'Padrão do painel',
             'video_threshold'        => 'Conta como assistido em',
             'video_threshold_helper' => 'Percentual que conclui a etapa, quando ela é concluída por assistir.',
+            'is_active_helper'       => 'Jornadas inativas somem de todos os painéis.',
+            'sort_order_helper'      => 'Menor aparece primeiro.',
+            'type_helper'            => 'Tarefa se cumpre; tour se percorre.',
+            'completion_mode_helper' => 'O que marca esta etapa como concluída.',
         ],
 
         'tour' => [

@@ -140,18 +140,40 @@ return [
         'plural'     => 'Incorporación',
         'all_panels' => 'Todos los paneles',
 
+        'placeholders' => [
+            'flow_title'       => 'Empieza por aquí…',
+            'flow_description' => 'Una línea sobre lo que el usuario gana con esto.',
+            'step_title'       => 'Conecta tu primer servidor',
+            'step_description' => 'Una o dos líneas. Di el porqué, no solo el qué.',
+        ],
+
+        'no_steps_warning' => 'Esta ruta no tiene pasos, así que nadie la ve.',
+
+        'empty' => [
+            'heading'     => 'Aún no hay rutas',
+            'description' => 'Una ruta es una lista que tus usuarios recorren. Crea una y añade sus pasos.',
+        ],
+
         'sections' => [
-            'content'           => 'Contenido',
-            'settings'          => 'Configuración',
-            'behaviour'         => 'Comportamiento',
-            'media'             => 'Medios',
-            'media_description' => 'Una imagen para mostrar o un vídeo para ver. Se abre en un modal sobre el panel.',
-            'tour'              => 'Recorrido',
-            'tour_description'  => 'Los elementos que destaca el recorrido, en orden.',
+            'content_description'     => 'Lo que el usuario lee, en cada idioma que soportas.',
+            'publishing'              => 'Publicación',
+            'appearance'              => 'Apariencia',
+            'rules'                   => 'Reglas',
+            'destination'             => 'Destino',
+            'destination_description' => 'A dónde lleva el botón. Elige una página del panel; la URL es el plan B.',
+            'content'                 => 'Contenido',
+            'settings'                => 'Configuración',
+            'behaviour'               => 'Comportamiento',
+            'media'                   => 'Medios',
+            'media_description'       => 'Una imagen para mostrar o un vídeo para ver. Se abre en un modal sobre el panel.',
+            'tour'                    => 'Recorrido',
+            'tour_description'        => 'Los elementos que destaca el recorrido, en orden.',
         ],
 
         'steps' => [
-            'title' => 'Pasos',
+            'title'             => 'Pasos',
+            'empty_heading'     => 'Aún no hay pasos',
+            'empty_description' => 'Añade el primer paso. Sin pasos, esta ruta no aparece para nadie.',
         ],
 
         'fields' => [
@@ -195,6 +217,10 @@ return [
             'modal_position_default' => 'Predeterminado del panel',
             'video_threshold'        => 'Cuenta como visto al',
             'video_threshold_helper' => 'Porcentaje que completa el paso, cuando se completa viéndolo.',
+            'is_active_helper'       => 'Las rutas inactivas desaparecen de todos los paneles.',
+            'sort_order_helper'      => 'El menor aparece primero.',
+            'type_helper'            => 'Una tarea se cumple; un recorrido se recorre.',
+            'completion_mode_helper' => 'Lo que marca este paso como completado.',
         ],
 
         'tour' => [

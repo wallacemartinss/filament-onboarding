@@ -8,11 +8,13 @@ use Filament\Actions\{BulkActionGroup, DeleteAction, DeleteBulkAction, EditActio
 use Filament\Facades\Filament;
 use Filament\Forms\Components\{Select, TextInput, Textarea, Toggle};
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\{Grid, Section};
+use Filament\Schemas\Components\{Grid, Group, Section};
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\{IconColumn, TextColumn};
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Wallacemartinss\FilamentOnboarding\Facades\Onboarding;
 use Wallacemartinss\FilamentOnboarding\FilamentOnboardingPlugin;
@@ -72,82 +74,103 @@ class OnboardingFlowResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->components([
-            Section::make(__('filament-onboarding::onboarding.resource.sections.content'))
-                ->schema([
-                    Tabs::make('translations')
-                        ->tabs(
-                            collect(Onboarding::locales())
-                                ->map(fn (string $locale): Tab => Tab::make($locale)
-                                    ->label(static::localeLabel($locale))
+        return $schema
+            ->components([
+                Grid::make(3)
+                    ->schema([
+                        // What the subject reads, in every locale — the bulk of the
+                        // work, so it takes the bulk of the screen.
+                        Section::make(__('filament-onboarding::onboarding.resource.sections.content'))
+                            ->description(__('filament-onboarding::onboarding.resource.sections.content_description'))
+                            ->icon('heroicon-o-language')
+                            ->columnSpan(2)
+                            ->schema([
+                                Tabs::make('translations')
+                                    ->contained(false)
+                                    ->tabs(
+                                        collect(Onboarding::locales())
+                                            ->map(fn (string $locale): Tab => Tab::make($locale)
+                                                ->label(static::localeLabel($locale))
+                                                ->schema([
+                                                    TextInput::make("title.{$locale}")
+                                                        ->label(__('filament-onboarding::onboarding.resource.fields.title'))
+                                                        ->placeholder(__('filament-onboarding::onboarding.resource.placeholders.flow_title'))
+                                                        ->required($locale === Onboarding::locales()[0])
+                                                        ->maxLength(255),
+
+                                                    Textarea::make("description.{$locale}")
+                                                        ->label(__('filament-onboarding::onboarding.resource.fields.description'))
+                                                        ->placeholder(__('filament-onboarding::onboarding.resource.placeholders.flow_description'))
+                                                        ->rows(2)
+                                                        ->maxLength(500),
+                                                ]))
+                                            ->all()
+                                    ),
+                            ]),
+
+                        Group::make()
+                            ->columnSpan(1)
+                            ->schema([
+                                Section::make(__('filament-onboarding::onboarding.resource.sections.publishing'))
+                                    ->icon('heroicon-o-rocket-launch')
                                     ->schema([
-                                        TextInput::make("title.{$locale}")
-                                            ->label(__('filament-onboarding::onboarding.resource.fields.title'))
-                                            ->required($locale === Onboarding::locales()[0])
+                                        TextInput::make('key')
+                                            ->label(__('filament-onboarding::onboarding.resource.fields.key'))
+                                            ->helperText(__('filament-onboarding::onboarding.resource.fields.key_helper'))
+                                            ->placeholder('getting-started')
+                                            ->required()
+                                            ->alphaDash()
+                                            ->unique(ignoreRecord: true)
                                             ->maxLength(255),
 
-                                        Textarea::make("description.{$locale}")
-                                            ->label(__('filament-onboarding::onboarding.resource.fields.description'))
-                                            ->rows(2)
-                                            ->maxLength(500),
-                                    ]))
-                                ->all()
-                        )
-                        ->columnSpanFull(),
-                ]),
+                                        Select::make('panel_id')
+                                            ->label(__('filament-onboarding::onboarding.resource.fields.panel'))
+                                            ->helperText(__('filament-onboarding::onboarding.resource.fields.panel_helper'))
+                                            ->options(static::panelOptions())
+                                            ->placeholder(__('filament-onboarding::onboarding.resource.all_panels'))
+                                            ->searchable()
+                                            ->native(false),
 
-            Section::make(__('filament-onboarding::onboarding.resource.sections.settings'))
-                ->schema([
-                    Grid::make(2)->schema([
-                        TextInput::make('key')
-                            ->label(__('filament-onboarding::onboarding.resource.fields.key'))
-                            ->helperText(__('filament-onboarding::onboarding.resource.fields.key_helper'))
-                            ->required()
-                            ->alphaDash()
-                            ->unique(ignoreRecord: true)
-                            ->maxLength(255),
+                                        TextInput::make('sort_order')
+                                            ->label(__('filament-onboarding::onboarding.resource.fields.sort_order'))
+                                            ->helperText(__('filament-onboarding::onboarding.resource.fields.sort_order_helper'))
+                                            ->numeric()
+                                            ->default(0),
 
-                        Select::make('panel_id')
-                            ->label(__('filament-onboarding::onboarding.resource.fields.panel'))
-                            ->helperText(__('filament-onboarding::onboarding.resource.fields.panel_helper'))
-                            ->options(static::panelOptions())
-                            ->searchable()
-                            ->native(false),
+                                        Toggle::make('is_active')
+                                            ->label(__('filament-onboarding::onboarding.resource.fields.is_active'))
+                                            ->helperText(__('filament-onboarding::onboarding.resource.fields.is_active_helper'))
+                                            ->default(true),
 
-                        IconInput::make('icon')
-                            ->label(__('filament-onboarding::onboarding.resource.fields.icon')),
+                                        Toggle::make('is_dismissible')
+                                            ->label(__('filament-onboarding::onboarding.resource.fields.is_dismissible'))
+                                            ->helperText(__('filament-onboarding::onboarding.resource.fields.is_dismissible_helper'))
+                                            ->default(true),
+                                    ]),
 
-                        Select::make('color')
-                            ->label(__('filament-onboarding::onboarding.resource.fields.color'))
-                            ->options([
-                                'primary' => 'primary',
-                                'info'    => 'info',
-                                'success' => 'success',
-                                'warning' => 'warning',
-                                'danger'  => 'danger',
-                                'gray'    => 'gray',
-                            ])
-                            ->default('primary')
-                            ->native(false),
+                                Section::make(__('filament-onboarding::onboarding.resource.sections.appearance'))
+                                    ->icon('heroicon-o-paint-brush')
+                                    ->schema([
+                                        IconInput::make('icon')
+                                            ->label(__('filament-onboarding::onboarding.resource.fields.icon')),
 
-                        TextInput::make('sort_order')
-                            ->label(__('filament-onboarding::onboarding.resource.fields.sort_order'))
-                            ->numeric()
-                            ->default(0),
+                                        Select::make('color')
+                                            ->label(__('filament-onboarding::onboarding.resource.fields.color'))
+                                            ->options([
+                                                'primary' => 'primary',
+                                                'info'    => 'info',
+                                                'success' => 'success',
+                                                'warning' => 'warning',
+                                                'danger'  => 'danger',
+                                                'gray'    => 'gray',
+                                            ])
+                                            ->default('primary')
+                                            ->selectablePlaceholder(false)
+                                            ->native(false),
+                                    ]),
+                            ]),
                     ]),
-
-                    Grid::make(2)->schema([
-                        Toggle::make('is_active')
-                            ->label(__('filament-onboarding::onboarding.resource.fields.is_active'))
-                            ->default(true),
-
-                        Toggle::make('is_dismissible')
-                            ->label(__('filament-onboarding::onboarding.resource.fields.is_dismissible'))
-                            ->helperText(__('filament-onboarding::onboarding.resource.fields.is_dismissible_helper'))
-                            ->default(true),
-                    ]),
-                ]),
-        ]);
+            ]);
     }
 
     public static function table(Table $table): Table
@@ -160,28 +183,42 @@ class OnboardingFlowResource extends Resource
                     ->label(__('filament-onboarding::onboarding.resource.fields.title'))
                     ->state(fn (OnboardingFlow $record): ?string => $record->translate('title'))
                     ->description(fn (OnboardingFlow $record): string => $record->key)
+                    ->icon(fn (OnboardingFlow $record): ?string => $record->icon)
+                    ->iconColor(fn (OnboardingFlow $record): string => $record->color ?: 'primary')
+                    ->weight(FontWeight::Medium)
                     ->searchable(['key'])
                     ->sortable(),
-
-                TextColumn::make('panel_id')
-                    ->label(__('filament-onboarding::onboarding.resource.fields.panel'))
-                    ->badge()
-                    ->placeholder(__('filament-onboarding::onboarding.resource.all_panels')),
 
                 TextColumn::make('steps_count')
                     ->label(__('filament-onboarding::onboarding.resource.fields.steps'))
                     ->counts('steps')
-                    ->badge(),
+                    ->badge()
+                    ->color(fn (int $state): string => $state > 0 ? 'primary' : 'danger')
+                    ->tooltip(fn (int $state): ?string => $state === 0
+                        ? __('filament-onboarding::onboarding.resource.no_steps_warning')
+                        : null)
+                    ->alignCenter(),
+
+                TextColumn::make('panel_id')
+                    ->label(__('filament-onboarding::onboarding.resource.fields.panel'))
+                    ->badge()
+                    ->color('gray')
+                    ->placeholder(__('filament-onboarding::onboarding.resource.all_panels')),
 
                 IconColumn::make('is_active')
                     ->label(__('filament-onboarding::onboarding.resource.fields.is_active'))
-                    ->boolean(),
+                    ->boolean()
+                    ->alignCenter(),
 
                 TextColumn::make('updated_at')
                     ->label(__('filament-onboarding::onboarding.resource.fields.updated_at'))
-                    ->dateTime()
+                    ->since()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
+            ])
+            ->filters([
+                TernaryFilter::make('is_active')
+                    ->label(__('filament-onboarding::onboarding.resource.fields.is_active')),
             ])
             ->recordActions([
                 EditAction::make(),
@@ -191,7 +228,10 @@ class OnboardingFlowResource extends Resource
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->emptyStateHeading(__('filament-onboarding::onboarding.resource.empty.heading'))
+            ->emptyStateDescription(__('filament-onboarding::onboarding.resource.empty.description'))
+            ->emptyStateIcon('heroicon-o-map');
     }
 
     public static function getRelations(): array
