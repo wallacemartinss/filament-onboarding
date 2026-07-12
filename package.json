@@ -4,9 +4,12 @@
     "type": "module",
     "scripts": {
         "build": "node bin/build.js",
-        "dev": "node bin/build.js --dev"
+        "dev": "node bin/build.js --dev",
+        "test": "vitest run"
     },
     "devDependencies": {
-        "esbuild": "^0.20.0"
+        "esbuild": "^0.20.0",
+        "jsdom": "^29.1.1",
+        "vitest": "^4.1.10"
     }
 }

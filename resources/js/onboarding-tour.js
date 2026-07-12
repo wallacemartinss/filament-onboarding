@@ -506,7 +506,15 @@ export default function onboardingTour() {
                 });
             });
 
-            this.observer.observe(document.body, { childList: true, subtree: true });
+            // A wizard step is revealed by flipping a class, and a section by
+            // flipping a style — neither inserts a node, so watching childList
+            // alone would wait forever for something that already happened.
+            this.observer.observe(document.body, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['class', 'style', 'hidden'],
+            });
         },
 
         /**
@@ -581,7 +589,7 @@ export default function onboardingTour() {
 
             if (!PREFIXES.some((prefix) => selector.startsWith(prefix))) {
                 try {
-                    return document.querySelector(selector);
+                    return this.firstOnScreen(document.querySelectorAll(selector));
                 } catch {
                     // A selector the panel can no longer parse: the tour carries
                     // on without a spotlight rather than throwing.
@@ -593,7 +601,9 @@ export default function onboardingTour() {
             const component = selector.slice(prefix.length);
 
             // Livewire puts the component's name straight on the element.
-            const named = document.querySelector(`[wire\\:name="${CSS.escape(component)}"]`);
+            const named = this.firstOnScreen(
+                document.querySelectorAll(`[wire\\:name="${CSS.escape(component)}"]`),
+            );
 
             if (named) {
                 return named;
@@ -604,7 +614,7 @@ export default function onboardingTour() {
                 try {
                     const snapshot = JSON.parse(element.getAttribute('wire:snapshot'));
 
-                    if (snapshot?.memo?.name === component) {
+                    if (snapshot?.memo?.name === component && this.isOnScreen(element)) {
                         return element;
                     }
                 } catch {
@@ -613,6 +623,54 @@ export default function onboardingTour() {
             }
 
             return null;
+        },
+
+        /**
+         * @param {NodeListOf<Element>} elements
+         */
+        firstOnScreen(elements) {
+            for (const element of elements) {
+                if (this.isOnScreen(element)) {
+                    return element;
+                }
+            }
+
+            return null;
+        },
+
+        /**
+         * Whether the subject can actually see this element right now.
+         *
+         * This is the load-bearing question of the whole runner, and answering it
+         * with `querySelector` alone is wrong: **Filament does not remove the
+         * steps of a wizard from the DOM** — it renders every one of them and
+         * hides the inactive ones with `visibility: hidden; height: 0`. A
+         * collapsed section is `display: none`. Both still match a selector.
+         *
+         * Take the match at face value and everything downstream breaks: the
+         * spotlight is drawn around an invisible field (a 16px box in the corner
+         * of the screen), `waiting` never engages, and the tour never nudges the
+         * wizard forward because it believes the field is already there.
+         *
+         * So a match that cannot be seen is not a match.
+         */
+        isOnScreen(element) {
+            if (!(element instanceof HTMLElement)) {
+                return false;
+            }
+
+            // display: none, and anything with no box at all.
+            if (element.getClientRects().length === 0) {
+                return false;
+            }
+
+            const style = window.getComputedStyle(element);
+
+            // visibility is inherited, so an inactive wizard pane hides its
+            // fields with it — this is the check that catches Filament's wizard.
+            return style.visibility !== 'hidden'
+                && style.visibility !== 'collapse'
+                && style.display !== 'none';
         },
 
         /**

@@ -1,0 +1,230 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import onboardingTour from '../../resources/js/onboarding-tour.js';
+
+/**
+ * The runner, on the question everything else hangs off: is this element on the
+ * screen or not?
+ *
+ * Filament renders **every** step of a wizard and hides the inactive ones with
+ * `visibility: hidden; height: 0`. A collapsed section is `display: none`. Both
+ * still answer to `querySelector`, so a runner that trusts the selector believes
+ * a field is there while the subject is looking at a different step entirely —
+ * and then spotlights nothing, never waits, and never nudges the form along.
+ *
+ * jsdom does no layout, so `getClientRects()` is stubbed per element: this is
+ * about the decision the runner makes given a box, not about the box itself.
+ */
+function tour() {
+    const component = onboardingTour();
+
+    component.$nextTick = (callback) => (callback ? callback() : Promise.resolve());
+    component.$refs = {};
+
+    return component;
+}
+
+/**
+ * Give an element a box (or take it away, the way `display: none` does).
+ */
+function withBox(element, box = { top: 10, left: 10, width: 200, height: 40 }) {
+    element.getClientRects = () => (box ? [box] : []);
+    element.getBoundingClientRect = () => ({
+        top: box?.top ?? 0,
+        left: box?.left ?? 0,
+        width: box?.width ?? 0,
+        height: box?.height ?? 0,
+        bottom: (box?.top ?? 0) + (box?.height ?? 0),
+        right: (box?.left ?? 0) + (box?.width ?? 0),
+    });
+
+    return element;
+}
+
+describe('find()', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '';
+    });
+
+    it('finds an element the subject can see', () => {
+        const field = withBox(document.createElement('input'));
+        field.id = 'name';
+        document.body.append(field);
+
+        expect(tour().find('#name')).toBe(field);
+    });
+
+    it('does not find a field on a wizard step the subject has not reached', () => {
+        // This is exactly Filament's markup: the pane stays in the DOM, hidden.
+        const pane = document.createElement('div');
+        pane.style.visibility = 'hidden';
+
+        const field = withBox(document.createElement('input'), { top: 0, left: 0, width: 0, height: 0 });
+        field.id = 'name';
+
+        pane.append(field);
+        document.body.append(pane);
+
+        // visibility is inherited, which is what makes the field invisible too.
+        vi.spyOn(window, 'getComputedStyle').mockReturnValue({ visibility: 'hidden', display: 'block' });
+
+        expect(tour().find('#name')).toBeNull();
+
+        vi.restoreAllMocks();
+    });
+
+    it('does not find an element inside a collapsed section', () => {
+        const field = withBox(document.createElement('input'), null); // display: none has no boxes
+        field.id = 'name';
+        document.body.append(field);
+
+        expect(tour().find('#name')).toBeNull();
+    });
+
+    it('walks past a hidden match to a visible one', () => {
+        const hidden = withBox(document.createElement('button'), null);
+        const visible = withBox(document.createElement('button'));
+
+        hidden.className = 'target';
+        visible.className = 'target';
+
+        document.body.append(hidden, visible);
+
+        expect(tour().find('.target')).toBe(visible);
+    });
+
+    it('carries on when the selector is nonsense rather than throwing', () => {
+        expect(tour().find('[[[not-a-selector')).toBeNull();
+    });
+});
+
+describe('the tour and the application walking together', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '';
+    });
+
+    it('clicks the control that carries the app to a stop it cannot see', () => {
+        const next = withBox(document.createElement('button'));
+        next.id = 'next-step';
+        document.body.append(next);
+
+        const clicked = vi.fn();
+        next.addEventListener('click', clicked);
+
+        const component = tour();
+
+        component.active = true;
+        component.stepKey = 'a-tour';
+        component.steps = [
+            { selector: '#on-page', title: 'Here' },
+            { selector: '#not-yet', advance: '#next-step', title: 'Over there' },
+        ];
+        component.index = 0;
+        component.render = vi.fn();
+
+        component.next();
+
+        // The field of stop 2 is nowhere to be seen, so the tour presses the
+        // wizard's own next button instead of pointing at nothing.
+        expect(clicked).toHaveBeenCalledOnce();
+    });
+
+    it('does not press anything when the element is already on screen', () => {
+        const field = withBox(document.createElement('input'));
+        field.id = 'already-here';
+
+        const next = withBox(document.createElement('button'));
+        next.id = 'next-step';
+
+        document.body.append(field, next);
+
+        const clicked = vi.fn();
+        next.addEventListener('click', clicked);
+
+        const component = tour();
+
+        component.active = true;
+        component.steps = [
+            { selector: '#first', title: 'One' },
+            { selector: '#already-here', advance: '#next-step', title: 'Two' },
+        ];
+        component.index = 0;
+        component.render = vi.fn();
+
+        component.next();
+
+        expect(clicked).not.toHaveBeenCalled();
+    });
+
+    it('refuses to move on while it is waiting for the form', () => {
+        const component = tour();
+
+        component.active = true;
+        component.waiting = true;
+        component.steps = [{ title: 'One' }, { title: 'Two' }];
+        component.index = 0;
+        component.render = vi.fn();
+
+        component.next();
+
+        // The way forward is the form, not the tour: paging through would walk
+        // the popover across stops of nothing.
+        expect(component.index).toBe(0);
+        expect(component.render).not.toHaveBeenCalled();
+    });
+
+    it('follows the subject when they move the form past the current stop', () => {
+        const ahead = withBox(document.createElement('input'));
+        ahead.id = 'on-step-three';
+        document.body.append(ahead);
+
+        const component = tour();
+
+        component.active = true;
+        component.steps = [
+            { selector: '#on-step-two' },
+            { selector: '#on-step-three' },
+        ];
+        component.index = 0;
+
+        expect(component.firstStopOnScreenAhead()).toBe(1);
+    });
+
+    it('does not follow a stop that lives on another page', () => {
+        const component = tour();
+
+        component.active = true;
+        component.steps = [
+            { selector: '#missing' },
+            { selector: '#elsewhere', url: '/other/page' },
+        ];
+        component.index = 0;
+
+        expect(component.firstStopOnScreenAhead()).toBeNull();
+    });
+});
+
+describe('what to draw the spotlight around', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '';
+    });
+
+    it('spotlights a visible field as it is, not its caption', () => {
+        const field = withBox(document.createElement('input'));
+
+        expect(tour().resolveTarget(field)).toBe(field);
+    });
+
+    it('spotlights the whole row of a toggle whose real input is hidden away', () => {
+        // A styled toggle keeps its checkbox sr-only behind the control that is
+        // actually on the screen — a 1px box next to the thing it means.
+        const label = withBox(document.createElement('label'), { top: 0, left: 0, width: 400, height: 56 });
+        const checkbox = withBox(document.createElement('input'), { top: 0, left: 0, width: 1, height: 1 });
+
+        checkbox.type = 'checkbox';
+        label.append(checkbox);
+        document.body.append(label);
+
+        expect(tour().resolveTarget(checkbox)).toBe(label);
+    });
+});
