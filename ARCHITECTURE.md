@@ -239,6 +239,17 @@ Cross-page state lives in `sessionStorage['filament-onboarding.tour']` as `{key,
 
 **`path` is not decoration.** It is the page the tour is parked on. `resume()` compares it with `window.location.pathname` and *ends the tour* when they differ. Without it, a tour survives the browser's back button and the sidebar: the runner comes up on a page where the stop's element will never exist, the popover centres itself, and the subject gets the profile tour floating over the server list. Every write to storage sets `path` — `persist()` with the current page, `navigateIfNeeded()` with the page it is sending the subject to.
 
+### The load-bearing question: is the element *on screen*?
+
+Everything the runner does hangs off `find()`. And the naive answer — `document.querySelector` — is **wrong against Filament itself**:
+
+- A **wizard** renders *every* step and hides the inactive ones with `visibility: hidden; height: 0` (see `.fi-sc-wizard-step:not(.fi-active)` in Filament's theme). The fields of step 3 are in the DOM while the subject is on step 1.
+- A **collapsed section** is `display: none`. Same story.
+
+A selector matches both. Trust it and the whole design inverts: the spotlight is drawn around an invisible field (a 16px box in the corner of the screen, because the rect is degenerate), `waiting` never engages, and `advance` never fires — it only clicks when the element is *missing*, and the runner believed it was there.
+
+So `find()` filters every match through `isOnScreen()`: no boxes (`getClientRects().length === 0`, which is what `display: none` gives you), `visibility: hidden` (inherited, which is what catches the wizard pane), or `display: none` means **not found**. And `observeFor()` watches `attributes` as well as `childList`, because a wizard step is revealed by flipping a *class* and a section by flipping a *style* — neither inserts a node, and an observer watching only `childList` waits forever for something that already happened.
+
 ### The three things a naive runner gets wrong
 
 **1. Measuring before the scroll lands.** `element.scrollIntoView({behavior: 'smooth'})` is *asynchronous*. Reading `getBoundingClientRect()` on the next line gives the position the element had **before** the page moved, so the spotlight is drawn around whatever used to be there — the field above, typically. `scrollIntoView()` here returns a promise that resolves through `whenStill()`: the rectangle is polled per frame until it repeats twice, or `SCROLL_TIMEOUT` runs out. Never measure without awaiting it.
@@ -248,6 +259,15 @@ Cross-page state lives in `sessionStorage['filament-onboarding.tour']` as `{key,
 **3. Pointing at an input nobody can see.** A styled toggle keeps its real `<input>` `sr-only` behind the control the subject looks at — spotlighting it draws a dot next to the thing it means. `resolveTarget()` walks from the matched element to its `<label>` (the whole row, for a toggle), and failing that up the tree until an ancestor has real size. **The guard on that walk matters as much as the walk**: a *visible* input must be returned as-is, because climbing from it finds its caption label — the sliver of text above the field — and for one release the spotlight sat on the word "Name" instead of the name field. Substantial element first, climbing only for the hidden ones.
 
 **3b. Rendering twice at once.** The runner's own smooth scroll fires scroll events, the scroll listener fires renders, and two async renders interleave — the *older* one finishes last and writes a stale rectangle. Every render takes a `renderToken` and checks it after each await; only the newest may commit. The scroll listener is also rAF-debounced.
+
+### What the scroll listener may do (and what it may not)
+
+Scroll and resize call `measure()` — re-measure the spotlight where the element is now, and nothing else. They must **never** call `render()`:
+
+- `render()` scrolls the element into view, and "in view" means the *whole* element. Nudging the page one pixel snapped the subject back to centre: they were jailed to the spotlight, unable to read around it.
+- `render()` calls `report()`, which is a Livewire round-trip, a database write, and a re-render of every surface showing onboarding. Driven by scroll, that is ~60 of those *per second*. `report()` is now also gated on the stop actually having changed.
+
+`close()` bumps `renderToken` and clears the pending `waitForElement` polls, so a render already in flight cannot scroll the page under a subject who just dismissed the tour.
 
 ### Tour and application, walking together (`advance` + `firstStopOnScreenAhead()`)
 
@@ -371,7 +391,11 @@ Three guards are worth keeping and copying into any host app:
 2. **Every tour stop still finds its element — in every locale.** Renders the real page and asserts the selector matches. This is what catches the translated-section-id trap and a renamed Livewire component.
 3. **The README's promises hold** (`PackageTest`): the five publish tags, the command, the assets, the Livewire components and every documented config key exist.
 
-What tests cannot catch here: anything that only exists in a browser. The player bugs of §8, the Livewire morph, autoplay policy — all were found by driving Chrome. When touching the runner or the player, **open a browser**.
+- **`tests/js`** (vitest + jsdom) — the runner. Its core question ("is this element on screen?") is answered against stubbed boxes, because jsdom does no layout, and that is exactly the decision that was wrong for a release: a wizard field the subject cannot see was treated as found. `npm test`, and CI runs it.
+
+What tests still cannot catch: anything that only exists in a real browser. The player bugs of §8, the Livewire morph, autoplay policy — all were found by driving Chrome. When touching the runner or the player, **open a browser too**.
+
+`resources/dist` is committed, and CI fails if it is stale — Filament serves the built files and versions them by content hash, so forgetting `npm run build` ships old behaviour behind a perfectly convincing cache-busting URL.
 
 ---
 
@@ -436,4 +460,9 @@ Onboarding::flushCache();                     // after editing definitions by ha
 10. Tour stops are **not hand-numbered** in their titles. A guarded stop is removed for accounts that cannot see it, and the numbers would skip.
 11. The tour's rectangle is read **after** the scroll settles, and the popover is placed from **measured** size. Both are async; both were bugs.
 12. The parked tour remembers its page. Resume anywhere else **ends** the tour.
-13. A missing condition, a missing element, a missing route: **degrade, never throw**. Onboarding is not the product; it must never take the panel down with it.
+13. **Every browser-reachable method re-asks what the interface asked.** The engine is the trusted API and questions nothing; the surfaces question everything (`Concerns/InteractsWithOnboarding`). A public method on a Livewire component is a network endpoint.
+14. **A condition that throws answers "no".** The launcher is in the layout of every page; an exception here is a 500 on the whole product.
+15. **The scope is captured at mount, `#[Locked]`, never re-resolved on an update.** A lost tenant does not throw — it writes to the wrong row, silently.
+16. **The absence of a scope is an empty string, not a NULL.** A NULL in a unique index enforces nothing.
+17. **A hidden element is not a found element.** Filament keeps hidden wizard steps in the DOM.
+18. A missing condition, a missing element, a missing route: **degrade, never throw**. Onboarding is not the product; it must never take the panel down with it.

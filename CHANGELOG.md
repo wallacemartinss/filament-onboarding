@@ -36,6 +36,18 @@ Database-driven onboarding for Filament v5.
   "Advance with" selector lets a stop bring the application to it. A tour parked on a page
   ends when the user goes somewhere else, instead of floating over the wrong screen.
 
+### Safety
+
+- Every browser-reachable method re-checks what the interface checked: a step is only
+  ticked off by hand if it *can* be, only finished by a tour if it *has* one, and only
+  ever within the panel and the visibility the subject actually has.
+- A condition that throws answers "no" and is reported, rather than 500-ing every page of
+  the panel (the checklist lives in the layout).
+- The tenant a surface was rendered for is captured at mount and locked, so progress
+  cannot land in another tenant's row — or in no tenant's row — on a later request.
+- Progress rows are genuinely unique per subject and scope, including when there is no
+  scope at all.
+
 ### Media
 
 - Images and videos on a step: upload (S3, R2, local), direct URL, YouTube, Vimeo, or any

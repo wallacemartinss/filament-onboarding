@@ -56,3 +56,32 @@ jobs:
 
       - name: Check code style
         run: vendor/bin/pint --test
+
+  javascript:
+    runs-on: ubuntu-latest
+
+    name: JavaScript
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      # The built assets are committed — Filament serves them from resources/dist
+      # and versions them by content hash, so a stale dist ships stale behaviour
+      # with a perfectly convincing cache-busting URL. Nothing else would catch it.
+      - name: The build is not stale
+        run: |
+          npm run build
+          git diff --exit-code -- resources/dist \
+            || (echo "::error::resources/dist is out of date — run 'npm run build' and commit it." && exit 1)
