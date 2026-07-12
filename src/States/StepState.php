@@ -136,6 +136,30 @@ class StepState
     }
 
     /**
+     * Whether the subject can go through this step again without undoing it —
+     * watch the tour once more, replay the video, open the page.
+     *
+     * Finishing a step is not the same as being done with it: people come back to
+     * the two-factor explanation months later.
+     */
+    public function canReplay(): bool
+    {
+        return $this->isResolved() && ($this->hasTour() || $this->hasVideo() || $this->hasImage() || filled($this->url()));
+    }
+
+    /**
+     * Whether the subject can take a completed step back.
+     *
+     * A step that answers to a condition cannot: unticking it would be undone by
+     * the next render, because the thing it asks about is still true.
+     */
+    public function canUndo(): bool
+    {
+        return $this->isResolved()
+            && $this->step->completion_mode !== CompletionMode::Condition;
+    }
+
+    /**
      * @return array{type: string, source: string, url: string|null, provider: string|null, video_id: string|null, caption: string|null, position: string, threshold: int, trackable: bool}|null
      */
     public function media(): ?array

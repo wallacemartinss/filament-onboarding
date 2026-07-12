@@ -738,6 +738,14 @@ button.fio-step-marker:hover {
     color: var(--fio-text-muted);
 }
 
+.fio-tile-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+    margin-inline-start: auto;
+}
+
 .fio-empty {
     padding: 3rem 1.5rem;
     text-align: center;

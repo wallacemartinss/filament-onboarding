@@ -209,7 +209,7 @@
                             @endif
 
                             <footer class="fio-tile-footer">
-                                @if ($step->isCompleted())
+                                @if ($step->isResolved())
                                     <span class="fio-tile-meta">
                                         @if ($step->completedAt())
                                             {{ __('filament-onboarding::onboarding.page.completed_at', [
@@ -223,11 +223,35 @@
                                         @endif
                                     </span>
 
-                                    @if ($step->step->completion_mode->isSelfServed())
-                                        <button type="button" class="fio-button fio-button--ghost" wire:click="undoStep(@js($step->key()))">
-                                            {{ __('filament-onboarding::onboarding.page.undo') }}
-                                        </button>
-                                    @endif
+                                    {{-- Finishing a step is not the same as being done with
+                                         it: the tour can be watched again, the video replayed,
+                                         the page revisited — none of which undoes anything. --}}
+                                    <div class="fio-tile-actions">
+                                        @if ($step->canReplay())
+                                            @if ($step->hasTour())
+                                                <button type="button" class="fio-button fio-button--ghost" wire:click="startTour(@js($step->key()))">
+                                                    <x-filament-onboarding::icons.sparkles />
+                                                    {{ __('filament-onboarding::onboarding.page.replay_tour') }}
+                                                </button>
+                                            @elseif ($step->hasVideo())
+                                                <button type="button" class="fio-button fio-button--ghost" wire:click="openMedia(@js($step->key()))">
+                                                    <x-filament-onboarding::icons.play />
+                                                    {{ __('filament-onboarding::onboarding.page.replay_video') }}
+                                                </button>
+                                            @elseif ($step->url())
+                                                <a href="{{ $step->url() }}" class="fio-button fio-button--ghost">
+                                                    {{ __('filament-onboarding::onboarding.page.open_again') }}
+                                                    <x-filament-onboarding::icons.arrow-right />
+                                                </a>
+                                            @endif
+                                        @endif
+
+                                        @if ($step->canUndo())
+                                            <button type="button" class="fio-button fio-button--ghost" wire:click="undoStep(@js($step->key()))">
+                                                {{ __('filament-onboarding::onboarding.page.undo') }}
+                                            </button>
+                                        @endif
+                                    </div>
                                 @else
                                     @if ($step->hasVideo())
                                         <button type="button" class="fio-button fio-button--primary" wire:click="openMedia(@js($step->key()))">
