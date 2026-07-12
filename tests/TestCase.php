@@ -14,10 +14,12 @@ use Filament\Support\SupportServiceProvider;
 use Filament\Tables\TablesServiceProvider;
 use Filament\Widgets\WidgetsServiceProvider;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\{Schema, View};
+use Illuminate\Support\ViewErrorBag;
 use Livewire\LivewireServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 use Wallacemartinss\FilamentOnboarding\FilamentOnboardingServiceProvider;
+use Wallacemartinss\FilamentOnboarding\Tests\Fixtures\TestPanelProvider;
 
 abstract class TestCase extends Orchestra
 {
@@ -27,6 +29,12 @@ abstract class TestCase extends Orchestra
 
         $this->runPackageMigrations();
         $this->createSubjectsTable();
+
+        // Livewire reads the shared error bag while rendering. In an application
+        // the session middleware shares it; in a bare test kernel nobody does,
+        // and the first component render dies inside the Blade compiler.
+        View::share('errors', new ViewErrorBag());
+
     }
 
     protected function getPackageProviders($app): array
@@ -43,12 +51,16 @@ abstract class TestCase extends Orchestra
             WidgetsServiceProvider::class,
             FilamentServiceProvider::class,
             FilamentOnboardingServiceProvider::class,
+            TestPanelProvider::class,
         ];
     }
 
     protected function getEnvironmentSetUp($app): void
     {
         config()->set('database.default', 'testing');
+        // Livewire hydrates an error bag off the session; without a driver the
+        // first component render dies inside the Blade compiler.
+        config()->set('session.driver', 'array');
         config()->set('filament-onboarding.cache.enabled', false);
         config()->set('filament-onboarding.locales', ['en', 'pt_BR', 'es']);
     }

@@ -21,23 +21,66 @@ trait InteractsWithOnboarding
      */
     public ?string $flowKey = null;
 
+    /**
+     * Everything below this line is reachable from the browser.
+     *
+     * These are public methods on a Livewire component, which means they are
+     * network endpoints: any authenticated user can call any of them with any
+     * key they like. The engine underneath (SubjectOnboarding) is the trusted
+     * API the application drives, and it deliberately asks no questions — so
+     * asking them is this layer's job.
+     *
+     * Two questions, on every write:
+     *
+     *   1. Is this step even the subject's to touch? Resolved through
+     *      findStepState(), which sees only the current panel and only what the
+     *      subject's visibility conditions allow.
+     *   2. Does this step finish this way? A step that answers to a condition
+     *      cannot be ticked off by hand, and a video is not watched by saying so.
+     *
+     * Without these, a crafted `completeStep('has-two-factor')` marks two-factor
+     * as done forever — the checklist lies, and any application logic hanging off
+     * StepCompleted fires for work nobody did.
+     */
     public function completeStep(string $stepKey): void
     {
-        $this->onboarding()?->complete($stepKey);
+        $step = $this->findStepState($stepKey);
+
+        // Only a step the subject may tick off themselves. Condition, Visit,
+        // Video and Programmatic steps are settled by the thing they name.
+        if (!$step instanceof StepState || !$step->canSelfComplete()) {
+            return;
+        }
+
+        $this->onboarding()?->complete($step->step);
 
         $this->afterOnboardingChanged();
     }
 
     public function skipStep(string $stepKey): void
     {
-        $this->onboarding()?->skip($stepKey);
+        $step = $this->findStepState($stepKey);
+
+        if (!$step instanceof StepState || !$step->canSkip()) {
+            return;
+        }
+
+        $this->onboarding()?->skip($step->step);
 
         $this->afterOnboardingChanged();
     }
 
     public function undoStep(string $stepKey): void
     {
-        $this->onboarding()?->uncomplete($stepKey);
+        $step = $this->findStepState($stepKey);
+
+        // A condition step cannot be taken back: the next render would put it
+        // straight back, because the thing it asks about is still true.
+        if (!$step instanceof StepState || !$step->canUndo()) {
+            return;
+        }
+
+        $this->onboarding()?->uncomplete($step->step);
 
         $this->afterOnboardingChanged();
     }
@@ -107,7 +150,7 @@ trait InteractsWithOnboarding
             return;
         }
 
-        $this->onboarding()?->markSeen($stepKey);
+        $this->onboarding()?->markSeen($step->step);
 
         $this->dispatch('onboarding-tour-start', key: $stepKey, steps: $step->tour());
     }
@@ -118,7 +161,13 @@ trait InteractsWithOnboarding
      */
     public function tourProgress(string $key, int $index, int $total): void
     {
-        $this->onboarding()?->recordTourProgress($key, $index, $total);
+        $step = $this->findStepState($key);
+
+        if (!$step instanceof StepState || !$step->hasTour()) {
+            return;
+        }
+
+        $this->onboarding()?->recordTourProgress($step->step, $index, $total);
 
         $this->afterOnboardingChanged();
     }
@@ -151,7 +200,17 @@ trait InteractsWithOnboarding
      */
     public function videoProgress(string $key, float $seconds, float $duration): void
     {
-        $this->onboarding()?->recordVideoProgress($key, $seconds, $duration);
+        $step = $this->findStepState($key);
+
+        // Watch time is only meaningful for a step that carries a video. What it
+        // cannot do is prove the video was watched — the browser is the one
+        // counting, and the browser belongs to the subject. A step whose
+        // completion actually matters should hang off a condition, not a video.
+        if (!$step instanceof StepState || !$step->hasVideo()) {
+            return;
+        }
+
+        $this->onboarding()?->recordVideoProgress($step->step, $seconds, $duration);
 
         $this->afterOnboardingChanged();
     }
@@ -161,7 +220,14 @@ trait InteractsWithOnboarding
      */
     public function finishTour(string $stepKey): void
     {
-        $this->onboarding()?->complete($stepKey, ['completed_by' => 'tour']);
+        $step = $this->findStepState($stepKey);
+
+        // Only a step that actually has a tour finishes by finishing one.
+        if (!$step instanceof StepState || !$step->hasTour()) {
+            return;
+        }
+
+        $this->onboarding()?->complete($step->step, ['completed_by' => 'tour']);
 
         $this->afterOnboardingChanged();
     }

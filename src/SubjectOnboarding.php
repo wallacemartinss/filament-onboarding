@@ -347,6 +347,12 @@ class SubjectOnboarding
                     continue;
                 }
 
+                // A step the subject cannot see is not a step they can finish,
+                // even by walking onto the page it names.
+                if (!$this->isVisible($step->visibility_condition)) {
+                    continue;
+                }
+
                 if ($this->isCompleted($step)) {
                     continue;
                 }
