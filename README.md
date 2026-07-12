@@ -127,6 +127,26 @@ class HasServerCondition implements OnboardingCondition, HasConditionLabel
 
 Conditions are evaluated only for pending steps, and the result is persisted the first time it passes — so an established account opens the checklist and finds its history already reflected there. A condition that is no longer registered never completes a step: it goes quiet instead of throwing on every request.
 
+### Visibility: not every journey is for everybody
+
+The same conditions decide who a flow, a step or a single tour stop is *for*. Pick one under **Visibility** and what it guards only exists for subjects the condition passes for.
+
+This is how you gate onboarding on a plan. If Docker is not part of the free plan, the panel does not render the Docker card — and a tour stop pointing at it would spotlight empty space and advertise something the account cannot buy into. Guard the stop with `has_docker_feature` and the subject is walked from the traditional mode straight to the next stop, as if the Docker stop had never been written.
+
+```php
+Onboarding::condition('has_docker_feature', fn (User $user, ?Tenant $tenant): bool =>
+    $tenant?->hasFeature('docker_services') ?? false
+);
+```
+
+Three things follow from it, and they are deliberate:
+
+- A hidden step is **not pending** — it is left out of the count, so the percentage is of the journey the subject can actually walk, and they can reach 100% without it.
+- A condition that is **not registered hides** what it guards. If the application cannot answer "is Docker on this plan?", teaching Docker is the wrong default.
+- A flow whose every step is hidden **is not shown at all**, rather than as a card at 0% that can never be finished.
+
+Visibility and completion are different questions asked of the same registry: `has_docker_feature` decides *whether you see the step*, `has_server` decides *whether the step is done*. A step can use both.
+
 ---
 
 ## Panel discovery

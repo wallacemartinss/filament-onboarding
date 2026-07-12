@@ -7,14 +7,14 @@ namespace Wallacemartinss\FilamentOnboarding\Resources\OnboardingFlows\RelationM
 use Filament\Actions\{BulkActionGroup, CreateAction, DeleteAction, DeleteBulkAction, EditAction};
 use Filament\Forms\Components\{FileUpload, Hidden, Repeater, Select, TextInput, Textarea, Toggle, ToggleButtons};
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Schemas\Components\{Grid, Section};
-use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\{Grid, Section, Tabs};
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\{Get, Set};
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\{FontWeight, Width};
 use Filament\Tables\Columns\{IconColumn, TextColumn};
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Wallacemartinss\FilamentOnboarding\Enums\{CompletionMode, MediaSource, MediaType, ModalPosition, StepType};
 use Wallacemartinss\FilamentOnboarding\Facades\Onboarding;
@@ -30,7 +30,7 @@ class StepsRelationManager extends RelationManager
 {
     protected static string $relationship = 'steps';
 
-    public static function getTitle(\Illuminate\Database\Eloquent\Model $ownerRecord, string $pageClass): string
+    public static function getTitle(Model $ownerRecord, string $pageClass): string
     {
         return __('filament-onboarding::onboarding.resource.steps.title');
     }
@@ -185,6 +185,15 @@ class StepsRelationManager extends RelationManager
             Section::make(__('filament-onboarding::onboarding.resource.sections.rules'))
                 ->icon('heroicon-o-adjustments-horizontal')
                 ->schema([
+                    Select::make('visibility_condition')
+                        ->label(__('filament-onboarding::onboarding.resource.fields.visibility'))
+                        ->helperText(__('filament-onboarding::onboarding.resource.fields.visibility_helper'))
+                        ->options(fn (): array => Onboarding::conditions()->options())
+                        ->placeholder(__('filament-onboarding::onboarding.resource.fields.visibility_everyone'))
+                        ->searchable()
+                        ->native(false)
+                        ->columnSpanFull(),
+
                     Grid::make(3)->schema([
                         Toggle::make('is_required')
                             ->label(__('filament-onboarding::onboarding.resource.fields.is_required'))
@@ -364,6 +373,14 @@ class StepsRelationManager extends RelationManager
                             ->selectablePlaceholder(false)
                             ->native(false),
                     ]),
+
+                    Select::make('condition')
+                        ->label(__('filament-onboarding::onboarding.resource.tour.visibility'))
+                        ->helperText(__('filament-onboarding::onboarding.resource.tour.visibility_helper'))
+                        ->options(fn (): array => Onboarding::conditions()->options())
+                        ->placeholder(__('filament-onboarding::onboarding.resource.fields.visibility_everyone'))
+                        ->searchable()
+                        ->native(false),
 
                     Tabs::make('tour_translations')
                         ->contained(false)

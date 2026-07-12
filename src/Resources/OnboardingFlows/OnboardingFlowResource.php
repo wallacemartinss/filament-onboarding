@@ -7,15 +7,16 @@ namespace Wallacemartinss\FilamentOnboarding\Resources\OnboardingFlows;
 use Filament\Actions\{BulkActionGroup, DeleteAction, DeleteBulkAction, EditAction};
 use Filament\Facades\Filament;
 use Filament\Forms\Components\{Select, TextInput, Textarea, Toggle};
+use Filament\Panel;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\{Grid, Group, Section};
-use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\{Grid, Group, Section, Tabs};
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\{IconColumn, TextColumn};
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Str;
 use Wallacemartinss\FilamentOnboarding\Facades\Onboarding;
 use Wallacemartinss\FilamentOnboarding\FilamentOnboardingPlugin;
 use Wallacemartinss\FilamentOnboarding\Models\OnboardingFlow;
@@ -67,7 +68,7 @@ class OnboardingFlowResource extends Resource
         return __('filament-onboarding::onboarding.resource.plural');
     }
 
-    public static function getSlug(?\Filament\Panel $panel = null): string
+    public static function getSlug(?Panel $panel = null): string
     {
         return 'onboarding-flows';
     }
@@ -122,6 +123,14 @@ class OnboardingFlowResource extends Resource
                                             ->alphaDash()
                                             ->unique(ignoreRecord: true)
                                             ->maxLength(255),
+
+                                        Select::make('visibility_condition')
+                                            ->label(__('filament-onboarding::onboarding.resource.fields.visibility'))
+                                            ->helperText(__('filament-onboarding::onboarding.resource.fields.visibility_helper'))
+                                            ->options(fn (): array => Onboarding::conditions()->options())
+                                            ->placeholder(__('filament-onboarding::onboarding.resource.fields.visibility_everyone'))
+                                            ->searchable()
+                                            ->native(false),
 
                                         Select::make('panel_id')
                                             ->label(__('filament-onboarding::onboarding.resource.fields.panel'))
@@ -262,6 +271,6 @@ class OnboardingFlowResource extends Resource
 
     protected static function localeLabel(string $locale): string
     {
-        return \Illuminate\Support\Str::upper(str_replace('_', '-', $locale));
+        return Str::upper(str_replace('_', '-', $locale));
     }
 }

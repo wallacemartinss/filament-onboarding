@@ -53,9 +53,37 @@ abstract class TestCase extends Orchestra
         config()->set('filament-onboarding.locales', ['en', 'pt_BR', 'es']);
     }
 
+    /**
+     * The migrations, in the order they must run.
+     *
+     * Alphabetical order would run the `add_*` migrations before the tables they
+     * alter exist, so the order is declared rather than discovered — and guarded
+     * below, because a migration that nobody added here would leave the whole
+     * suite testing a schema the host application does not have.
+     */
+    private const MIGRATIONS = [
+        'create_onboarding_tables',
+        'add_media_to_onboarding_steps',
+        'add_visibility_to_onboarding',
+    ];
+
     private function runPackageMigrations(): void
     {
-        foreach (['create_onboarding_tables', 'add_media_to_onboarding_steps'] as $name) {
+        $onDisk = collect(glob(__DIR__ . '/../database/migrations/*.php.stub'))
+            ->map(fn (string $path): string => basename($path, '.php.stub'))
+            ->sort()
+            ->values()
+            ->all();
+
+        $declared = collect(self::MIGRATIONS)->sort()->values()->all();
+
+        $this->assertSame(
+            $onDisk,
+            $declared,
+            'A migration on disk is not declared in TestCase::MIGRATIONS — add it, in the order it must run.'
+        );
+
+        foreach (self::MIGRATIONS as $name) {
             $migration = include __DIR__ . "/../database/migrations/{$name}.php.stub";
 
             $migration->up();

@@ -149,6 +149,7 @@ class OnboardingStep extends Model
                 'body'      => TranslatableText::resolve($tourStep['body'] ?? null),
                 'placement' => $tourStep['placement'] ?? 'auto',
                 'url'       => $this->resolveTourUrl($tourStep, $parameters),
+                'condition' => $tourStep['condition'] ?? null,
             ])
             ->all();
     }

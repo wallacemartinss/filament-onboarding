@@ -205,6 +205,9 @@ return [
             'cta_route_helper'      => 'Uma página do painel. Preferível à URL: sobrevive à renomeação do slug.',
             'is_required'           => 'Obrigatória',
             'is_required_helper'    => 'Etapas opcionais podem ser puladas.',
+            'visibility'            => 'Visível quando',
+            'visibility_helper'     => 'Só quem passa nesta condição vê. Use para restringir uma etapa a um plano ou a um recurso.',
+            'visibility_everyone'   => 'Todos',
 
             'media_type'             => 'Mídia',
             'media_source'           => 'Origem',
@@ -235,11 +238,13 @@ return [
                 'top'    => 'Acima',
                 'bottom' => 'Abaixo',
             ],
-            'route'        => 'Página',
-            'route_helper' => 'Apenas quando a parada fica em outra página. O tour navega até lá e continua.',
-            'url'          => 'URL personalizada',
-            'url_helper'   => 'Só quando a página não estiver na lista.',
-            'body'         => 'Texto',
+            'route'             => 'Página',
+            'route_helper'      => 'Apenas quando a parada fica em outra página. O tour navega até lá e continua.',
+            'url'               => 'URL personalizada',
+            'url_helper'        => 'Só quando a página não estiver na lista.',
+            'body'              => 'Texto',
+            'visibility'        => 'Visível quando',
+            'visibility_helper' => 'Vazio: a parada aparece para todos. Uma parada que aponta para um recurso fora do plano não destacaria nada.',
         ],
 
         'targets' => [

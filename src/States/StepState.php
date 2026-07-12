@@ -4,6 +4,7 @@ declare(strict_types = 1);
 
 namespace Wallacemartinss\FilamentOnboarding\States;
 
+use Illuminate\Support\Carbon;
 use Wallacemartinss\FilamentOnboarding\Enums\{CompletionMode, MediaType, StepType};
 use Wallacemartinss\FilamentOnboarding\Models\{OnboardingStep, OnboardingStepProgress};
 
@@ -14,11 +15,13 @@ class StepState
 {
     /**
      * @param  array<string, mixed>  $urlParameters
+     * @param  (\Closure(?string): bool)|null  $visibilityResolver  Answers whether a guarded tour stop is for this subject.
      */
     public function __construct(
         public readonly OnboardingStep $step,
         public readonly ?OnboardingStepProgress $progress = null,
         public readonly array $urlParameters = [],
+        public readonly ?\Closure $visibilityResolver = null,
     ) {
     }
 
@@ -58,11 +61,26 @@ class StepState
     }
 
     /**
+     * The tour, with any stop the subject is not entitled to left out.
+     *
+     * A stop that points at a feature the plan does not include would spotlight
+     * a control that is not on the screen — so it is not handed to the browser
+     * at all, and the tour reads as if it never existed.
+     *
      * @return array<int, array<string, string|null>>
      */
     public function tour(): array
     {
-        return $this->step->resolveTourSteps($this->urlParameters);
+        $stops = $this->step->resolveTourSteps($this->urlParameters);
+
+        if ($this->visibilityResolver === null) {
+            return $stops;
+        }
+
+        return array_values(array_filter(
+            $stops,
+            fn (array $stop): bool => ($this->visibilityResolver)($stop['condition'] ?? null),
+        ));
     }
 
     public function hasTour(): bool
@@ -130,7 +148,7 @@ class StepState
         return $this->hasTour() || filled($this->url());
     }
 
-    public function completedAt(): ?\Illuminate\Support\Carbon
+    public function completedAt(): ?Carbon
     {
         return $this->progress?->completed_at;
     }

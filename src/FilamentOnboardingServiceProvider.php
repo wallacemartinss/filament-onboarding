@@ -5,6 +5,7 @@ declare(strict_types = 1);
 namespace Wallacemartinss\FilamentOnboarding;
 
 use Filament\Facades\Filament;
+use Filament\Support\Assets\Asset;
 use Filament\Support\Facades\FilamentAsset;
 use Illuminate\Database\Eloquent\Model;
 use Livewire\Livewire;
@@ -29,6 +30,7 @@ class FilamentOnboardingServiceProvider extends PackageServiceProvider
             ->hasMigrations([
                 'create_onboarding_tables',
                 'add_media_to_onboarding_steps',
+                'add_visibility_to_onboarding',
             ])
             ->hasCommand(ResetOnboardingCommand::class);
     }
@@ -61,7 +63,7 @@ class FilamentOnboardingServiceProvider extends PackageServiceProvider
      * without forking the package, or turn styles off entirely and dress the
      * `.fio-*` classes from your panel theme.
      *
-     * @return array<int, \Filament\Support\Assets\Asset>
+     * @return array<int, Asset>
      */
     private function assets(): array
     {

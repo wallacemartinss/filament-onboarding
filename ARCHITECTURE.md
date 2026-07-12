@@ -78,10 +78,12 @@ resources/
 Four tables. Names configurable (`config('filament-onboarding.tables')`), models swappable (`config('...models')`).
 
 ### `onboarding_flows`
-`key` (unique), `panel_id` (nullable = every panel), `title`/`description` (JSON, one entry per locale), `icon`, `color`, `is_active`, `is_dismissible`, `sort_order`.
+`key` (unique), `panel_id` (nullable = every panel), `title`/`description` (JSON, one entry per locale), `icon`, `color`, `is_active`, `is_dismissible`, `sort_order`, `visibility_condition`.
 
 ### `onboarding_steps`
-`flow_id`, `key` (unique within flow), `type` (task|tour), `title`/`description`/`cta_label`/`media_caption` (JSON per locale), `icon`, `completion_mode`, `condition_key`, `visit_url`, `cta_route`, `cta_url`, `tour_steps` (JSON), media columns (`media_type`, `media_source`, `media_disk`, `media_path`, `media_url`, `modal_position`, `video_completion_threshold`), `is_required`, `is_active`, `sort_order`.
+`flow_id`, `key` (unique within flow), `type` (task|tour), `title`/`description`/`cta_label`/`media_caption` (JSON per locale), `icon`, `completion_mode`, `condition_key`, `visibility_condition`, `visit_url`, `cta_route`, `cta_url`, `tour_steps` (JSON), media columns (`media_type`, `media_source`, `media_disk`, `media_path`, `media_url`, `modal_position`, `video_completion_threshold`), `is_required`, `is_active`, `sort_order`.
+
+Note the two condition columns, which are asked different questions of the same registry: `condition_key` answers *is this step done*, `visibility_condition` answers *is this step for you at all* (section 5b). A single tour stop inside `tour_steps` carries its own optional `condition`, evaluated the same way.
 
 ### `onboarding_flow_progress` / `onboarding_step_progress`
 `subject_type`+`subject_id`, `scope_type`+`scope_id` (nullable), timestamps (`completed_at`, `skipped_at`, `seen_at`, `dismissed_at`, `started_at`), and `meta` (JSON) which carries **tour and video progress**:
@@ -147,6 +149,26 @@ $flow->isFinished();   // NOTHING is pending — optional steps included
 - **`isFinished()` is what the UI must ask** before it says "you are all set", and what `currentFlow()` uses to decide which journey to show.
 
 This exists because of a real bug. The "Connect your cloud provider" journey had one required step (a condition: *has a provider*) and two optional ones (a video and a tour). A tenant that already had providers saw the journey announce itself as **finished** — the launcher replaced the step list with "You are all set" and **buried its own video and tour**, which is precisely what a user opens onboarding for. Having the data is not the same as having seen the tutorial. If you touch the UI's notion of "done", ask `isFinished()`.
+
+---
+
+## 5b. Visibility — who a step is *for*
+
+`SubjectOnboarding::isVisible(?string $conditionKey)` is the single gate, and it is applied in three places:
+
+| Guarded thing | Column | Filtered in |
+|---|---|---|
+| Flow | `onboarding_flows.visibility_condition` | `SubjectOnboarding::flows()` |
+| Step | `onboarding_steps.visibility_condition` | `SubjectOnboarding::state()` |
+| Tour stop | `tour_steps[].condition` | `StepState::tour()`, via the `visibilityResolver` closure the engine hands the state |
+
+The motivating case: a panel renders the Docker and Kubernetes mode cards only for tenants whose plan carries the feature. A tour stop pointing at a card that is not on the screen would spotlight nothing, and would advertise a feature the account cannot use. Guarding the stop with `has_docker_feature` removes it before the tour ever reaches the browser — the runner is never told it existed, so numbering, "3 / 12" and the Next button all stay coherent. (Which is also why the stop titles must not be hand-numbered: on a free account the tour would count 8, 12, 13.)
+
+Three rules, each of which a change here tends to break:
+
+1. **Hidden is not pending.** A hidden step is dropped from `state()` before the steps are counted, so it does not hold the percentage below 100 and does not keep a journey unfinished. `syncConditions()` skips it too — an invisible step is never completed behind the subject's back.
+2. **An unregistered condition hides.** Same posture as completion (a missing condition never completes), inverted to the safe side: if the application cannot answer the question, do not teach the feature.
+3. **A flow with no visible step is not shown at all** (`flows()` drops `total() === 0`), rather than appearing as a card at 0% that can never be finished.
 
 ---
 
@@ -387,4 +409,6 @@ Onboarding::flushCache();                     // after editing definitions by ha
 6. The iframe `src` is computed once and is not reactive.
 7. Morph columns keep their lengths (191/64).
 8. Assets are versioned by content hash.
-9. A missing condition, a missing element, a missing route: **degrade, never throw**. Onboarding is not the product; it must never take the panel down with it.
+9. A hidden step is **not pending** — it is out of the count, not waiting in it. And an unregistered visibility condition **hides**, where an unregistered completion condition never completes: both fail towards not teaching a feature the account may not have.
+10. Tour stops are **not hand-numbered** in their titles. A guarded stop is removed for accounts that cannot see it, and the numbers would skip.
+11. A missing condition, a missing element, a missing route: **degrade, never throw**. Onboarding is not the product; it must never take the panel down with it.

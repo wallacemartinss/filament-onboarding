@@ -4,7 +4,7 @@ declare(strict_types = 1);
 
 namespace Wallacemartinss\FilamentOnboarding;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\{Builder, Model};
 use Illuminate\Support\Collection;
 use Wallacemartinss\FilamentOnboarding\Enums\CompletionMode;
 use Wallacemartinss\FilamentOnboarding\Events\{FlowCompleted, StepCompleted};
@@ -44,17 +44,45 @@ class SubjectOnboarding
     }
 
     /**
+     * The journeys this subject can actually walk.
+     *
+     * A flow whose every step was hidden by a visibility condition is left out
+     * too: it would show up as a card at 0% that can never be finished, which is
+     * worse than not being there at all.
+     *
      * @return Collection<int, FlowState>
      */
     public function flows(?string $panelId = null): Collection
     {
-        $flows = $this->manager->flows($panelId);
+        $flows = $this->manager->flows($panelId)
+            ->filter(fn (OnboardingFlow $flow): bool => $this->isVisible($flow->visibility_condition));
 
         $this->syncConditions($flows, $panelId);
 
         return $flows
             ->map(fn (OnboardingFlow $flow): FlowState => $this->state($flow))
+            ->filter(fn (FlowState $state): bool => $state->total() > 0)
             ->values();
+    }
+
+    /**
+     * Whether something guarded by a visibility condition is for this subject.
+     *
+     * No condition means "for everybody". A condition that is not registered
+     * hides what it guards: if the application cannot answer "is Docker included
+     * in this plan?", teaching Docker is the wrong default.
+     */
+    public function isVisible(?string $conditionKey): bool
+    {
+        if (blank($conditionKey)) {
+            return true;
+        }
+
+        if (!$this->manager->conditions()->has($conditionKey)) {
+            return false;
+        }
+
+        return $this->manager->conditions()->passes($conditionKey, $this->subject, $this->scope);
     }
 
     public function flow(string $key, ?string $panelId = null): ?FlowState
@@ -348,6 +376,10 @@ class SubjectOnboarding
                     continue;
                 }
 
+                if (!$this->isVisible($step->visibility_condition)) {
+                    continue;
+                }
+
                 if ($this->isCompleted($step)) {
                     continue;
                 }
@@ -364,10 +396,14 @@ class SubjectOnboarding
         $parameters = $this->urlParameters();
 
         $steps = $flow->steps
+            ->filter(fn (OnboardingStep $step): bool => $this->isVisible($step->visibility_condition))
             ->map(fn (OnboardingStep $step): StepState => new StepState(
                 step: $step,
                 progress: $this->stepProgress()->get($step->getKey()),
                 urlParameters: $parameters,
+                // A tour stop can be guarded too: a stop pointing at a Docker card
+                // must not exist for a plan without Docker.
+                visibilityResolver: fn (?string $key): bool => $this->isVisible($key),
             ))
             ->values();
 
@@ -469,7 +505,7 @@ class SubjectOnboarding
         return $this->stepProgress ??= $this->stepProgressQuery()->get()->keyBy('step_id');
     }
 
-    protected function flowProgressQuery(): \Illuminate\Database\Eloquent\Builder
+    protected function flowProgressQuery(): Builder
     {
         /** @var class-string<OnboardingFlowProgress> $model */
         $model = $this->manager->flowProgressModel();
@@ -477,7 +513,7 @@ class SubjectOnboarding
         return $model::query()->where($this->subjectKeys());
     }
 
-    protected function stepProgressQuery(): \Illuminate\Database\Eloquent\Builder
+    protected function stepProgressQuery(): Builder
     {
         /** @var class-string<OnboardingStepProgress> $model */
         $model = $this->manager->stepProgressModel();

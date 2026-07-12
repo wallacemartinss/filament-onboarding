@@ -205,6 +205,9 @@ return [
             'cta_route_helper'      => 'Una página del panel. Preferible a la URL: sobrevive al cambio de slug.',
             'is_required'           => 'Obligatorio',
             'is_required_helper'    => 'Los pasos opcionales se pueden omitir.',
+            'visibility'            => 'Visible cuando',
+            'visibility_helper'     => 'Solo lo ve quien pasa esta condición. Úsalo para limitar un paso a un plan o a una función.',
+            'visibility_everyone'   => 'Todos',
 
             'media_type'             => 'Medios',
             'media_source'           => 'Origen',
@@ -235,11 +238,13 @@ return [
                 'top'    => 'Arriba',
                 'bottom' => 'Abajo',
             ],
-            'route'        => 'Página',
-            'route_helper' => 'Solo cuando la parada está en otra página. El recorrido navega hasta allí y continúa.',
-            'url'          => 'URL personalizada',
-            'url_helper'   => 'Solo cuando la página no está en la lista.',
-            'body'         => 'Texto',
+            'route'             => 'Página',
+            'route_helper'      => 'Solo cuando la parada está en otra página. El recorrido navega hasta allí y continúa.',
+            'url'               => 'URL personalizada',
+            'url_helper'        => 'Solo cuando la página no está en la lista.',
+            'body'              => 'Texto',
+            'visibility'        => 'Visible cuando',
+            'visibility_helper' => 'Vacío: la parada aparece para todos. Una parada que apunta a una función fuera del plan no destacaría nada.',
         ],
 
         'targets' => [

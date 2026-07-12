@@ -205,6 +205,9 @@ return [
             'cta_route_helper'      => 'A page of the panel. Preferred over a URL: it survives a renamed slug.',
             'is_required'           => 'Required',
             'is_required_helper'    => 'Optional steps can be skipped.',
+            'visibility'            => 'Visible when',
+            'visibility_helper'     => 'Only subjects this condition passes for see it. Use it to gate a step behind a plan or a feature.',
+            'visibility_everyone'   => 'Everyone',
 
             'media_type'             => 'Media',
             'media_source'           => 'Source',
@@ -235,11 +238,13 @@ return [
                 'top'    => 'Above',
                 'bottom' => 'Below',
             ],
-            'route'        => 'Page',
-            'route_helper' => 'Only when this stop lives elsewhere. The tour navigates there and carries on.',
-            'url'          => 'Custom URL',
-            'url_helper'   => 'Only when the page is not in the list.',
-            'body'         => 'Text',
+            'route'             => 'Page',
+            'route_helper'      => 'Only when this stop lives elsewhere. The tour navigates there and carries on.',
+            'url'               => 'Custom URL',
+            'url_helper'        => 'Only when the page is not in the list.',
+            'body'              => 'Text',
+            'visibility'        => 'Visible when',
+            'visibility_helper' => 'Leave empty to show this stop to everyone. A stop pointing at a feature the plan lacks would spotlight nothing.',
         ],
 
         'targets' => [

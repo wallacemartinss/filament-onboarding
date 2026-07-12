@@ -13,6 +13,9 @@ Database-driven onboarding for Filament v5.
   **reaching a URL**, by **watching a video**, or from your own code.
 - Conditions complete **retroactively** — an account that already did the thing opens the
   checklist with the step already ticked.
+- **Visibility conditions** on a flow, a step or a single tour stop: gate onboarding on a
+  plan, so an account is never taught a feature it does not have. A hidden step is left
+  out of the count, not left pending.
 - Progress is scoped: the same user onboards separately in each tenant.
 
 ### Surfaces
