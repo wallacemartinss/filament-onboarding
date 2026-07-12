@@ -104,4 +104,32 @@ class ScopeTest extends TestCase
 
         $this->assertNotEmpty($property->getAttributes(\Livewire\Attributes\Locked::class));
     }
+
+    public function test_a_subject_without_a_tenant_cannot_end_up_with_two_progress_rows(): void
+    {
+        Onboarding::resolveScopeUsing(fn (): mixed => null);
+
+        Onboarding::for($this->subject)->complete('tick-me');
+
+        $row = \DB::table('onboarding_step_progress')->first();
+
+        // The database is now willing to compare the absence of a scope, which is
+        // what makes the unique index mean something: writing the row again is a
+        // constraint violation, not a second row. Without it, two requests that
+        // race — and the launcher renders on every page, in every tab — both look,
+        // both miss, and both insert.
+        $this->expectException(\Illuminate\Database\UniqueConstraintViolationException::class);
+
+        \DB::table('onboarding_step_progress')->insert([
+            'id'           => (string) \Illuminate\Support\Str::uuid(),
+            'flow_id'      => $row->flow_id,
+            'step_id'      => $row->step_id,
+            'subject_type' => $row->subject_type,
+            'subject_id'   => $row->subject_id,
+            'scope_type'   => $row->scope_type,
+            'scope_id'     => $row->scope_id,
+            'created_at'   => now(),
+            'updated_at'   => now(),
+        ]);
+    }
 }

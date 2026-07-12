@@ -1,0 +1,63 @@
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\{DB, Schema};
+
+/**
+ * The unique index on progress was a no-op for applications without tenants.
+ *
+ * Progress is unique per (step, subject, scope). The scope columns were nullable,
+ * and in SQL a NULL is not equal to another NULL — so a unique index containing
+ * one enforces nothing for the rows where it is null, on Postgres and MySQL
+ * alike. An application that does not use tenants writes every row with a null
+ * scope, which is every row.
+ *
+ * That index is not decoration: `firstOrCreate` leans on it. Two requests arrive
+ * together — the launcher renders on every page, and people keep tabs open —
+ * both look, both miss, both insert, and the database, having no constraint to
+ * raise, keeps both. From then on the subject has two progress rows for one step
+ * and their progress flickers depending on which one is read first.
+ *
+ * The absence of a scope is now spelled with an empty string, which the database
+ * is willing to compare.
+ */
+return new class extends Migration
+{
+    public function up(): void
+    {
+        foreach (['flow_progress', 'step_progress'] as $key) {
+            $table = $this->table($key);
+
+            DB::table($table)->whereNull('scope_type')->update(['scope_type' => '']);
+            DB::table($table)->whereNull('scope_id')->update(['scope_id' => '']);
+
+            Schema::table($table, function (Blueprint $blueprint): void {
+                $blueprint->string('scope_type', 191)->nullable(false)->default('')->change();
+                $blueprint->string('scope_id', 64)->nullable(false)->default('')->change();
+            });
+        }
+    }
+
+    public function down(): void
+    {
+        foreach (['flow_progress', 'step_progress'] as $key) {
+            $table = $this->table($key);
+
+            Schema::table($table, function (Blueprint $blueprint): void {
+                $blueprint->string('scope_type', 191)->nullable()->default(null)->change();
+                $blueprint->string('scope_id', 64)->nullable()->default(null)->change();
+            });
+
+            DB::table($table)->where('scope_type', '')->update(['scope_type' => null]);
+            DB::table($table)->where('scope_id', '')->update(['scope_id' => null]);
+        }
+    }
+
+    private function table(string $key): string
+    {
+        return config("filament-onboarding.tables.{$key}", "onboarding_{$key}");
+    }
+};

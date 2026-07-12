@@ -545,15 +545,22 @@ class SubjectOnboarding
     }
 
     /**
-     * @return array<string, string|null>
+     * The row this subject's progress lives in.
+     *
+     * "No scope" is an empty string, not a null. The unique index on progress
+     * contains these columns, and a NULL is not equal to another NULL — an index
+     * holding one enforces nothing, which left `firstOrCreate` free to write the
+     * same row twice under any application that does not use tenants.
+     *
+     * @return array<string, string>
      */
     protected function subjectKeys(): array
     {
         return [
             'subject_type' => $this->subject->getMorphClass(),
             'subject_id'   => (string) $this->subject->getKey(),
-            'scope_type'   => $this->scope?->getMorphClass(),
-            'scope_id'     => $this->scope !== null ? (string) $this->scope->getKey() : null,
+            'scope_type'   => $this->scope?->getMorphClass() ?? '',
+            'scope_id'     => $this->scope !== null ? (string) $this->scope->getKey() : '',
         ];
     }
 
