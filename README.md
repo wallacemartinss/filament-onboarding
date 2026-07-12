@@ -6,6 +6,9 @@ Flows are authored in the panel, not in code, so product people can rewrite the 
 
 - **Checklist** — a floating progress button on every page (pages, resources, widgets), plus an optional dashboard widget.
 - **Tours** — spotlight an element, explain it, move on. Tours can cross pages: the runner navigates and picks up where it left off.
+- **Progress page** — an optional page laying the journey out: what is done, what is next, what is left.
+- **Images and videos** — a step can show an image (S3, R2, local) or ask for a video to be watched (upload, YouTube, Vimeo), with **watch time measured**, not guessed.
+- **Panel discovery** — destinations, pages and widgets are picked from dropdowns built out of your own panel. Nobody types a URL.
 - **Any locale** — content is stored per locale and read back in whichever locale the user picked. Nothing is hard-coded to a language.
 - **Multi-tenant** — progress is scoped, so the same user onboards separately in each tenant.
 
@@ -43,10 +46,14 @@ Everything is publishable:
 | Tag | What it gives you |
 |-----|-------------------|
 | `filament-onboarding-config` | `config/filament-onboarding.php` |
-| `filament-onboarding-migrations` | the four tables |
-| `filament-onboarding-views` | every Blade view — the checklist, the launcher, the tour popover |
+| `filament-onboarding-migrations` | the tables, and the media columns |
+| `filament-onboarding-views` | every Blade view — the checklist, the launcher, the tour popover, the media modal |
 | `filament-onboarding-translations` | the UI strings, per locale |
 | `filament-onboarding-styles` | the stylesheet, to restyle without forking |
+
+> **Upgrading?** New versions can ship new migrations and new assets. Re-run
+> `vendor:publish --tag=filament-onboarding-migrations` (existing files are left
+> alone), then `php artisan migrate` and `php artisan filament:assets`.
 
 Register the plugin on the panel the user is onboarded in:
 
@@ -57,7 +64,9 @@ $panel->plugins([
     FilamentOnboardingPlugin::make()
         ->launcher()                        // floating checklist, every page
         ->tours()                           // guided tours
-        ->launcherPosition('bottom-right'), // or bottom-left, top-right, top-left
+        ->launcherPosition('bottom-right')  // or bottom-left, top-right, top-left
+        ->progressPage()                    // optional: the journey, laid out
+        ->modalPosition('center'),          // where images and videos open
 ]);
 ```
 
@@ -70,6 +79,19 @@ FilamentOnboardingPlugin::make()
     ->tours(false)
     ->navigationGroup(fn (): string => __('navigation.system')),
 ```
+
+## How a step is completed
+
+Every step says how it finishes, and the checklist behaves accordingly — a step
+the user cannot tick off themselves is offered as a link, not as a checkbox.
+
+| Mode | Finishes when |
+|------|---------------|
+| **Manual** | The user ticks it off. |
+| **Condition** | A named check the application registered passes — *including retroactively*. |
+| **Page visit** | The user reaches a URL (`*` wildcards allowed). |
+| **Watching the video** | Enough of the step's video has been watched (90% by default). |
+| **Programmatic** | Your code calls `Onboarding::for($user)->complete('key')`. |
 
 ## Locales
 
@@ -256,7 +278,17 @@ FilamentOnboardingPlugin::make()
 Positions: `center`, `top`, `bottom`, `top-left`, `top-right`, `bottom-left`,
 `bottom-right`. Any step may override the panel's choice from the admin.
 
-## The dashboard widget
+## Where onboarding shows up
+
+Three surfaces, all optional, all reading the same progress — tick a step off in
+one and the others update behind it.
+
+### The floating checklist
+
+`->launcher()` puts a progress button on every page of the panel (pages, resources,
+widgets alike — it hangs off the body). Clicking it opens the checklist.
+
+### The dashboard widget
 
 ```php
 use Wallacemartinss\FilamentOnboarding\Widgets\OnboardingChecklistWidget;
@@ -266,6 +298,33 @@ OnboardingChecklistWidget::class,
 ```
 
 It hides itself once the flow is finished or dismissed.
+
+### The progress page
+
+The journey laid out in cards: a ring with the percentage, counters for done /
+left / skipped, the next step highlighted with its call to action, and a card per
+step showing its state, when it was finished, and what to do about it.
+
+```php
+FilamentOnboardingPlugin::make()
+    ->progressPage()
+    ->progressPageSlug('getting-started')          // default: onboarding
+    ->progressPageNavigation(
+        label: fn (): string => __('Getting started'),
+        icon: 'heroicon-o-map',
+        group: fn (): string => __('Settings'),
+        sort: 90,
+    ),
+```
+
+Off unless asked for. `->progressPage(shouldRegisterNavigation: false)` keeps the
+page reachable by URL but out of the menu, and the page removes itself from the
+navigation anyway once a user has no journey left — a finished account should not
+keep a dead item in its sidebar forever.
+
+Steps show **partial progress where partial progress is real**: a task is all or
+nothing, but a tour reports the stop it reached ("Stop 2 of 4") and a video the
+minutes watched ("42% watched"), both resumable from where they stopped.
 
 ## Programmatic API
 
