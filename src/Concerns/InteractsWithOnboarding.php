@@ -5,6 +5,9 @@ declare(strict_types = 1);
 namespace Wallacemartinss\FilamentOnboarding\Concerns;
 
 use Filament\Facades\Filament;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Relation;
+use Livewire\Attributes\Locked;
 use Wallacemartinss\FilamentOnboarding\Facades\Onboarding;
 use Wallacemartinss\FilamentOnboarding\States\{FlowState, StepState};
 use Wallacemartinss\FilamentOnboarding\SubjectOnboarding;
@@ -20,6 +23,47 @@ trait InteractsWithOnboarding
      * subject is currently walking.
      */
     public ?string $flowKey = null;
+
+    /**
+     * The tenant and the panel this surface was rendered for.
+     *
+     * Progress belongs to a subject *within a scope*: the same user onboards
+     * separately in each tenant. The scope is resolved from the panel — and on a
+     * Livewire update, the panel is not necessarily there to ask. This surface is
+     * a plain Livewire component (it hangs off the layout of every page, not off
+     * a Filament page), so a lost tenant does not throw: the resolver quietly
+     * answers null, and the write lands in a *different row* than the one the
+     * page read. The tick vanishes on the next page load, and every tenant that
+     * user belongs to shares one bucket of progress.
+     *
+     * So the scope is captured once, when the page is rendered and the panel is
+     * unambiguous, and carried on the component from then on. Locked, because a
+     * value that decides which tenant's row is written must not be something the
+     * browser can send.
+     */
+    #[Locked]
+    public ?string $onboardingScopeType = null;
+
+    #[Locked]
+    public ?string $onboardingScopeId = null;
+
+    #[Locked]
+    public ?string $onboardingPanel = null;
+
+    /**
+     * Livewire calls this on mount for every component using the trait.
+     */
+    public function mountInteractsWithOnboarding(): void
+    {
+        $this->onboardingPanel = Filament::getCurrentOrDefaultPanel()?->getId();
+
+        $scope = Onboarding::resolveScope();
+
+        if ($scope instanceof Model) {
+            $this->onboardingScopeType = $scope->getMorphClass();
+            $this->onboardingScopeId   = (string) $scope->getKey();
+        }
+    }
 
     /**
      * Everything below this line is reachable from the browser.
@@ -267,12 +311,38 @@ trait InteractsWithOnboarding
 
     protected function onboarding(): ?SubjectOnboarding
     {
-        return Onboarding::current();
+        $subject = Onboarding::resolveSubject();
+
+        if (!$subject instanceof Model) {
+            return null;
+        }
+
+        return Onboarding::for($subject, $this->onboardingScope());
+    }
+
+    /**
+     * The tenant this surface belongs to: the one captured at mount, if there was
+     * one, and only otherwise whatever the panel says now.
+     */
+    protected function onboardingScope(): ?Model
+    {
+        if (blank($this->onboardingScopeType) || blank($this->onboardingScopeId)) {
+            return Onboarding::resolveScope();
+        }
+
+        /** @var class-string<Model>|null $model */
+        $model = Relation::getMorphedModel($this->onboardingScopeType) ?? $this->onboardingScopeType;
+
+        if (!is_string($model) || !class_exists($model)) {
+            return Onboarding::resolveScope();
+        }
+
+        return $model::query()->find($this->onboardingScopeId);
     }
 
     protected function onboardingPanelId(): ?string
     {
-        return Filament::getCurrentOrDefaultPanel()?->getId();
+        return $this->onboardingPanel ?? Filament::getCurrentOrDefaultPanel()?->getId();
     }
 
     /**
