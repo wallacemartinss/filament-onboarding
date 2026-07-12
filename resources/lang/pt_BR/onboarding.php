@@ -24,6 +24,34 @@ return [
         'finish'   => 'Concluir',
     ],
 
+    'page' => [
+        'title'      => 'Primeiros passos',
+        'subheading' => 'Onde você está e o que falta.',
+        'next'       => 'A seguir',
+        'hidden'     => 'Oculta',
+        'restore'    => 'Mostrar novamente',
+        'undo'       => 'Desfazer',
+
+        'stats' => [
+            'completed' => 'Concluídas',
+            'remaining' => 'Restantes',
+            'skipped'   => 'Puladas',
+        ],
+
+        'status' => [
+            'completed' => 'Concluída',
+            'skipped'   => 'Pulada',
+            'next'      => 'A seguir',
+            'pending'   => 'A fazer',
+        ],
+
+        'completed_at'       => 'Concluída :time',
+        'tour_progress'      => 'Parada :reached de :total',
+        'awaiting_condition' => 'Conclui sozinha',
+        'empty_title'        => 'Nada por aqui',
+        'empty_description'  => 'Não há nenhuma jornada para você no momento.',
+    ],
+
     'enums' => [
         'step_type' => [
             'task' => 'Tarefa',

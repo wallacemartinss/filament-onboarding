@@ -42,9 +42,13 @@ trait InteractsWithOnboarding
         $this->afterOnboardingChanged();
     }
 
-    public function dismissFlow(): void
+    /**
+     * A surface showing one journey — the launcher, the widget — dismisses that
+     * one. A surface showing several — the progress page — says which.
+     */
+    public function dismissFlow(?string $flowKey = null): void
     {
-        $flow = $this->flowState();
+        $flow = $this->resolveFlowState($flowKey);
 
         if ($flow === null) {
             return;
@@ -55,9 +59,9 @@ trait InteractsWithOnboarding
         $this->afterOnboardingChanged();
     }
 
-    public function restoreFlow(): void
+    public function restoreFlow(?string $flowKey = null): void
     {
-        $flow = $this->flowState();
+        $flow = $this->resolveFlowState($flowKey);
 
         if ($flow === null) {
             return;
@@ -74,7 +78,7 @@ trait InteractsWithOnboarding
      */
     public function startTour(string $stepKey): void
     {
-        $step = $this->flowState()?->step($stepKey);
+        $step = $this->findStepState($stepKey);
 
         if (!$step instanceof StepState || !$step->hasTour()) {
             return;
@@ -83,6 +87,17 @@ trait InteractsWithOnboarding
         $this->onboarding()?->markSeen($stepKey);
 
         $this->dispatch('onboarding-tour-start', key: $stepKey, steps: $step->tour());
+    }
+
+    /**
+     * The runner reports each stop as the subject reaches it, so a tour left
+     * half-way shows as half-way instead of as untouched.
+     */
+    public function tourProgress(string $key, int $index, int $total): void
+    {
+        $this->onboarding()?->recordTourProgress($key, $index, $total);
+
+        $this->afterOnboardingChanged();
     }
 
     /**
@@ -108,6 +123,38 @@ trait InteractsWithOnboarding
         return $this->flowKey !== null
             ? $onboarding->flow($this->flowKey, $panelId)
             : $onboarding->currentFlow($panelId);
+    }
+
+    protected function resolveFlowState(?string $flowKey): ?FlowState
+    {
+        if ($flowKey === null) {
+            return $this->flowState();
+        }
+
+        return $this->onboarding()?->flow($flowKey, $this->onboardingPanelId());
+    }
+
+    /**
+     * A step by key, looked for across every journey of the panel — the progress
+     * page shows more than one at a time.
+     */
+    protected function findStepState(string $stepKey): ?StepState
+    {
+        $onboarding = $this->onboarding();
+
+        if (!$onboarding instanceof SubjectOnboarding) {
+            return null;
+        }
+
+        foreach ($onboarding->flows($this->onboardingPanelId()) as $flow) {
+            $step = $flow->step($stepKey);
+
+            if ($step instanceof StepState) {
+                return $step;
+            }
+        }
+
+        return null;
     }
 
     protected function onboarding(): ?SubjectOnboarding

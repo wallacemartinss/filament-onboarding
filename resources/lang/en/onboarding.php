@@ -24,6 +24,34 @@ return [
         'finish'   => 'Finish',
     ],
 
+    'page' => [
+        'title'      => 'Getting started',
+        'subheading' => 'Where you are, and what is left.',
+        'next'       => 'Up next',
+        'hidden'     => 'Hidden',
+        'restore'    => 'Show again',
+        'undo'       => 'Undo',
+
+        'stats' => [
+            'completed' => 'Done',
+            'remaining' => 'Left',
+            'skipped'   => 'Skipped',
+        ],
+
+        'status' => [
+            'completed' => 'Done',
+            'skipped'   => 'Skipped',
+            'next'      => 'Up next',
+            'pending'   => 'To do',
+        ],
+
+        'completed_at'       => 'Done :time',
+        'tour_progress'      => 'Stop :reached of :total',
+        'awaiting_condition' => 'Completes on its own',
+        'empty_title'        => 'Nothing to onboard',
+        'empty_description'  => 'There is no journey for you right now.',
+    ],
+
     'enums' => [
         'step_type' => [
             'task' => 'Task',

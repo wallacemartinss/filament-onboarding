@@ -201,6 +201,7 @@ export default function onboardingTour() {
             }
 
             this.persist();
+            this.report();
 
             const element = step.selector ? await this.waitForElement(step.selector) : null;
 
@@ -240,6 +241,22 @@ export default function onboardingTour() {
                 STORAGE_KEY,
                 JSON.stringify({ key: this.stepKey, steps: this.steps, index: this.index }),
             );
+        },
+
+        /**
+         * Tell the server which stop we are on, so a tour the subject walked away
+         * from still shows the ground they covered.
+         */
+        report() {
+            if (!this.stepKey || !window.Livewire) {
+                return;
+            }
+
+            window.Livewire.dispatch('onboarding-tour-progress', {
+                key: this.stepKey,
+                index: this.index,
+                total: this.steps.length,
+            });
         },
 
         /**

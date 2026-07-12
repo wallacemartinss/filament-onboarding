@@ -130,6 +130,53 @@ class StepState
         return $this->hasTour() || filled($this->url());
     }
 
+    public function completedAt(): ?\Illuminate\Support\Carbon
+    {
+        return $this->progress?->completed_at;
+    }
+
+    /**
+     * How far the subject got into this step, as a percentage.
+     *
+     * A task is all or nothing. A tour is not: it has stops, the runner reports
+     * each one, and a tour left half-way says so.
+     */
+    public function percentage(): int
+    {
+        if ($this->isCompleted()) {
+            return 100;
+        }
+
+        $total = (int) ($this->progress?->meta['tour_total'] ?? 0);
+
+        if (!$this->hasTour() || $total < 1) {
+            return 0;
+        }
+
+        $reached = (int) ($this->progress?->meta['tour_index'] ?? 0);
+
+        return (int) round(($reached / $total) * 100);
+    }
+
+    /**
+     * "2 / 5" — the stop the subject reached, for a tour they have started.
+     *
+     * @return array{reached: int, total: int}|null
+     */
+    public function tourProgress(): ?array
+    {
+        $total = (int) ($this->progress?->meta['tour_total'] ?? 0);
+
+        if (!$this->hasTour() || $total < 1 || $this->isCompleted()) {
+            return null;
+        }
+
+        return [
+            'reached' => (int) ($this->progress?->meta['tour_index'] ?? 0),
+            'total'   => $total,
+        ];
+    }
+
     /**
      * @return array<string, mixed>
      */

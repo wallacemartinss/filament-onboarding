@@ -11,6 +11,7 @@ use Filament\Support\Concerns\EvaluatesClosures;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Support\Facades\Blade;
 use Wallacemartinss\FilamentOnboarding\Facades\Onboarding;
+use Wallacemartinss\FilamentOnboarding\Pages\OnboardingProgress;
 use Wallacemartinss\FilamentOnboarding\Resources\OnboardingFlows\OnboardingFlowResource;
 
 class FilamentOnboardingPlugin implements Plugin
@@ -43,6 +44,20 @@ class FilamentOnboardingPlugin implements Plugin
 
     protected int|Closure|null $navigationSort = null;
 
+    protected bool $hasProgressPage = false;
+
+    protected bool $hasProgressPageNavigation = true;
+
+    protected string $progressPageSlug = 'onboarding';
+
+    protected string|Closure|null $progressPageLabel = null;
+
+    protected string|Closure|null $progressPageIcon = null;
+
+    protected string|Closure|null $progressPageGroup = null;
+
+    protected int|Closure|null $progressPageSort = null;
+
     public static function make(): static
     {
         return app(static::class);
@@ -66,6 +81,12 @@ class FilamentOnboardingPlugin implements Plugin
         if ($this->managesFlows) {
             $panel->resources([
                 OnboardingFlowResource::class,
+            ]);
+        }
+
+        if ($this->hasProgressPage) {
+            $panel->pages([
+                OnboardingProgress::class,
             ]);
         }
 
@@ -178,6 +199,81 @@ class FilamentOnboardingPlugin implements Plugin
         $this->conditionLabels = [...$this->conditionLabels, ...$labels];
 
         return $this;
+    }
+
+    /**
+     * Register the page that lays the journey out — what is done, what is next,
+     * what is left. Off by default: a product may prefer the floating checklist
+     * on its own.
+     *
+     * @param  bool  $shouldRegisterNavigation  False keeps the page reachable by URL but out of the menu.
+     */
+    public function progressPage(bool $condition = true, bool $shouldRegisterNavigation = true): static
+    {
+        $this->hasProgressPage           = $condition;
+        $this->hasProgressPageNavigation = $shouldRegisterNavigation;
+
+        return $this;
+    }
+
+    public function progressPageSlug(string $slug): static
+    {
+        $this->progressPageSlug = $slug;
+
+        return $this;
+    }
+
+    /**
+     * Navigation of the progress page. Closures are evaluated per request, so a
+     * translated label follows the locale of whoever is reading it.
+     */
+    public function progressPageNavigation(
+        string|Closure|null $label = null,
+        string|Closure|null $icon = null,
+        string|Closure|null $group = null,
+        int|Closure|null $sort = null,
+    ): static {
+        $this->progressPageLabel = $label ?? $this->progressPageLabel;
+        $this->progressPageIcon  = $icon ?? $this->progressPageIcon;
+        $this->progressPageGroup = $group ?? $this->progressPageGroup;
+        $this->progressPageSort  = $sort ?? $this->progressPageSort;
+
+        return $this;
+    }
+
+    public function hasProgressPage(): bool
+    {
+        return $this->hasProgressPage;
+    }
+
+    public function hasProgressPageNavigation(): bool
+    {
+        return $this->hasProgressPageNavigation;
+    }
+
+    public function getProgressPageSlug(): string
+    {
+        return $this->progressPageSlug;
+    }
+
+    public function getProgressPageLabel(): ?string
+    {
+        return $this->evaluate($this->progressPageLabel);
+    }
+
+    public function getProgressPageIcon(): ?string
+    {
+        return $this->evaluate($this->progressPageIcon);
+    }
+
+    public function getProgressPageGroup(): ?string
+    {
+        return $this->evaluate($this->progressPageGroup);
+    }
+
+    public function getProgressPageSort(): ?int
+    {
+        return $this->evaluate($this->progressPageSort);
     }
 
     /**

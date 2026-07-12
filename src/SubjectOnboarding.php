@@ -142,6 +142,36 @@ class SubjectOnboarding
         return $progress;
     }
 
+    /**
+     * How far into a tour the subject got. Stored on the step's progress, so a
+     * tour abandoned at stop 2 of 5 reads as 40% instead of as untouched.
+     */
+    public function recordTourProgress(OnboardingStep|string $step, int $index, int $total): ?OnboardingStepProgress
+    {
+        $step = $this->resolveStep($step);
+
+        if (!$step instanceof OnboardingStep || $total < 1) {
+            return null;
+        }
+
+        $progress = $this->progressFor($step);
+
+        $reached = max((int) ($progress->meta['tour_index'] ?? 0), $index);
+
+        $progress->forceFill([
+            'seen_at' => $progress->seen_at ?? now(),
+            'meta'    => [
+                ...($progress->meta ?? []),
+                'tour_index' => min($reached, $total - 1),
+                'tour_total' => $total,
+            ],
+        ])->save();
+
+        $this->stepProgress?->put($step->getKey(), $progress);
+
+        return $progress;
+    }
+
     public function uncomplete(OnboardingStep|string $step): void
     {
         $step = $this->resolveStep($step);

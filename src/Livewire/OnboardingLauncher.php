@@ -39,6 +39,17 @@ class OnboardingLauncher extends Component
         $this->finishTour($key);
     }
 
+    /**
+     * The launcher carries the runner, so it is the one that hears the stops —
+     * the widget and the progress page pick the change up from
+     * `onboarding-updated`.
+     */
+    #[On('onboarding-tour-progress')]
+    public function onTourProgress(string $key, int $index, int $total): void
+    {
+        $this->tourProgress($key, $index, $total);
+    }
+
     #[On('onboarding-open')]
     public function open(): void
     {
