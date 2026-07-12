@@ -1,5 +1,6 @@
 {
     "name": "wallacemartinss/filament-onboarding",
+    "version": "1.0.0",
     "description": "Database-driven onboarding for Filament: progress checklists and guided spotlight tours, translatable to any locale.",
     "keywords": [
         "laravel",

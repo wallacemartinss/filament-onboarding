@@ -25,12 +25,15 @@ return [
     ],
 
     'page' => [
-        'title'      => 'Primeros pasos',
-        'subheading' => 'Dónde estás y qué falta.',
-        'next'       => 'A continuación',
-        'hidden'     => 'Oculto',
-        'restore'    => 'Mostrar de nuevo',
-        'undo'       => 'Deshacer',
+        'title'           => 'Primeros pasos',
+        'subheading'      => 'Dónde estás y qué falta.',
+        'next'            => 'A continuación',
+        'hidden'          => 'Oculto',
+        'restore'         => 'Mostrar de nuevo',
+        'undo'            => 'Deshacer',
+        'restart'         => 'Empezar de nuevo',
+        'restart_confirm' => '¿Empezar esta ruta de nuevo? Lo que marcaste, omitiste y viste se borrará.',
+        'restart_note'    => 'Los pasos que se completan solos vuelven completados: responden al sistema, no a este botón.',
 
         'stats' => [
             'completed' => 'Completados',

@@ -5,6 +5,7 @@ declare(strict_types = 1);
 namespace Wallacemartinss\FilamentOnboarding\States;
 
 use Illuminate\Support\Collection;
+use Wallacemartinss\FilamentOnboarding\Enums\CompletionMode;
 use Wallacemartinss\FilamentOnboarding\Models\{OnboardingFlow, OnboardingFlowProgress};
 
 /**
@@ -93,6 +94,17 @@ class FlowState
     public function isStarted(): bool
     {
         return $this->resolvedCount() > 0;
+    }
+
+    /**
+     * Whether any step of this flow answers to the application rather than to the
+     * subject — which is what makes "start over" only go so far.
+     */
+    public function hasConditionSteps(): bool
+    {
+        return $this->steps->contains(
+            fn (StepState $step): bool => $step->step->completion_mode === CompletionMode::Condition
+        );
     }
 
     public function isDismissed(): bool

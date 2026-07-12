@@ -25,12 +25,15 @@ return [
     ],
 
     'page' => [
-        'title'      => 'Getting started',
-        'subheading' => 'Where you are, and what is left.',
-        'next'       => 'Up next',
-        'hidden'     => 'Hidden',
-        'restore'    => 'Show again',
-        'undo'       => 'Undo',
+        'title'           => 'Getting started',
+        'subheading'      => 'Where you are, and what is left.',
+        'next'            => 'Up next',
+        'hidden'          => 'Hidden',
+        'restore'         => 'Show again',
+        'undo'            => 'Undo',
+        'restart'         => 'Start over',
+        'restart_confirm' => 'Start this journey over? What you ticked, skipped and watched will be cleared.',
+        'restart_note'    => 'Steps that complete on their own come straight back: they answer to the app, not to this button.',
 
         'stats' => [
             'completed' => 'Done',

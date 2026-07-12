@@ -4,7 +4,9 @@ declare(strict_types = 1);
 
 namespace Wallacemartinss\FilamentOnboarding\Pages;
 
+use Filament\Actions\Action;
 use Filament\Pages\Page;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\On;
 use Wallacemartinss\FilamentOnboarding\Concerns\InteractsWithOnboarding;
@@ -76,6 +78,48 @@ class OnboardingProgress extends Page
         return Onboarding::current()?->flows(
             \Filament\Facades\Filament::getCurrentOrDefaultPanel()?->getId()
         )->isNotEmpty() ?? false;
+    }
+
+    /**
+     * Starting over throws work away, so it asks first — through Filament's own
+     * confirmation modal, not a browser dialog.
+     */
+    public function restartFlowAction(): Action
+    {
+        return Action::make('restartFlow')
+            ->label(__('filament-onboarding::onboarding.page.restart'))
+            ->icon(Heroicon::ArrowPath)
+            ->color('gray')
+            ->link()
+            ->requiresConfirmation()
+            ->modalHeading(__('filament-onboarding::onboarding.page.restart'))
+            ->modalDescription(__('filament-onboarding::onboarding.page.restart_confirm'))
+            ->modalSubmitActionLabel(__('filament-onboarding::onboarding.page.restart'))
+            ->action(function (array $arguments): void {
+                $this->restartFlow($arguments['flow'] ?? null);
+            });
+    }
+
+    public function dismissFlowAction(): Action
+    {
+        return Action::make('dismissFlow')
+            ->label(__('filament-onboarding::onboarding.checklist.dismiss'))
+            ->color('gray')
+            ->link()
+            ->action(function (array $arguments): void {
+                $this->dismissFlow($arguments['flow'] ?? null);
+            });
+    }
+
+    public function restoreFlowAction(): Action
+    {
+        return Action::make('restoreFlow')
+            ->label(__('filament-onboarding::onboarding.page.restore'))
+            ->color('gray')
+            ->link()
+            ->action(function (array $arguments): void {
+                $this->restoreFlow($arguments['flow'] ?? null);
+            });
     }
 
     #[On('onboarding-updated')]

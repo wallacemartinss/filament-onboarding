@@ -97,18 +97,28 @@
                             </div>
                         @endif
 
-                        @if ($flow->isDismissible())
-                            <div class="fio-hero-actions">
+                        {{-- Filament's own actions: its confirmation modal, its button
+                             styling, its keyboard handling — no browser dialogs. --}}
+                        <div class="fio-hero-actions">
+                            @if ($flow->isStarted())
+                                {{ ($this->restartFlowAction)(['flow' => $flow->key()]) }}
+                            @endif
+
+                            @if ($flow->isDismissible())
                                 @if ($flow->isDismissed())
-                                    <button type="button" class="fio-button fio-button--ghost" wire:click="restoreFlow(@js($flow->key()))">
-                                        {{ __('filament-onboarding::onboarding.page.restore') }}
-                                    </button>
+                                    {{ ($this->restoreFlowAction)(['flow' => $flow->key()]) }}
                                 @else
-                                    <button type="button" class="fio-button fio-button--ghost" wire:click="dismissFlow(@js($flow->key()))">
-                                        {{ __('filament-onboarding::onboarding.checklist.dismiss') }}
-                                    </button>
+                                    {{ ($this->dismissFlowAction)(['flow' => $flow->key()]) }}
                                 @endif
-                            </div>
+                            @endif
+                        </div>
+
+                        @if ($flow->isCompleted() && $flow->hasConditionSteps())
+                            {{-- Restarting cannot undo what is simply true: a step that
+                                 asks the application comes straight back completed. --}}
+                            <p class="fio-footer-note" style="margin-block-start: 0.5rem;">
+                                {{ __('filament-onboarding::onboarding.page.restart_note') }}
+                            </p>
                         @endif
                     </div>
                 </div>

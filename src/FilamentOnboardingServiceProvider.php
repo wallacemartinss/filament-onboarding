@@ -10,6 +10,7 @@ use Filament\Support\Facades\FilamentAsset;
 use Illuminate\Database\Eloquent\Model;
 use Livewire\Livewire;
 use Spatie\LaravelPackageTools\{Package, PackageServiceProvider};
+use Wallacemartinss\FilamentOnboarding\Commands\ResetOnboardingCommand;
 use Wallacemartinss\FilamentOnboarding\Conditions\ConditionRegistry;
 use Wallacemartinss\FilamentOnboarding\Livewire\OnboardingLauncher;
 use Wallacemartinss\FilamentOnboarding\Widgets\OnboardingChecklistWidget;
@@ -28,7 +29,8 @@ class FilamentOnboardingServiceProvider extends PackageServiceProvider
             ->hasMigrations([
                 'create_onboarding_tables',
                 'add_media_to_onboarding_steps',
-            ]);
+            ])
+            ->hasCommand(ResetOnboardingCommand::class);
     }
 
     public function packageRegistered(): void

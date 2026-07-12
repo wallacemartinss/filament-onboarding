@@ -73,6 +73,29 @@ trait InteractsWithOnboarding
     }
 
     /**
+     * Walk the journey again from the start.
+     *
+     * Everything the subject did by hand — ticks, skips, tours watched, videos
+     * watched — is cleared. Steps that hang off a condition are a different
+     * matter: they answer to the application, not to this button, so a step that
+     * is true again the moment it is asked (a backup destination that still
+     * exists) comes straight back completed. That is the honest behaviour, and
+     * the UI says as much.
+     */
+    public function restartFlow(?string $flowKey = null): void
+    {
+        $flow = $this->resolveFlowState($flowKey);
+
+        if ($flow === null) {
+            return;
+        }
+
+        $this->onboarding()?->reset($flow->flow);
+
+        $this->afterOnboardingChanged();
+    }
+
+    /**
      * Hand a tour to the browser. The runner takes it from here — navigating
      * first if the tour starts on another page.
      */
