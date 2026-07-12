@@ -47,6 +47,27 @@
                                 {{ $flow->resolvedCount() }}/{{ $flow->total() }}
                             </span>
                         </div>
+
+                        {{-- More than one journey: the checklist shows one at a time,
+                             so the others need a way in. --}}
+                        @if ($flows->count() > 1)
+                            <div class="fio-tabs">
+                                @foreach ($flows as $candidate)
+                                    <button
+                                        type="button"
+                                        wire:key="fio-tab-{{ $candidate->key() }}"
+                                        wire:click="selectFlow(@js($candidate->key()))"
+                                        @class([
+                                            'fio-tab',
+                                            'fio-tab--active' => $candidate->key() === $flow->key(),
+                                        ])
+                                    >
+                                        {{ $candidate->title() }}
+                                        <span class="fio-tab-count">{{ $candidate->percentage() }}%</span>
+                                    </button>
+                                @endforeach
+                            </div>
+                        @endif
                     </div>
 
                     @if ($flow->isCompleted())

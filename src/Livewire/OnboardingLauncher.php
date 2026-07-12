@@ -10,6 +10,7 @@ use Livewire\Component;
 use Wallacemartinss\FilamentOnboarding\Concerns\InteractsWithOnboarding;
 use Wallacemartinss\FilamentOnboarding\Facades\Onboarding;
 use Wallacemartinss\FilamentOnboarding\FilamentOnboardingPlugin;
+use Wallacemartinss\FilamentOnboarding\States\FlowState;
 
 /**
  * Hangs off the body of every panel page: a floating progress button that opens
@@ -71,12 +72,28 @@ class OnboardingLauncher extends Component
         $this->isOpen = !$this->isOpen;
     }
 
+    /**
+     * Switch the panel to another journey.
+     */
+    public function selectFlow(string $flowKey): void
+    {
+        $this->flowKey = $flowKey;
+    }
+
     public function render(): View
     {
         $plugin = $this->plugin();
 
+        // Every journey still on the table, not only the one being walked. The
+        // checklist shows one at a time, and a finished journey used to sit in
+        // front of an unfinished one with no way past it.
+        $flows = ($this->onboarding()?->flows($this->onboardingPanelId()) ?? collect())
+            ->filter(fn (FlowState $flow): bool => !$flow->isDismissed())
+            ->values();
+
         return view('filament-onboarding::livewire.launcher', [
             'flow'        => $this->flowState(),
+            'flows'       => $flows,
             'hasLauncher' => $plugin?->hasLauncher() ?? true,
             'hasTours'    => $plugin?->hasTours() ?? true,
             'position'    => $plugin?->getLauncherPosition() ?? 'bottom-right',
