@@ -16,8 +16,11 @@ Requires PHP 8.2+, Laravel 12 and Filament v5. Runs on PostgreSQL and MySQL/Mari
 
 | Package | Filament |
 |---|---|
-| `^2.0` | v5 |
+| `^2.1` | v5 |
 | `^1.0` | v4 (planned) |
+
+> **2.0.0 is withdrawn** — it lets any authenticated user complete any onboarding step, and
+> a condition that throws returns a 500 on every page of the panel. Require `^2.1`.
 
 > Maintaining or extending the package? Read **[ARCHITECTURE.md](ARCHITECTURE.md)** — the data model, panel discovery, the tour runner, the player, asset versioning, and the traps that will bite you if you "clean up" the wrong line.
 
@@ -26,7 +29,7 @@ Requires PHP 8.2+, Laravel 12 and Filament v5. Runs on PostgreSQL and MySQL/Mari
 ## Installation
 
 ```bash
-composer require wallacemartinss/filament-onboarding:^2.0
+composer require wallacemartinss/filament-onboarding:^2.1
 
 php artisan vendor:publish --tag=filament-onboarding-migrations
 php artisan vendor:publish --tag=filament-onboarding-config
