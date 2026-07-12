@@ -1,16 +1,20 @@
 # Filament Onboarding
 
-Database-driven onboarding for Filament v5: a progress checklist that follows the user across every page of the panel, and guided spotlight tours that can walk them through it.
+Database-driven onboarding for Filament v5: a progress checklist that follows the user across every page of the panel, guided spotlight tours, and steps that can be completed by watching a video.
 
-Flows are authored in the panel, not in code, so product people can rewrite the journey without a deploy. Steps that are completed by a condition catch up on their own, which means **users who signed up long before the flow existed enter it already half-done** instead of being told to do things they did years ago.
+Journeys are authored in the panel, not in code, so product people can rewrite them without a deploy. And steps bound to a **condition** catch up on their own, which means **users who signed up long before the journey existed enter it already half-done** instead of being told to do things they did years ago.
 
 - **Checklist** — a floating progress button on every page (pages, resources, widgets), plus an optional dashboard widget.
-- **Tours** — spotlight an element, explain it, move on. Tours can cross pages: the runner navigates and picks up where it left off.
+- **Tours** — spotlight an element, explain it, move on. Tours cross pages: the runner navigates and picks up where it left off.
 - **Progress page** — an optional page laying the journey out: what is done, what is next, what is left.
-- **Images and videos** — a step can show an image (S3, R2, local) or ask for a video to be watched (upload, YouTube, Vimeo), with **watch time measured**, not guessed.
-- **Panel discovery** — destinations, pages and widgets are picked from dropdowns built out of your own panel. Nobody types a URL.
-- **Any locale** — content is stored per locale and read back in whichever locale the user picked. Nothing is hard-coded to a language.
+- **Images and videos** — S3, R2, local, YouTube, Vimeo. **Watch time is measured**, not guessed, and can complete the step.
+- **Panel discovery** — destinations, pages and widgets come from dropdowns built out of your own panel. Nobody types a URL.
+- **Any locale** — content is stored per locale and read back in whichever locale the user picked.
 - **Multi-tenant** — progress is scoped, so the same user onboards separately in each tenant.
+
+Requires PHP 8.2+, Laravel 12 and Filament v5. Runs on PostgreSQL and MySQL/MariaDB.
+
+---
 
 ## Installation
 
@@ -23,67 +27,54 @@ php artisan migrate
 php artisan filament:assets
 ```
 
-The migrations run on **PostgreSQL and MySQL/MariaDB** alike — the morph columns
-carry explicit lengths so the composite unique keys stay inside InnoDB's
-3072-byte limit.
-
-### Icons
-
-The icon field of a flow or a step takes any Blade icon name — `heroicon-o-server`,
-`phosphor-rocket`, whatever your app has installed. Add
-[`wallacemartinss/filament-icon-picker`](https://github.com/wallacemartinss/filament-icon-picker)
-and the field becomes a visual picker on its own; the package detects it and needs
-no configuration:
-
-```bash
-composer require wallacemartinss/filament-icon-picker
-```
-
-Without it, the field stays a plain text input and everything else works the same.
-
-Everything is publishable:
-
-| Tag | What it gives you |
-|-----|-------------------|
-| `filament-onboarding-config` | `config/filament-onboarding.php` |
-| `filament-onboarding-migrations` | the tables, and the media columns |
-| `filament-onboarding-views` | every Blade view — the checklist, the launcher, the tour popover, the media modal |
-| `filament-onboarding-translations` | the UI strings, per locale |
-| `filament-onboarding-styles` | the stylesheet, to restyle without forking |
-
-> **Upgrading?** New versions can ship new migrations and new assets. Re-run
-> `vendor:publish --tag=filament-onboarding-migrations` (existing files are left
-> alone), then `php artisan migrate` and `php artisan filament:assets`.
-
-Register the plugin on the panel the user is onboarded in:
+Register the plugin on the panel your users are onboarded in:
 
 ```php
 use Wallacemartinss\FilamentOnboarding\FilamentOnboardingPlugin;
 
 $panel->plugins([
     FilamentOnboardingPlugin::make()
-        ->launcher()                        // floating checklist, every page
+        ->launcher()                        // floating checklist, on every page
         ->tours()                           // guided tours
-        ->launcherPosition('bottom-right')  // or bottom-left, top-right, top-left
-        ->progressPage()                    // optional: the journey, laid out
+        ->progressPage()                    // optional page laying the journey out
+        ->launcherPosition('bottom-right')  // bottom-left, top-right, top-left
         ->modalPosition('center'),          // where images and videos open
 ]);
 ```
 
-And on the panel where flows are authored — usually an admin panel:
+And on the panel where journeys are written — usually an admin panel:
 
 ```php
 FilamentOnboardingPlugin::make()
     ->manageFlows()
     ->launcher(false)
     ->tours(false)
-    ->navigationGroup(fn (): string => __('navigation.system')),
+    ->navigationGroup(fn (): string => __('navigation.system'))
+    ->navigationIcon('heroicon-o-map')
+    ->navigationSort(70),
 ```
+
+That is the whole install. Create a journey in the panel, add its steps, and it shows up.
+
+### Publishing
+
+| Tag | What it gives you |
+|-----|-------------------|
+| `filament-onboarding-config` | `config/filament-onboarding.php` |
+| `filament-onboarding-migrations` | the four tables and the media columns |
+| `filament-onboarding-views` | every Blade view — checklist, launcher, tour popover, media modal, progress page |
+| `filament-onboarding-translations` | the UI strings, per locale |
+| `filament-onboarding-styles` | the stylesheet, to restyle without forking |
+
+> Publishing **views** or **translations** takes them over: from then on your copies win, and updates to the package no longer reach those files. Publish them when you mean to own them.
+
+Assets (CSS and the Alpine components) are served by Filament from `public/`, so run `php artisan filament:assets` after installing and after upgrading. They are versioned by **content hash**, so a changed file always reaches the browser — no cache-busting on your side.
+
+---
 
 ## How a step is completed
 
-Every step says how it finishes, and the checklist behaves accordingly — a step
-the user cannot tick off themselves is offered as a link, not as a checkbox.
+Every step declares how it finishes, and the checklist behaves accordingly — a step the user cannot tick off themselves is offered as a link, not as a checkbox.
 
 | Mode | Finishes when |
 |------|---------------|
@@ -93,26 +84,9 @@ the user cannot tick off themselves is offered as a link, not as a checkbox.
 | **Watching the video** | Enough of the step's video has been watched (90% by default). |
 | **Programmatic** | Your code calls `Onboarding::for($user)->complete('key')`. |
 
-## Locales
+### Conditions
 
-List the locales you write content in:
-
-```php
-// config/filament-onboarding.php
-'locales' => ['pt_BR', 'en', 'es'],
-```
-
-The panel then shows one tab per locale for every piece of text. At render time the package reads `app()->getLocale()` and falls back — exact locale, then the base language (`pt_BR` → `pt`), then the app fallback, then whatever is filled in. A user reading in Spanish sees Spanish; a user in a locale nobody wrote for still sees a usable checklist.
-
-A plain string is treated as a translation key, so a flow can point at your own language files instead:
-
-```php
-'title' => 'onboarding.journey.title',   // resolved through __()
-```
-
-## Conditions
-
-A step can be ticked off by hand, by reaching a URL, by your code — or by a **condition**: a named check the application registers and the panel picks from a dropdown.
+A condition is a named question about the subject, registered by the application and picked from a dropdown when the step is written.
 
 ```php
 use Wallacemartinss\FilamentOnboarding\Facades\Onboarding;
@@ -122,7 +96,7 @@ Onboarding::condition('has_server', fn (User $user, ?Tenant $tenant): bool =>
 );
 ```
 
-Or as a class:
+Or as a class — which is what you want when both panels need it (the admin panel to offer it in the dropdown, the app panel to evaluate it):
 
 ```php
 // config/filament-onboarding.php
@@ -132,183 +106,132 @@ Or as a class:
 ```
 
 ```php
-class HasServerCondition implements OnboardingCondition
+use Wallacemartinss\FilamentOnboarding\Contracts\{HasConditionLabel, OnboardingCondition};
+
+class HasServerCondition implements OnboardingCondition, HasConditionLabel
 {
+    // Without this, the panel shows the raw key.
+    public static function label(): string
+    {
+        return __('onboarding.conditions.has_server');
+    }
+
     public function isCompleted(Model $subject, ?Model $scope = null): bool
     {
-        return $scope->servers()->exists();
+        return $scope?->servers()->exists() ?? false;
     }
 }
 ```
 
-Conditions are evaluated for pending steps only, and the result is persisted the first time it passes — so an established account opens the checklist and finds its history already reflected there.
+Conditions are evaluated only for pending steps, and the result is persisted the first time it passes — so an established account opens the checklist and finds its history already reflected there. A condition that is no longer registered never completes a step: it goes quiet instead of throwing on every request.
 
-A condition that is no longer registered never completes a step; it goes quiet rather than throwing on every request.
+---
 
 ## Panel discovery
 
-Nobody types a URL. When a step or a tour stop needs a destination, the dropdown
-is built from the panel itself:
+Nobody types a URL. When a step or a tour stop needs a destination, the dropdown is built from the panel itself:
 
-- **Resources** — every list and create page, labelled the way the panel labels
-  them ("Servidores — listagem"). Pages that need a record (edit, view) are left
-  out, since onboarding has no record to hand them.
+- **Resources** — every list and create page, labelled the way the panel labels them. Pages that need a record (edit, view) are left out, since onboarding has no record to hand them.
 - **Pages** — every custom page, by its navigation label.
-- **Widgets** — every widget of the panel, including the ones attached to a page
-  rather than registered on the panel (`$isDiscovered = false`).
+- **Widgets** — every widget of the panel, including the ones attached to a page rather than registered on it.
 
-What gets stored is the **route name**, not the URL, so renaming a resource slug
-does not break a flow, and `{tenant}` is filled in at render time.
+What gets stored is the **route name**, not the URL, so renaming a resource slug does not break a journey, and `{tenant}` is filled in at render time.
 
-Widgets are the interesting case: they all share one wrapper class, so there is no
-CSS selector to point at. Pick the widget and the package addresses it by the
-Livewire component it is (`@widget:App\Filament\...\OverviewStatsWidget`); the tour
-runner finds it in the page. No `data-` attribute to add, nothing to remember.
-
-A hand-written URL or CSS selector is still accepted for anything outside the panel.
+---
 
 ## Tours
 
-To spotlight something that is not a widget, give the element a stable hook:
+A tour spotlights one element at a time, explains it, and moves on. It can cross pages: give a stop a page and the runner navigates there and carries on.
+
+Three ways to point at something:
+
+```
+[data-onboarding="create-server"]        a CSS selector
+@widget:App\Filament\...\StatsWidget     a widget, picked from the panel
+@livewire:edit_password_form             any Livewire component, by name
+```
+
+The last one matters more than it looks. A form section rendered by a third-party plugin has no hook of its own, and **Filament builds a section's id from its heading — which is translated**. Anchoring to `#form.update-password::section` gives you a tour that works in English and silently spotlights nothing in Portuguese. Addressing the component sidesteps that entirely.
+
+For anything you own, a stable hook is cheapest:
 
 ```php
-Action::make('create')
-    ->extraAttributes(['data-onboarding' => 'create-server']),
+Action::make('create')->extraAttributes(['data-onboarding' => 'create-server']),
 ```
 
-Then author a tour step in the panel with the selector `[data-onboarding="create-server"]`. Each stop takes a selector, a placement, a title and a body — and optionally a page, in which case the tour navigates there and resumes.
+A selector that no longer matches does not break the tour: the page dims and the popover is centred, so the copy still reads.
 
-Selectors that no longer match do not break the tour: the page dims and the popover is centred, so the copy still reads.
+Tours report the stop the user reached, so a tour abandoned half-way shows as half-way — and can be resumed.
 
-## Making it look like your product
-
-Three levels, cheapest first.
-
-**1. Retheme with variables.** The stylesheet reads an override for every value it uses, so declaring these anywhere in your own CSS wins regardless of load order:
-
-```css
-:root {
-    --fio-theme-accent: var(--color-kronn-600);
-    --fio-theme-accent-dark: var(--color-kronn-400);
-    --fio-theme-radius: 1rem;
-    --fio-theme-panel-width: 24rem;
-    --fio-theme-surface-dark: var(--color-gray-900);
-}
-```
-
-Available: `--fio-theme-{accent,accent-soft,success,surface,surface-muted,border,text,text-muted,shadow,shadow-lg,radius,radius-sm,panel-width}`, each with a `-dark` counterpart for the dark variants.
-
-**2. Replace the stylesheet.** Publish it, edit freely, then point the config at your copy:
-
-```bash
-php artisan vendor:publish --tag=filament-onboarding-styles
-```
-
-```php
-// config/filament-onboarding.php
-'styles' => [
-    'enabled' => true,
-    'path'    => resource_path('css/vendor/filament-onboarding/onboarding.css'),
-],
-```
-
-```bash
-php artisan filament:assets   # re-publishes the CSS Filament serves
-```
-
-Set `enabled => false` instead and no stylesheet ships at all — the markup keeps its `.fio-*` classes for you to dress from your own panel theme.
-
-**3. Replace the markup.** Publish the views and rewrite them; the Livewire components keep working, since they only call `completeStep`, `skipStep`, `startTour` and `dismissFlow`:
-
-```bash
-php artisan vendor:publish --tag=filament-onboarding-views
-```
+---
 
 ## Images and videos
 
-A step can carry an image to show or a video to watch. Both open in a modal over
-the panel — the launcher hosts it, so it works from the checklist, the dashboard
-widget and the progress page alike.
+A step can carry an image to show or a video to watch. Both open in a modal over the panel, from the checklist, the widget or the progress page.
 
-**Images** are uploaded to the configured disk (S3, R2, local — any Laravel disk)
-or addressed by URL. A private disk is **signed at render time** rather than made
-public, so a bucket kept closed stays closed. The image shows as a thumbnail on
-the step and opens full size when clicked.
+**Images** are uploaded to the configured disk or addressed by URL, and show as a thumbnail on the step.
 
-**Videos** come from an upload, a direct `.mp4`, YouTube or Vimeo — paste the link
-however it came, the id is dug out of watch, share and shorts URLs alike. Any other
-provider can be embedded in an iframe.
+**Videos** come from an upload, a direct `.mp4`, YouTube or Vimeo — paste the link however it came, the id is dug out of watch, share and shorts URLs alike. Any other provider can be embedded in an iframe.
 
 ```php
 // config/filament-onboarding.php
 'media' => [
-    'disk'       => env('FILESYSTEM_DISK', 's3'),
+    'disk'       => env('FILESYSTEM_DISK', 's3'),   // S3, R2, local — any Laravel disk
     'directory'  => 'onboarding',
-    'visibility' => 'private',   // signs a temporary URL instead of exposing the file
+    'visibility' => 'private',                      // signs a temporary URL instead of exposing the file
     'url_ttl'    => 30,
 ],
 ```
 
+A **private disk is signed at render time**, so a bucket kept closed stays closed.
+
 ### Watch time is real
 
-The player reports where the subject actually is — the `<video>` element for a
-file, the IFrame API for YouTube, the SDK for Vimeo — every few seconds and once
-more on the way out. What is kept is the **furthest point reached**, so rewinding
-to rewatch a bit does not undo the ground covered, and a video resumes where it
-stopped.
+The player reports where the subject actually is — the `<video>` element for a file, the IFrame API for YouTube, the SDK for Vimeo — every few seconds and once more on the way out. What is kept is the **furthest point reached**, so rewinding to rewatch does not undo the ground covered, and the video resumes where it stopped.
 
-That makes a new completion mode possible: **Watching the video**. Set the
-threshold (90% by default, since nobody sits through the credits) and the step
-completes itself when the subject gets there. The progress page shows the partial
-percentage until then, rather than calling a half-watched video untouched.
+That makes the **Watching the video** completion mode possible: set the threshold (90% by default, since nobody sits through the credits) and the step completes itself when the subject gets there. Until then the card shows the partial percentage.
 
-An iframe embed from an unknown provider cannot be measured, so nothing is
-invented about it: the video plays, and the step completes some other way.
+An iframe embed from an unknown provider cannot be measured, so nothing is invented about it: the video plays, and the step completes some other way.
 
 ### Where the modal opens
 
-Centred by default. Docked in a corner, it leaves the page usable behind it —
-which is the point when the video is something to follow along with.
+Centred by default. Docked in a corner, it leaves the page usable behind it — the point when the video is something to follow along with.
 
 ```php
-FilamentOnboardingPlugin::make()
-    ->modalPosition('bottom-right'),   // panel default
+FilamentOnboardingPlugin::make()->modalPosition('bottom-right'),
 ```
 
-Positions: `center`, `top`, `bottom`, `top-left`, `top-right`, `bottom-left`,
-`bottom-right`. Any step may override the panel's choice from the admin.
+`center`, `top`, `bottom`, `top-left`, `top-right`, `bottom-left`, `bottom-right`. Any step may override the panel's choice.
+
+---
 
 ## Where onboarding shows up
 
-Three surfaces, all optional, all reading the same progress — tick a step off in
-one and the others update behind it.
+Three surfaces, all optional, all reading the same progress — tick a step off in one and the others update behind it.
 
 ### The floating checklist
 
-`->launcher()` puts a progress button on every page of the panel (pages, resources,
-widgets alike — it hangs off the body). Clicking it opens the checklist.
+`->launcher()` puts a progress button on every page of the panel — pages, resources, widgets alike, since it hangs off the body. With more than one journey, the panel shows tabs, so a finished journey never sits in front of an unfinished one.
 
 ### The dashboard widget
 
 ```php
 use Wallacemartinss\FilamentOnboarding\Widgets\OnboardingChecklistWidget;
 
-// In a Dashboard page or the panel's widgets()
+// In a Dashboard page, or the panel's widgets()
 OnboardingChecklistWidget::class,
 ```
 
-It hides itself once the flow is finished or dismissed.
+It hides itself once the journey is finished or dismissed.
 
 ### The progress page
 
-The journey laid out in cards: a ring with the percentage, counters for done /
-left / skipped, the next step highlighted with its call to action, and a card per
-step showing its state, when it was finished, and what to do about it.
+The journey laid out in cards: a ring with the percentage, counters for done / left / skipped, the next step highlighted with its call to action, and a card per step showing its state and what to do about it.
 
 ```php
 FilamentOnboardingPlugin::make()
     ->progressPage()
-    ->progressPageSlug('getting-started')          // default: onboarding
+    ->progressPageSlug('getting-started')        // default: onboarding
     ->progressPageNavigation(
         label: fn (): string => __('Getting started'),
         icon: 'heroicon-o-map',
@@ -317,14 +240,13 @@ FilamentOnboardingPlugin::make()
     ),
 ```
 
-Off unless asked for. `->progressPage(shouldRegisterNavigation: false)` keeps the
-page reachable by URL but out of the menu, and the page removes itself from the
-navigation anyway once a user has no journey left — a finished account should not
-keep a dead item in its sidebar forever.
+`->progressPage(shouldRegisterNavigation: false)` keeps the page reachable by URL but out of the menu. The page also removes itself from the navigation once a user has no journey left.
 
-Steps show **partial progress where partial progress is real**: a task is all or
-nothing, but a tour reports the stop it reached ("Stop 2 of 4") and a video the
-minutes watched ("42% watched"), both resumable from where they stopped.
+**Finished is not the same as done with it.** A completed step still offers "watch again", "replay the video", "open again" — none of which undoes anything. Undo is offered separately, and never on a step bound to a condition: unticking it would be undone by the next render, because what it asks about is still true.
+
+**Start over** clears what the user did — ticks, skips, tours and videos watched. It cannot clear what is simply true, so steps bound to conditions come straight back, and the page says so rather than looking broken.
+
+---
 
 ## Programmatic API
 
@@ -335,17 +257,39 @@ $onboarding = Onboarding::for($user, $tenant);   // or Onboarding::current()
 
 $onboarding->complete('first-deploy');
 $onboarding->skip('invite-team');
+$onboarding->uncomplete('first-deploy');
 $onboarding->dismiss('kronn-journey');
+$onboarding->restore('kronn-journey');
 $onboarding->reset('kronn-journey');
+$onboarding->handleVisit('/app/acme/servers/create');
 
-$flow = $onboarding->flow('kronn-journey');
+$flow = $onboarding->flow('kronn-journey');      // or ->currentFlow()
 
-$flow->percentage();     // 43
-$flow->isCompleted();    // false
-$flow->nextStep()->title();
+$flow->percentage();            // 43
+$flow->isCompleted();
+$flow->nextStep()?->title();
+$flow->steps;                   // StepState[]
 ```
 
-Events are dispatched as progress is made — `StepCompleted` and `FlowCompleted`, both carrying the subject and the scope.
+`StepState` answers what the UI needs: `isCompleted()`, `isSkipped()`, `isPending()`, `percentage()`, `canReplay()`, `canUndo()`, `url()`, `tour()`, `media()`, `videoProgress()`, `tourProgress()`.
+
+### Events
+
+```php
+use Wallacemartinss\FilamentOnboarding\Events\{StepCompleted, FlowCompleted};
+```
+
+Both carry the step/flow, the progress row, the subject and the scope — enough to award a credit, send an email, or ping a channel when somebody finishes onboarding.
+
+### Command
+
+```bash
+php artisan onboarding:reset kronn-journey --subject=1 --scope=<tenant-id> --scope-model="App\Models\Tenant"
+```
+
+Wipes a subject's progress through a journey. Handy while writing one. Steps bound to a condition come straight back — the command says so.
+
+---
 
 ## Who onboards, and in what context
 
@@ -358,16 +302,114 @@ FilamentOnboardingPlugin::make()
     ->urlParameters(fn (): array => ['tenant' => Filament::getTenant()?->slug]),
 ```
 
-`urlParameters` fills `{placeholders}` in step URLs, so a step authored as `/app/{tenant}/servers/create` lands on the right tenant.
+`urlParameters` fills `{placeholders}` in step URLs, so a step written as `/app/{tenant}/servers/create` lands on the right tenant.
+
+---
+
+## Locales
+
+List the locales you write content in:
+
+```php
+'locales' => ['pt_BR', 'en', 'es'],
+```
+
+The panel then shows one tab per locale for every piece of text. At render time the package reads `app()->getLocale()` and falls back — exact locale, then the base language (`pt_BR` → `pt`), then the app fallback, then whatever is filled in. A user reading in Spanish sees Spanish; a user in a locale nobody wrote for still sees a usable checklist.
+
+A plain string is treated as a translation key, so a journey can point at your own language files instead:
+
+```php
+'title' => 'onboarding.journey.title',   // resolved through __()
+```
+
+---
+
+## Making it look like your product
+
+Three levels, cheapest first.
+
+**1. Retheme with variables.** The stylesheet reads an override for every value it uses, so declaring these anywhere in your own CSS wins regardless of load order:
+
+```css
+:root {
+    --fio-theme-accent: var(--color-brand-600);
+    --fio-theme-accent-dark: var(--color-brand-400);
+    --fio-theme-radius: 1rem;
+    --fio-theme-panel-width: 24rem;
+}
+```
+
+Available: `--fio-theme-{accent,accent-soft,success,surface,surface-muted,border,text,text-muted,shadow,shadow-lg,radius,radius-sm,panel-width}`, each with a `-dark` counterpart.
+
+**2. Replace the stylesheet.**
+
+```bash
+php artisan vendor:publish --tag=filament-onboarding-styles
+```
+
+```php
+'styles' => [
+    'enabled' => true,
+    'path'    => resource_path('css/vendor/filament-onboarding/onboarding.css'),
+],
+```
+
+Then `php artisan filament:assets`. Set `enabled => false` and no stylesheet ships at all — the markup keeps its `.fio-*` classes for you to dress from your own panel theme.
+
+**3. Replace the markup.**
+
+```bash
+php artisan vendor:publish --tag=filament-onboarding-views
+```
+
+The Livewire components keep working: they only call `completeStep`, `skipStep`, `startTour`, `openMedia`, `dismissFlow`, `restartFlow`.
+
+### Icons
+
+The icon field takes any Blade icon name — `heroicon-o-server`, `phosphor-rocket`. Add [`wallacemartinss/filament-icon-picker`](https://github.com/wallacemartinss/filament-icon-picker) and the field becomes a visual picker on its own; the package detects it and needs no configuration. Without it, the field stays a text input and everything else works the same.
+
+---
+
+## Configuration
+
+`config/filament-onboarding.php`, in full:
+
+| Key | What it does |
+|-----|--------------|
+| `locales` | Locales offered when writing content. |
+| `fallback_locale` | Used when the reader's locale has no content. Defaults to the app fallback. |
+| `conditions` | Named checks, as classes. |
+| `cache` | Journey **definitions** are cached and flushed on write. Progress is never cached. |
+| `media` | Disk, directory, visibility, signed-URL TTL, accepted types and size limits. |
+| `modal` | Default position of the media modal. |
+| `styles` | Ship the stylesheet, replace it, or turn it off. |
+| `tables` / `models` | Rename the tables, or swap the models for your own. |
+| `resource` | Navigation of the flow resource, when the plugin does not set it. |
+
+---
+
+## Upgrading
+
+New versions can ship new migrations and new assets:
+
+```bash
+composer update wallacemartinss/filament-onboarding
+php artisan vendor:publish --tag=filament-onboarding-migrations   # existing files are left alone
+php artisan migrate
+php artisan filament:assets
+```
+
+---
 
 ## Development
 
 ```bash
-npm install && npm run build   # builds the Alpine tour + CSS into resources/dist
+composer install
+npm install && npm run build   # builds the Alpine components and copies the CSS into resources/dist
 vendor/bin/pint
 vendor/bin/phpunit
 ```
 
 ## License
 
-MIT.
+MIT. See [LICENSE.md](LICENSE.md).
