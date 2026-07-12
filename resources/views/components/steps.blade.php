@@ -63,6 +63,30 @@
                     />
                 @endif
 
+                {{-- A finished step is not a dead end: the tour can be watched
+                     again, the video replayed, the page revisited. People who
+                     already have the data still want to see how it works. --}}
+                @if ($step->isResolved() && $step->canReplay())
+                    <div class="fio-step-actions">
+                        @if ($step->hasTour())
+                            <button type="button" class="fio-button fio-button--ghost" wire:click="startTour(@js($step->key()))">
+                                <x-filament-onboarding::icons.sparkles />
+                                {{ __('filament-onboarding::onboarding.page.replay_tour') }}
+                            </button>
+                        @elseif ($step->hasVideo())
+                            <button type="button" class="fio-button fio-button--ghost" wire:click="openMedia(@js($step->key()))">
+                                <x-filament-onboarding::icons.play />
+                                {{ __('filament-onboarding::onboarding.page.replay_video') }}
+                            </button>
+                        @elseif ($step->url())
+                            <a href="{{ $step->url() }}" class="fio-button fio-button--ghost">
+                                {{ __('filament-onboarding::onboarding.page.open_again') }}
+                                <x-filament-onboarding::icons.arrow-right />
+                            </a>
+                        @endif
+                    </div>
+                @endif
+
                 @if ($step->isPending() && ($step->hasAction() || $step->hasVideo()))
                     <div class="fio-step-actions">
                         @if ($step->hasVideo())

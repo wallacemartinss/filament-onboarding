@@ -20,6 +20,7 @@ export default function onboardingMedia() {
         stepKey: null,
         media: null,
         position: 'center',
+        src: '',
         seconds: 0,
         duration: 0,
         player: null,
@@ -64,6 +65,7 @@ export default function onboardingMedia() {
             this.position = media.position ?? 'center';
             this.seconds = Number(media.watched ?? 0);
             this.duration = 0;
+            this.src = this.buildSrc();
             this.open = true;
 
             this.$nextTick(() => this.mount());
@@ -76,6 +78,7 @@ export default function onboardingMedia() {
             this.open = false;
             this.media = null;
             this.stepKey = null;
+            this.src = '';
         },
 
         mount() {
@@ -125,20 +128,58 @@ export default function onboardingMedia() {
             video.addEventListener('pause', () => this.report(true));
         },
 
+        /**
+         * The embed URL, worked out once when the modal opens.
+         *
+         * It must NOT be reactive. A src that reads `seconds` is rewritten by
+         * Alpine on every tick of the watch timer, which reloads the iframe and
+         * detaches the player from the API — the video would restart forever and
+         * never report a thing.
+         */
+        buildSrc() {
+            const start = Math.floor(this.seconds) || 0;
+
+            if (this.media?.provider === 'youtube') {
+                // enablejsapi lets the API attach to this iframe and report watch
+                // time; origin is what the handshake answers to. Without it the
+                // player object exists but never becomes ready.
+                const origin = encodeURIComponent(window.location.origin);
+
+                return `https://www.youtube.com/embed/${this.media.video_id}?enablejsapi=1&origin=${origin}&rel=0&modestbranding=1&playsinline=1&start=${start}`;
+            }
+
+            if (this.media?.provider === 'vimeo') {
+                return `https://player.vimeo.com/video/${this.media.video_id}#t=${start}s`;
+            }
+
+            return this.media?.url ?? '';
+        },
+
         async mountYouTube() {
             await this.loadScript(YOUTUBE_API);
-            await this.whenReady(() => window.YT?.Player);
+            await this.whenReady(() => window.YT?.Player && window.YT?.loaded);
 
-            this.player = new window.YT.Player(this.$refs.youtube, {
+            const mount = this.$refs.youtube;
+
+            if (!mount) {
+                return;
+            }
+
+            // The API replaces this element with its own iframe. It stays put
+            // because the modal carries wire:ignore — without it, the next
+            // Livewire morph would rip the player out mid-playback.
+            this.player = new window.YT.Player(mount, {
                 videoId: this.media.video_id,
                 playerVars: {
                     rel: 0,
                     modestbranding: 1,
-                    start: Math.floor(this.seconds),
+                    playsinline: 1,
+                    start: Math.floor(this.seconds) || 0,
                 },
                 events: {
                     onReady: (event) => {
                         this.duration = event.target.getDuration();
+
                         this.startPolling(() => ({
                             seconds: event.target.getCurrentTime(),
                             duration: event.target.getDuration(),
@@ -158,7 +199,13 @@ export default function onboardingMedia() {
             await this.loadScript(VIMEO_API);
             await this.whenReady(() => window.Vimeo?.Player);
 
-            this.player = new window.Vimeo.Player(this.$refs.vimeo, {
+            const mount = this.$refs.vimeo;
+
+            if (!mount) {
+                return;
+            }
+
+            this.player = new window.Vimeo.Player(mount, {
                 id: this.media.video_id,
                 responsive: true,
             });
@@ -240,6 +287,24 @@ export default function onboardingMedia() {
 
             this.player = null;
             this.lastReportedAt = 0;
+        },
+
+        whenFrameLoaded(iframe, timeout = 5000) {
+            return new Promise((resolve) => {
+                let settled = false;
+
+                const done = () => {
+                    if (!settled) {
+                        settled = true;
+                        resolve();
+                    }
+                };
+
+                iframe.addEventListener('load', done, { once: true });
+
+                // A cached iframe may already be loaded, and nothing would fire.
+                setTimeout(done, timeout);
+            });
         },
 
         loadScript(src) {

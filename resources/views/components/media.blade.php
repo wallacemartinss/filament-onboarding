@@ -1,8 +1,15 @@
 {{-- The media modal: an image to look at, or a video to watch. It hangs off the
      body with the tour runner, so it opens over any page of the panel — and it
      sits wherever the step (or the panel) says it should. --}}
+{{-- wire:ignore is load-bearing. This modal lives inside a Livewire component,
+     and every Livewire round trip morphs the DOM — including the <iframe> the
+     video API just attached itself to. The player would be torn out from under
+     it mid-playback (the API says as much: "player is not attached to the DOM").
+     The modal is pure Alpine and needs nothing from Livewire's re-render, so it
+     is left alone. --}}
 <div
     class="fio"
+    wire:ignore
     x-data="onboardingMedia"
     x-load
     x-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('onboarding-media', 'wallacemartinss/filament-onboarding') }}"
@@ -33,6 +40,10 @@
                         <video class="fio-modal-video" x-ref="video" :src="media.url" controls playsinline></video>
                     </template>
 
+                    {{-- The provider's API builds its own iframe over these mounts.
+                         That only survives because of the wire:ignore above: a
+                         Livewire morph would otherwise replace the element the API
+                         is holding on to. --}}
                     <template x-if="media?.type === 'video' && media?.provider === 'youtube'">
                         <div class="fio-modal-frame"><div x-ref="youtube"></div></div>
                     </template>

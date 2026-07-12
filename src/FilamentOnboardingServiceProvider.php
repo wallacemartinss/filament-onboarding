@@ -5,11 +5,11 @@ declare(strict_types = 1);
 namespace Wallacemartinss\FilamentOnboarding;
 
 use Filament\Facades\Filament;
-use Filament\Support\Assets\{AlpineComponent, Css};
 use Filament\Support\Facades\FilamentAsset;
 use Illuminate\Database\Eloquent\Model;
 use Livewire\Livewire;
 use Spatie\LaravelPackageTools\{Package, PackageServiceProvider};
+use Wallacemartinss\FilamentOnboarding\Assets\{VersionedAlpineComponent, VersionedCss};
 use Wallacemartinss\FilamentOnboarding\Commands\ResetOnboardingCommand;
 use Wallacemartinss\FilamentOnboarding\Conditions\ConditionRegistry;
 use Wallacemartinss\FilamentOnboarding\Livewire\OnboardingLauncher;
@@ -65,9 +65,11 @@ class FilamentOnboardingServiceProvider extends PackageServiceProvider
      */
     private function assets(): array
     {
+        // Versioned by content: the ?v= changes when the file changes, so an
+        // edited stylesheet actually reaches the browser — no release, no bump.
         $assets = [
-            AlpineComponent::make('onboarding-tour', __DIR__ . '/../resources/dist/js/onboarding-tour.js'),
-            AlpineComponent::make('onboarding-media', __DIR__ . '/../resources/dist/js/onboarding-media.js'),
+            VersionedAlpineComponent::make('onboarding-tour', __DIR__ . '/../resources/dist/js/onboarding-tour.js'),
+            VersionedAlpineComponent::make('onboarding-media', __DIR__ . '/../resources/dist/js/onboarding-media.js'),
         ];
 
         if (!config('filament-onboarding.styles.enabled', true)) {
@@ -77,7 +79,7 @@ class FilamentOnboardingServiceProvider extends PackageServiceProvider
         $stylesheet = config('filament-onboarding.styles.path')
             ?: __DIR__ . '/../resources/dist/css/onboarding.css';
 
-        $assets[] = Css::make('filament-onboarding', $stylesheet);
+        $assets[] = VersionedCss::make('filament-onboarding', $stylesheet);
 
         return $assets;
     }
