@@ -260,12 +260,12 @@ $onboarding = Onboarding::for($user, $tenant);   // or Onboarding::current()
 $onboarding->complete('first-deploy');
 $onboarding->skip('invite-team');
 $onboarding->uncomplete('first-deploy');
-$onboarding->dismiss('kronn-journey');
-$onboarding->restore('kronn-journey');
-$onboarding->reset('kronn-journey');
+$onboarding->dismiss('getting-started');
+$onboarding->restore('getting-started');
+$onboarding->reset('getting-started');
 $onboarding->handleVisit('/app/acme/servers/create');
 
-$flow = $onboarding->flow('kronn-journey');      // or ->currentFlow()
+$flow = $onboarding->flow('getting-started');      // or ->currentFlow()
 
 $flow->percentage();            // 43
 $flow->isCompleted();
@@ -286,7 +286,7 @@ Both carry the step/flow, the progress row, the subject and the scope — enough
 ### Command
 
 ```bash
-php artisan onboarding:reset kronn-journey --subject=1 --scope=<tenant-id> --scope-model="App\Models\Tenant"
+php artisan onboarding:reset getting-started --subject=1 --scope=<tenant-id> --scope-model="App\Models\Tenant"
 ```
 
 Wipes a subject's progress through a journey. Handy while writing one. Steps bound to a condition come straight back — the command says so.

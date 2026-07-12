@@ -10,7 +10,7 @@
  * them up regardless of which file the browser loaded last:
  *
  *   :root {
- *       --fio-theme-accent: var(--color-kronn-600);
+ *       --fio-theme-accent: var(--color-brand-600);
  *       --fio-theme-radius: 1rem;
  *   }
  *
