@@ -4,6 +4,7 @@ declare(strict_types = 1);
 
 namespace Wallacemartinss\FilamentOnboarding\Support;
 
+use Illuminate\Support\Str;
 use Wallacemartinss\FilamentOnboarding\Enums\MediaSource;
 
 /**
@@ -73,16 +74,37 @@ final class VideoEmbed
                 'id'       => self::vimeoId($url),
                 'src'      => null,
             ],
-            MediaSource::Embed => [
+            MediaSource::Embed => self::isSafeToFrame($url) ? [
                 'provider' => 'embed',
                 'id'       => null,
                 'src'      => $url,
-            ],
-            default => [
+            ] : null,
+            default => self::isSafeToFrame($url) ? [
                 'provider' => 'file',
                 'id'       => null,
                 'src'      => $url,
-            ],
+            ] : null,
         };
+    }
+
+    /**
+     * Whether this URL may be handed to an `<iframe>` or a `<video>`.
+     *
+     * YouTube and Vimeo never reach here — the browser rebuilds those from an id
+     * against a hardcoded domain, so nothing an author types can escape the
+     * provider. An "embed" is the opposite: whatever is written goes into a frame
+     * as-is. Authors are trusted, but `javascript:` and `data:text/html` are not
+     * addresses — they are code — and a step is not the place to run it.
+     */
+    private static function isSafeToFrame(string $url): bool
+    {
+        $scheme = Str::lower((string) parse_url(trim($url), PHP_URL_SCHEME));
+
+        // A relative path (an uploaded file, a route) has no scheme, and is ours.
+        if ($scheme === '') {
+            return Str::startsWith(trim($url), '/');
+        }
+
+        return in_array($scheme, ['http', 'https'], strict: true);
     }
 }

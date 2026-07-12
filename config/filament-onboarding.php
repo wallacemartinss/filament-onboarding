@@ -79,14 +79,26 @@ return [
         'visibility' => 'public', // 'private' signs a temporary URL instead
         'url_ttl'    => 30,       // minutes, for private disks
 
+        /*
+         * SVG is deliberately absent. An SVG is a document, and it can carry
+         * script: harmless inside an <img>, but the file also sits at a URL on
+         * your own origin, and opening it directly runs whatever is in it. Add it
+         * back only if you are sure everyone who can author a step is someone you
+         * would hand that to.
+         */
         'accept' => [
-            'image' => ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'],
+            'image' => ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
             'video' => ['video/mp4', 'video/webm', 'video/ogg'],
         ],
 
+        /*
+         * In kilobytes. PHP has the last word: a 100 MB video will not arrive
+         * unless upload_max_filesize and post_max_size say so too — the default
+         * PHP install stops at 2 MB, and the upload simply fails.
+         */
         'max_size' => [
-            'image' => 5120,    // KB
-            'video' => 102400,  // KB
+            'image' => 5120,
+            'video' => 102400,
         ],
     ],
 

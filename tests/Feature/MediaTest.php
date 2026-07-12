@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Storage;
 use Wallacemartinss\FilamentOnboarding\Enums\{CompletionMode, MediaSource, MediaType, ModalPosition, StepType};
 use Wallacemartinss\FilamentOnboarding\Facades\Onboarding;
 use Wallacemartinss\FilamentOnboarding\Models\{OnboardingFlow, OnboardingStep};
-use Wallacemartinss\FilamentOnboarding\Support\VideoEmbed;
+use Wallacemartinss\FilamentOnboarding\Support\{MediaUrl, VideoEmbed};
 use Wallacemartinss\FilamentOnboarding\Tests\Fixtures\Subject;
 use Wallacemartinss\FilamentOnboarding\Tests\TestCase;
 
@@ -169,5 +169,39 @@ class MediaTest extends TestCase
             'video_completion_threshold' => 90,
             ...$attributes,
         ]);
+    }
+
+    /**
+     * The checklist is rendered in the layout of every page, so a disk that
+     * cannot build a URL must not be allowed to take the panel down over a
+     * picture on a step.
+     */
+    public function test_a_disk_that_cannot_build_a_url_costs_the_image_not_the_page(): void
+    {
+        config()->set('filesystems.disks.no_urls', ['driver' => 'local', 'root' => sys_get_temp_dir()]);
+
+        $this->assertNull(MediaUrl::resolve('there-is-no-such-disk', 'shot.png'));
+    }
+
+    /**
+     * A private file was put somewhere closed on purpose. If the disk cannot sign
+     * a URL, the answer is no URL — not a public one.
+     */
+    public function test_a_private_disk_that_cannot_sign_hands_out_nothing(): void
+    {
+        config()->set('filesystems.disks.closed', ['driver' => 'local', 'root' => sys_get_temp_dir(), 'visibility' => 'private']);
+
+        $this->assertNull(MediaUrl::resolve('closed', 'secret.png'));
+    }
+
+    public function test_an_embed_that_is_code_rather_than_an_address_is_refused(): void
+    {
+        $this->assertNull(VideoEmbed::forSource(MediaSource::Embed, 'javascript:alert(1)'));
+        $this->assertNull(VideoEmbed::forSource(MediaSource::Embed, 'data:text/html;base64,PHNjcmlwdD4='));
+
+        $this->assertSame(
+            'https://example.com/player',
+            VideoEmbed::forSource(MediaSource::Embed, 'https://example.com/player')['src'],
+        );
     }
 }
