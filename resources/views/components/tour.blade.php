@@ -36,6 +36,15 @@
                     <p class="fio-tour-body" x-text="step.body"></p>
                 </template>
 
+                {{-- The element is not on the page yet: say so, rather than leave
+                     a spotlight pointing at nothing. --}}
+                <template x-if="waiting">
+                    <p class="fio-tour-waiting">
+                        <span class="fio-tour-waiting-pulse" aria-hidden="true"></span>
+                        {{ __('filament-onboarding::onboarding.tour.waiting') }}
+                    </p>
+                </template>
+
                 <div class="fio-tour-actions">
                     <div class="fio-tour-dots" aria-hidden="true">
                         <template x-for="(tourStep, dot) in steps" :key="dot">

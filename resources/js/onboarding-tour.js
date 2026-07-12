@@ -4,15 +4,20 @@
  * Lives on every panel page (the launcher hangs it off the body), listens for a
  * tour handed over by Livewire, and walks the subject through it — spotlighting
  * one element at a time, following the tour across pages when a step lives
- * somewhere else.
+ * somewhere else, and following the *subject* through a wizard when the element
+ * a stop points at is not on screen yet.
  */
 
 const STORAGE_KEY = 'filament-onboarding.tour';
 const PREFIXES = ['@widget:', '@livewire:'];
 const SPOTLIGHT_PADDING = 8;
 const POPOVER_GAP = 14;
-const POPOVER_WIDTH = 320;
+const POPOVER_MARGIN = 12;
+const POPOVER_FALLBACK_WIDTH = 320;
+const POPOVER_FALLBACK_HEIGHT = 180;
 const ELEMENT_TIMEOUT = 3000;
+const SCROLL_TIMEOUT = 800;
+const TINY_ELEMENT = 8;
 
 export default function onboardingTour() {
     return {
@@ -20,10 +25,14 @@ export default function onboardingTour() {
         stepKey: null,
         steps: [],
         index: 0,
+        // The element a stop points at is not here yet: the subject is on
+        // another step of a wizard, or a section is still closed.
+        waiting: false,
         spotlight: { top: 0, left: 0, width: 0, height: 0, visible: false },
         popover: { top: 0, left: 0 },
         reposition: null,
         observer: null,
+        observerQueued: false,
 
         init() {
             this.resume();
@@ -51,7 +60,13 @@ export default function onboardingTour() {
         },
 
         /**
-         * A tour that crossed a page boundary picks up where it left off.
+         * A tour that crossed a page boundary picks up where it left off — and
+         * only there.
+         *
+         * The page it was parked on is remembered with it. Land anywhere else —
+         * the browser's back button, a link in the sidebar — and the tour is
+         * over: carrying on would explain the profile page on top of the server
+         * list, pointing at an element that is never going to show up.
          */
         resume() {
             const stored = sessionStorage.getItem(STORAGE_KEY);
@@ -61,9 +76,13 @@ export default function onboardingTour() {
             }
 
             try {
-                const { key, steps, index } = JSON.parse(stored);
+                const { key, steps, index, path } = JSON.parse(stored);
 
                 if (!key || !Array.isArray(steps) || steps.length === 0) {
+                    return this.clearStorage();
+                }
+
+                if (path && path !== window.location.pathname) {
                     return this.clearStorage();
                 }
 
@@ -119,6 +138,11 @@ export default function onboardingTour() {
             }
 
             this.index = target;
+
+            // Asked to move on, so bring the application along if the stop knows
+            // how: the next field may live on the next step of a wizard.
+            this.advanceApplication();
+
             this.render();
         },
 
@@ -156,6 +180,7 @@ export default function onboardingTour() {
 
         close() {
             this.active = false;
+            this.waiting = false;
             this.steps = [];
             this.index = 0;
             this.stepKey = null;
@@ -184,12 +209,38 @@ export default function onboardingTour() {
 
             sessionStorage.setItem(
                 STORAGE_KEY,
-                JSON.stringify({ key: this.stepKey, steps: this.steps, index }),
+                JSON.stringify({
+                    key: this.stepKey,
+                    steps: this.steps,
+                    index,
+                    path: target.pathname,
+                }),
             );
 
             window.location.assign(target.toString());
 
             return true;
+        },
+
+        /**
+         * The control that carries the application to this stop — a wizard's
+         * "next", a tab, a disclosure.
+         *
+         * Clicked only when the subject asked to move on and the element is not
+         * on screen: the tour nudges the application, it does not drive it.
+         */
+        advanceApplication() {
+            const step = this.step;
+
+            if (!step?.advance) {
+                return;
+            }
+
+            if (step.selector && this.find(step.selector)) {
+                return;
+            }
+
+            this.find(step.advance)?.click();
         },
 
         clearStorage() {
@@ -206,24 +257,18 @@ export default function onboardingTour() {
             this.persist();
             this.report();
 
-            const element = step.selector ? await this.waitForElement(step.selector) : null;
+            const found = step.selector ? await this.waitForElement(step.selector) : null;
 
-            if (!element) {
-                // Nothing to point at *yet*. Two very different reasons, one
-                // behaviour: centre the popover so the copy still reads, and keep
-                // watching the DOM.
-                //
-                // It may be a renamed selector — in which case nothing will ever
-                // show up, and the tour degrades to a plain explanation. Or the
-                // element may live on a step of a wizard the subject has not
-                // reached: the tour then simply waits, and snaps onto it the
-                // moment they get there. A tour that gave up after three seconds
-                // could never walk anybody through a multi-step form.
+            if (!found) {
+                // Nothing to point at *yet*. The copy still reads, centred, and
+                // the DOM is watched: the element may live on a step of a wizard
+                // the subject has not reached, and the tour is content to wait —
+                // a tour that gave up after three seconds could never walk
+                // anybody through a multi-step form.
+                this.waiting = Boolean(step.selector);
                 this.spotlight.visible = false;
-                this.popover = {
-                    top: window.innerHeight / 2 - 100,
-                    left: window.innerWidth / 2 - POPOVER_WIDTH / 2,
-                };
+
+                await this.placePopover(null);
 
                 if (step.selector) {
                     this.observeFor(step.selector);
@@ -233,10 +278,15 @@ export default function onboardingTour() {
             }
 
             this.stopObserving();
+            this.waiting = false;
 
-            this.scrollIntoView(element);
+            const element = this.resolveTarget(found);
 
-            const rect = element.getBoundingClientRect();
+            // Measure *after* the scroll has settled. A smooth scroll is
+            // asynchronous: reading the rectangle on the next line gives the
+            // position the element had before the page moved, and the spotlight
+            // lands on whatever used to be there.
+            const rect = await this.scrollIntoView(element);
 
             this.spotlight = {
                 top: rect.top - SPOTLIGHT_PADDING,
@@ -246,7 +296,7 @@ export default function onboardingTour() {
                 visible: true,
             };
 
-            this.popover = this.positionPopover(rect, step.placement ?? 'auto');
+            await this.placePopover(rect, step.placement ?? 'auto');
         },
 
         persist() {
@@ -256,7 +306,12 @@ export default function onboardingTour() {
 
             sessionStorage.setItem(
                 STORAGE_KEY,
-                JSON.stringify({ key: this.stepKey, steps: this.steps, index: this.index }),
+                JSON.stringify({
+                    key: this.stepKey,
+                    steps: this.steps,
+                    index: this.index,
+                    path: window.location.pathname,
+                }),
             );
         },
 
@@ -277,28 +332,168 @@ export default function onboardingTour() {
         },
 
         /**
-         * Watch the DOM until the element shows up, then anchor to it.
+         * What to draw the spotlight around.
          *
-         * This is what lets a tour walk somebody through a wizard: the field on
-         * step 3 does not exist until they get to step 3, and the tour is
-         * content to wait for them.
+         * A styled toggle or radio hides its real input behind the control the
+         * subject actually sees, so the element a selector matches can be a pixel
+         * tall — the spotlight would be a dot beside the thing it means. Climb
+         * until there is something worth pointing at.
+         */
+        resolveTarget(element) {
+            // The visible control for a hidden input is its label — and the label
+            // is the whole row the subject reads, not just the switch.
+            if (element instanceof HTMLInputElement) {
+                const label = element.closest('label')
+                    ?? (element.id ? document.querySelector(`label[for="${CSS.escape(element.id)}"]`) : null);
+
+                if (label && this.isSubstantial(label)) {
+                    return label;
+                }
+            }
+
+            let node = element;
+
+            for (let depth = 0; depth < 4 && node instanceof HTMLElement; depth++) {
+                if (this.isSubstantial(node)) {
+                    return node;
+                }
+
+                node = node.parentElement;
+            }
+
+            return element;
+        },
+
+        isSubstantial(element) {
+            const rect = element.getBoundingClientRect();
+
+            return rect.width >= TINY_ELEMENT && rect.height >= TINY_ELEMENT;
+        },
+
+        /**
+         * Bring the element into view and hand back the rectangle it settles at.
+         */
+        scrollIntoView(element) {
+            const rect = element.getBoundingClientRect();
+            const isVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
+
+            if (isVisible) {
+                return Promise.resolve(rect);
+            }
+
+            element.scrollIntoView({
+                behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+                block: 'center',
+                inline: 'nearest',
+            });
+
+            return this.whenStill(element);
+        },
+
+        /**
+         * The rectangle, once it stops moving: two frames in the same place, or
+         * the scroll ran out of patience.
+         */
+        whenStill(element) {
+            return new Promise((resolve) => {
+                const startedAt = performance.now();
+
+                let previous = null;
+                let stillFor = 0;
+
+                const tick = () => {
+                    const rect = element.getBoundingClientRect();
+
+                    const moved = previous === null
+                        || Math.abs(rect.top - previous.top) > 0.5
+                        || Math.abs(rect.left - previous.left) > 0.5;
+
+                    stillFor = moved ? 0 : stillFor + 1;
+                    previous = rect;
+
+                    if (stillFor >= 2 || performance.now() - startedAt > SCROLL_TIMEOUT) {
+                        return resolve(element.getBoundingClientRect());
+                    }
+
+                    requestAnimationFrame(tick);
+                };
+
+                requestAnimationFrame(tick);
+            });
+        },
+
+        /**
+         * Watch the DOM until the tour and the subject are looking at the same
+         * thing again.
+         *
+         * Two ways that happens: the element this stop points at turns up (the
+         * subject reached the wizard step it lives on), or the subject moved
+         * *past* it and an element from a later stop is on screen instead — in
+         * which case the tour follows them, rather than explaining a form they
+         * have already filled in.
          */
         observeFor(selector) {
             this.stopObserving();
 
             this.observer = new MutationObserver(() => {
-                if (this.active && this.find(selector)) {
-                    this.stopObserving();
-                    this.render();
+                if (this.observerQueued) {
+                    return;
                 }
+
+                this.observerQueued = true;
+
+                requestAnimationFrame(() => {
+                    this.observerQueued = false;
+
+                    if (!this.active) {
+                        return this.stopObserving();
+                    }
+
+                    if (this.find(selector)) {
+                        this.stopObserving();
+
+                        return this.render();
+                    }
+
+                    const ahead = this.firstStopOnScreenAhead();
+
+                    if (ahead !== null) {
+                        this.stopObserving();
+                        this.index = ahead;
+
+                        return this.render();
+                    }
+                });
             });
 
             this.observer.observe(document.body, { childList: true, subtree: true });
         },
 
+        /**
+         * The nearest stop after this one whose element is already on screen.
+         */
+        firstStopOnScreenAhead() {
+            for (let index = this.index + 1; index < this.steps.length; index++) {
+                const step = this.steps[index];
+
+                // A stop that lives on another page is not "on screen": getting
+                // there is a navigation, not a nudge.
+                if (step.url) {
+                    return null;
+                }
+
+                if (step.selector && this.find(step.selector)) {
+                    return index;
+                }
+            }
+
+            return null;
+        },
+
         stopObserving() {
             this.observer?.disconnect();
             this.observer = null;
+            this.observerQueued = false;
         },
 
         /**
@@ -313,7 +508,7 @@ export default function onboardingTour() {
                     return resolve(existing);
                 }
 
-                const startedAt = Date.now();
+                const startedAt = performance.now();
 
                 const poll = setInterval(() => {
                     const element = this.find(selector);
@@ -324,7 +519,7 @@ export default function onboardingTour() {
                         return resolve(element);
                     }
 
-                    if (Date.now() - startedAt > ELEMENT_TIMEOUT) {
+                    if (performance.now() - startedAt > ELEMENT_TIMEOUT) {
                         clearInterval(poll);
 
                         resolve(null);
@@ -340,6 +535,10 @@ export default function onboardingTour() {
          * both are found by the component they are rather than by CSS.
          */
         find(selector) {
+            if (!selector) {
+                return null;
+            }
+
             if (!PREFIXES.some((prefix) => selector.startsWith(prefix))) {
                 try {
                     return document.querySelector(selector);
@@ -376,32 +575,35 @@ export default function onboardingTour() {
             return null;
         },
 
-        scrollIntoView(element) {
-            const rect = element.getBoundingClientRect();
-            const isVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
+        /**
+         * Put the popover where it fits — measured, not guessed. The copy decides
+         * how tall the box is, and a box positioned from a guess is the box whose
+         * buttons end up off the screen.
+         */
+        async placePopover(rect, placement = 'auto') {
+            await this.$nextTick();
 
-            if (isVisible) {
+            const popover = this.$refs.popover;
+            const width = popover?.offsetWidth || POPOVER_FALLBACK_WIDTH;
+            const height = popover?.offsetHeight || POPOVER_FALLBACK_HEIGHT;
+
+            if (!rect) {
+                this.popover = {
+                    top: Math.max(POPOVER_MARGIN, (window.innerHeight - height) / 2),
+                    left: Math.max(POPOVER_MARGIN, (window.innerWidth - width) / 2),
+                };
+
                 return;
             }
-
-            element.scrollIntoView({
-                behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
-                block: 'center',
-                inline: 'nearest',
-            });
-        },
-
-        positionPopover(rect, placement) {
-            const height = this.$refs.popover?.offsetHeight ?? 180;
-            const margin = 12;
 
             const below = rect.bottom + POPOVER_GAP;
             const above = rect.top - height - POPOVER_GAP;
 
-            const fitsBelow = below + height <= window.innerHeight - margin;
-            const fitsAbove = above >= margin;
+            const fitsBelow = below + height <= window.innerHeight - POPOVER_MARGIN;
+            const fitsAbove = above >= POPOVER_MARGIN;
 
             let top;
+            let left = rect.left + rect.width / 2 - width / 2;
 
             if (placement === 'top' && fitsAbove) {
                 top = above;
@@ -412,17 +614,23 @@ export default function onboardingTour() {
             } else if (fitsAbove) {
                 top = above;
             } else {
-                top = Math.max(margin, window.innerHeight / 2 - height / 2);
+                // No room above or below: sit beside the element, on whichever
+                // side has the space.
+                const rightOf = rect.right + POPOVER_GAP;
+                const leftOf = rect.left - width - POPOVER_GAP;
+
+                left = rightOf + width <= window.innerWidth - POPOVER_MARGIN ? rightOf : leftOf;
+                top = rect.top;
             }
 
-            const centred = rect.left + rect.width / 2 - POPOVER_WIDTH / 2;
+            this.popover = {
+                top: this.clamp(top, POPOVER_MARGIN, window.innerHeight - height - POPOVER_MARGIN),
+                left: this.clamp(left, POPOVER_MARGIN, window.innerWidth - width - POPOVER_MARGIN),
+            };
+        },
 
-            const left = Math.min(
-                Math.max(margin, centred),
-                window.innerWidth - POPOVER_WIDTH - margin,
-            );
-
-            return { top, left };
+        clamp(value, min, max) {
+            return Math.min(Math.max(value, min), Math.max(min, max));
         },
 
         onKeydown(event) {

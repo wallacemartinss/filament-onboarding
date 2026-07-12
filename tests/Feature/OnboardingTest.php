@@ -134,6 +134,26 @@ class OnboardingTest extends TestCase
     }
 
     /**
+     * A stop can name the control that carries the application to it — the next
+     * button of a wizard — so the field it explains is on screen when it speaks.
+     */
+    public function test_a_tour_stop_carries_the_control_that_advances_the_application(): void
+    {
+        $this->step('tour', [
+            'type'       => StepType::Tour,
+            'tour_steps' => [
+                ['selector' => '#on-step-two', 'advance' => '[wire\\:click="nextStep"]', 'title' => ['en' => 'Name'], 'body' => ['en' => '...']],
+                ['selector' => '#here-already', 'title' => ['en' => 'Here'], 'body' => ['en' => '...']],
+            ],
+        ]);
+
+        $tour = Onboarding::for($this->subject)->flow('journey')->step('tour')->tour();
+
+        $this->assertSame('[wire\\:click="nextStep"]', $tour[0]['advance']);
+        $this->assertNull($tour[1]['advance']);
+    }
+
+    /**
      * @param  array<string, mixed>  $attributes
      */
     private function step(string $key, array $attributes = []): OnboardingStep

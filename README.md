@@ -190,6 +190,20 @@ A selector that no longer matches does not break the tour: the page dims and the
 
 Tours report the stop the user reached, so a tour abandoned half-way shows as half-way — and can be resumed.
 
+### Tours that walk through a wizard
+
+The field a stop points at often does not exist yet: it lives on the next step of a wizard, or inside a section that is still closed. The tour handles both directions, without ever taking the mouse away from the user.
+
+**The tour follows the user.** Advance the wizard and the tour advances with you — it watches the page, and when the element of a later stop shows up, that is where it goes.
+
+**The tour brings the app along.** Give a stop an **"Advance with"** selector — the control that gets the application there — and pressing *Next* on the tour presses it:
+
+```
+[wire\:click="nextStep"]      the wizard's own next button
+```
+
+It is clicked only when the user moves on and the element is not on screen. If the application refuses (a required field is empty), the tour waits and says so, rather than pointing at nothing.
+
 ---
 
 ## Images and videos

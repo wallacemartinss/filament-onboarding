@@ -18,6 +18,7 @@ return [
     ],
 
     'tour' => [
+        'waiting'  => 'Esperando isso aparecer na tela — siga no formulário que o tutorial acompanha você.',
         'skip'     => 'Pular',
         'previous' => 'Voltar',
         'next'     => 'Próximo',
@@ -230,6 +231,8 @@ return [
         ],
 
         'tour' => [
+            'advance'         => 'Avançar com',
+            'advance_helper'  => 'O controle que leva o app até esta parada — o botão de próximo de um wizard, uma aba. Clicado quando o usuário avança e o elemento ainda não está na tela.',
             'add'             => 'Adicionar parada',
             'selector'        => 'Seletor CSS',
             'selector_helper' => 'O elemento a destacar, ex.: [data-onboarding="create-server"]. Deixe vazio se escolher um widget.',

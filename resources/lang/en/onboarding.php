@@ -18,6 +18,7 @@ return [
     ],
 
     'tour' => [
+        'waiting'  => 'Waiting for this to show up on the page — carry on with the form and the tour follows you.',
         'skip'     => 'Skip',
         'previous' => 'Back',
         'next'     => 'Next',
@@ -230,6 +231,8 @@ return [
         ],
 
         'tour' => [
+            'advance'         => 'Advance with',
+            'advance_helper'  => 'The control that carries the app to this stop — a wizard\'s next button, a tab. Clicked when the subject moves on and the element is not on screen yet.',
             'add'             => 'Add stop',
             'selector'        => 'CSS selector',
             'selector_helper' => 'The element to spotlight, e.g. [data-onboarding="create-server"]. Leave empty when a widget is picked.',

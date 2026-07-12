@@ -30,6 +30,9 @@ Database-driven onboarding for Filament v5.
   `->progressPage()`. Includes "start over".
 - **Guided tours** — spotlight an element, explain it, move on; tours cross pages and
   resume where they left off, and report the stop they reached.
+- Tours **walk through a wizard**: they follow the user when the form moves on, and an
+  "Advance with" selector lets a stop bring the application to it. A tour parked on a page
+  ends when the user goes somewhere else, instead of floating over the wrong screen.
 
 ### Media
 

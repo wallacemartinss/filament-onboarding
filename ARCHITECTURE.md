@@ -235,7 +235,28 @@ last stop → finish() → Livewire.dispatch('onboarding-tour-finished', {key}) 
 skip()   → close()  → step left pending, progress kept (the stop reached is remembered)
 ```
 
-Cross-page state lives in `sessionStorage['filament-onboarding.tour']` as `{key, steps, index}`. It is cleared on finish/skip.
+Cross-page state lives in `sessionStorage['filament-onboarding.tour']` as `{key, steps, index, path}`. It is cleared on finish/skip.
+
+**`path` is not decoration.** It is the page the tour is parked on. `resume()` compares it with `window.location.pathname` and *ends the tour* when they differ. Without it, a tour survives the browser's back button and the sidebar: the runner comes up on a page where the stop's element will never exist, the popover centres itself, and the subject gets the profile tour floating over the server list. Every write to storage sets `path` — `persist()` with the current page, `navigateIfNeeded()` with the page it is sending the subject to.
+
+### The three things a naive runner gets wrong
+
+**1. Measuring before the scroll lands.** `element.scrollIntoView({behavior: 'smooth'})` is *asynchronous*. Reading `getBoundingClientRect()` on the next line gives the position the element had **before** the page moved, so the spotlight is drawn around whatever used to be there — the field above, typically. `scrollIntoView()` here returns a promise that resolves through `whenStill()`: the rectangle is polled per frame until it repeats twice, or `SCROLL_TIMEOUT` runs out. Never measure without awaiting it.
+
+**2. Positioning a box whose size you guessed.** The popover's height depends on the copy and its width on the viewport. `placePopover()` awaits `$nextTick()`, reads `offsetWidth`/`offsetHeight` off the real node, and clamps inside the viewport — below, above, or *beside* the element, in that order. The old code used a 320px constant and last render's height, which is how the "next" button ended up off the right edge of the screen. (The CSS caps the box at `calc(100vh - 2rem)` and scrolls it, so long copy on a short screen cannot push the buttons out either.)
+
+**3. Pointing at an input nobody can see.** A styled toggle keeps its real `<input>` `sr-only` behind the control the subject looks at — spotlighting it draws a dot next to the thing it means. `resolveTarget()` walks from the matched element to its `<label>` (the whole row, for a toggle), and failing that up the tree until an ancestor has real size.
+
+### Tour and application, walking together (`advance` + `firstStopOnScreenAhead()`)
+
+A wizard has its own cursor, and the tour has another. Left alone they drift: the tour explains "the server name" while the subject is still on the provider step, pointing at a field that is not in the DOM.
+
+Both directions are handled, and neither takes control away from the subject:
+
+- **Application → tour.** When the current stop's element is missing, the `MutationObserver` also looks *ahead*: if a later stop's element is on screen, the subject has moved past this one, and the tour jumps to them. Advancing the wizard advances the tour.
+- **Tour → application.** A stop may carry `advance`, a selector for the control that gets the app there (`[wire\:click="nextStep"]`). It is clicked in `next()` — on the subject's intent, never on autopilot, and never when the element is already on screen.
+
+While waiting, `waiting` is true: the popover says so instead of leaving a spotlight pointing at nothing. If the application refuses to advance (a required field is empty), the tour simply waits — which is the honest thing to do.
 
 ### Selector resolution (`find()`)
 
@@ -411,4 +432,6 @@ Onboarding::flushCache();                     // after editing definitions by ha
 8. Assets are versioned by content hash.
 9. A hidden step is **not pending** — it is out of the count, not waiting in it. And an unregistered visibility condition **hides**, where an unregistered completion condition never completes: both fail towards not teaching a feature the account may not have.
 10. Tour stops are **not hand-numbered** in their titles. A guarded stop is removed for accounts that cannot see it, and the numbers would skip.
-11. A missing condition, a missing element, a missing route: **degrade, never throw**. Onboarding is not the product; it must never take the panel down with it.
+11. The tour's rectangle is read **after** the scroll settles, and the popover is placed from **measured** size. Both are async; both were bugs.
+12. The parked tour remembers its page. Resume anywhere else **ends** the tour.
+13. A missing condition, a missing element, a missing route: **degrade, never throw**. Onboarding is not the product; it must never take the panel down with it.

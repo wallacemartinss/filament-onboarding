@@ -150,6 +150,7 @@ class OnboardingStep extends Model
                 'placement' => $tourStep['placement'] ?? 'auto',
                 'url'       => $this->resolveTourUrl($tourStep, $parameters),
                 'condition' => $tourStep['condition'] ?? null,
+                'advance'   => $tourStep['advance'] ?? null,
             ])
             ->all();
     }

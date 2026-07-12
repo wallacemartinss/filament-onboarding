@@ -392,14 +392,23 @@ class StepsRelationManager extends RelationManager
                             ->native(false),
                     ]),
 
-                    Select::make('condition')
-                        ->label(__('filament-onboarding::onboarding.resource.tour.visibility'))
-                        ->prefixIcon(Heroicon::OutlinedFunnel)
-                        ->helperText(__('filament-onboarding::onboarding.resource.tour.visibility_helper'))
-                        ->options(fn (): array => Onboarding::conditions()->options())
-                        ->placeholder(__('filament-onboarding::onboarding.resource.fields.visibility_everyone'))
-                        ->searchable()
-                        ->native(false),
+                    Grid::make(2)->schema([
+                        Select::make('condition')
+                            ->label(__('filament-onboarding::onboarding.resource.tour.visibility'))
+                            ->prefixIcon(Heroicon::OutlinedFunnel)
+                            ->helperText(__('filament-onboarding::onboarding.resource.tour.visibility_helper'))
+                            ->options(fn (): array => Onboarding::conditions()->options())
+                            ->placeholder(__('filament-onboarding::onboarding.resource.fields.visibility_everyone'))
+                            ->searchable()
+                            ->native(false),
+
+                        TextInput::make('advance')
+                            ->label(__('filament-onboarding::onboarding.resource.tour.advance'))
+                            ->prefixIcon(Heroicon::OutlinedForward)
+                            ->helperText(__('filament-onboarding::onboarding.resource.tour.advance_helper'))
+                            ->placeholder('[wire\\:click="nextStep"]')
+                            ->maxLength(255),
+                    ]),
 
                     Tabs::make('tour_translations')
                         ->contained(false)
