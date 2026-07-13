@@ -142,9 +142,6 @@ class FilamentOnboardingPlugin implements Plugin
     }
 
     /**
-     * Where the floating button sits: bottom-right, bottom-left, top-right or top-left.
-     */
-    /**
      * Greet the subject when they arrive, once.
      *
      * A checklist in the corner is easy to never notice. The welcome screen is
@@ -164,6 +161,9 @@ class FilamentOnboardingPlugin implements Plugin
         return (bool) $this->evaluate($this->hasWelcome);
     }
 
+    /**
+     * Where the floating button sits: bottom-right, bottom-left, top-right or top-left.
+     */
     public function launcherPosition(string $position): static
     {
         $this->launcherPosition = $position;

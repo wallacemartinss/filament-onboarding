@@ -28,6 +28,15 @@ use Wallacemartinss\FilamentOnboarding\Support\{MediaUrl, PanelTargets, Translat
  * @property string|null $condition_key
  * @property string|null $visit_url
  * @property array<int, array<string, string|null>>|null $tour_steps
+ * @property string|null $visibility_condition
+ * @property MediaType $media_type
+ * @property MediaSource|null $media_source
+ * @property string|null $media_disk
+ * @property string|null $media_path
+ * @property string|null $media_url
+ * @property array<string, string>|null $media_caption
+ * @property ModalPosition|null $modal_position
+ * @property int $video_completion_threshold
  * @property bool $is_required
  * @property bool $is_active
  * @property int $sort_order

@@ -18,6 +18,7 @@ use Wallacemartinss\FilamentOnboarding\Facades\Onboarding;
  * @property array<string, string>|null $description
  * @property string|null $icon
  * @property string|null $color
+ * @property string|null $visibility_condition
  * @property bool $is_active
  * @property bool $is_dismissible
  * @property int $sort_order
