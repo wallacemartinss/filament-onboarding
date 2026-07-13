@@ -28,6 +28,9 @@ return new class extends Migration
 {
     public function up(): void
     {
+        $this->mergeDuplicates($this->table('flow_progress'), 'flow_id', ['started_at', 'completed_at', 'dismissed_at']);
+        $this->mergeDuplicates($this->table('step_progress'), 'step_id', ['completed_at', 'skipped_at', 'seen_at']);
+
         foreach (['flow_progress', 'step_progress'] as $key) {
             $table = $this->table($key);
 
@@ -38,6 +41,70 @@ return new class extends Migration
                 $blueprint->string('scope_type', 191)->nullable(false)->default('')->change();
                 $blueprint->string('scope_id', 64)->nullable(false)->default('')->change();
             });
+        }
+    }
+
+    /**
+     * The duplicates this migration exists to prevent may already be in the
+     * table — that is the point of it. Turning NULL into '' below makes those
+     * rows equal in the eyes of the unique index, and the UPDATE would die on
+     * the very constraint it is trying to restore. So they are merged first:
+     * the oldest row stays, and it inherits the furthest the others got — the
+     * latest of each timestamp, the union of the metas.
+     *
+     * NULL and '' land in the same bucket on purpose: a NULL-scoped row from
+     * before this migration and an ''-scoped row from after it are the same
+     * progress, about to be spelled the same way.
+     *
+     * @param  array<int, string>  $timestamps
+     */
+    private function mergeDuplicates(string $table, string $ownerColumn, array $timestamps): void
+    {
+        $duplicated = DB::table($table)
+            ->selectRaw("{$ownerColumn} as owner_id")
+            ->selectRaw('subject_type, subject_id')
+            ->selectRaw("coalesce(scope_type, '') as scope_type_key")
+            ->selectRaw("coalesce(scope_id, '') as scope_id_key")
+            ->groupByRaw("{$ownerColumn}, subject_type, subject_id, coalesce(scope_type, ''), coalesce(scope_id, '')")
+            ->havingRaw('count(*) > 1')
+            ->get();
+
+        foreach ($duplicated as $group) {
+            $rows = DB::table($table)
+                ->where($ownerColumn, $group->owner_id)
+                ->where('subject_type', $group->subject_type)
+                ->where('subject_id', $group->subject_id)
+                ->whereRaw("coalesce(scope_type, '') = ?", [$group->scope_type_key])
+                ->whereRaw("coalesce(scope_id, '') = ?", [$group->scope_id_key])
+                ->orderBy('id')
+                ->get();
+
+            $survivor = $rows->first();
+            $merged   = [];
+
+            foreach ($timestamps as $column) {
+                $furthest = $rows->pluck($column)->filter()->max();
+
+                if ($furthest !== null && $furthest !== $survivor->{$column}) {
+                    $merged[$column] = $furthest;
+                }
+            }
+
+            $meta = $rows
+                ->pluck('meta')
+                ->map(fn ($value) => is_string($value) ? json_decode($value, true) : null)
+                ->filter(fn ($value) => is_array($value))
+                ->reduce(fn (array $carry, array $value): array => array_replace($carry, $value), []);
+
+            if ($meta !== []) {
+                $merged['meta'] = json_encode($meta);
+            }
+
+            if ($merged !== []) {
+                DB::table($table)->where('id', $survivor->id)->update($merged);
+            }
+
+            DB::table($table)->whereIn('id', $rows->skip(1)->pluck('id')->all())->delete();
         }
     }
 
