@@ -114,6 +114,37 @@ class AuthorizationTest extends TestCase
         $this->assertFalse($this->state('no-tour-here')->isCompleted());
     }
 
+    public function test_a_tour_is_not_a_second_door_around_the_completion_mode(): void
+    {
+        $this->step('secure-the-account', [
+            'type'            => StepType::Tour,
+            'tour_steps'      => [['selector' => '#two-factor', 'title' => ['en' => 'Turn it on']]],
+            'completion_mode' => CompletionMode::Condition,
+            'condition_key'   => 'never',
+        ]);
+
+        $this->endpoint()->finishTour('secure-the-account');
+
+        // The tour was watched, and that much is remembered. But the step
+        // answers to the condition, and the condition still says no — clicking
+        // "next" to the end must not mark two-factor as enabled.
+        $this->assertFalse($this->state('secure-the-account')->isCompleted());
+        $this->assertTrue($this->state('secure-the-account')->isSeen());
+    }
+
+    public function test_a_manual_tour_step_still_completes_by_finishing_its_tour(): void
+    {
+        $this->step('meet-the-dashboard', [
+            'type'       => StepType::Tour,
+            'tour_steps' => [['selector' => '#sidebar', 'title' => ['en' => 'The sidebar']]],
+        ]);
+
+        $this->endpoint()->finishTour('meet-the-dashboard');
+
+        // For a step that finishes by hand, the tour is the task.
+        $this->assertTrue($this->state('meet-the-dashboard')->isCompleted());
+    }
+
     public function test_watch_time_is_only_recorded_for_a_step_that_carries_a_video(): void
     {
         $this->step('read-the-docs', [

@@ -266,7 +266,14 @@ trait InteractsWithOnboarding
     }
 
     /**
-     * The browser reached the end of a tour, so the step it belongs to is done.
+     * The browser reached the end of a tour.
+     *
+     * That finishes the step only when the step finishes by hand: for a Manual
+     * step, the tour *is* the task. A step that answers to a condition, a
+     * visit, a video or the application does not — its mode names the thing
+     * that completes it, and clicking "next" until the end is not that thing.
+     * Otherwise a tour glued to "has two-factor" is a second front door around
+     * the very check completeStep() refuses.
      */
     public function finishTour(string $stepKey): void
     {
@@ -274,6 +281,14 @@ trait InteractsWithOnboarding
 
         // Only a step that actually has a tour finishes by finishing one.
         if (!$step instanceof StepState || !$step->hasTour()) {
+            return;
+        }
+
+        if (!$step->step->completion_mode->isSelfServed()) {
+            $this->onboarding()?->markSeen($step->step);
+
+            $this->afterOnboardingChanged();
+
             return;
         }
 

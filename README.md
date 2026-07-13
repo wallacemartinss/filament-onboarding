@@ -193,6 +193,8 @@ A selector that no longer matches does not break the tour: the page dims and the
 
 Tours report the stop the user reached, so a tour abandoned half-way shows as half-way — and can be resumed.
 
+Finishing a tour completes its step only when the step's completion mode is **Manual** — for a manual step, the tour *is* the task. A tour attached to a step that finishes by a condition, a visit, a video or your own code records that it was watched and leaves completion to the mode: clicking "next" to the end is not proof that two-factor got enabled.
+
 ### A "view the tutorial" button on the page itself
 
 The launcher starts tours from the checklist. For the pages that deserve their own invitation, drop a header action on them:
