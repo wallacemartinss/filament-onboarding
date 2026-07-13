@@ -87,9 +87,17 @@ class FlowState
             return false;
         }
 
-        return $this->steps
-            ->filter(fn (StepState $step): bool => $step->isRequired())
-            ->every(fn (StepState $step): bool => $step->isCompleted());
+        $required = $this->steps->filter(fn (StepState $step): bool => $step->isRequired());
+
+        // A journey with no required steps has no shorter way through: it is
+        // complete when everything is settled, not the moment the first
+        // optional step is — every() answers yes to an empty collection, and
+        // that yes used to fire FlowCompleted with the journey barely begun.
+        if ($required->isEmpty()) {
+            return $this->steps->every(fn (StepState $step): bool => $step->isResolved());
+        }
+
+        return $required->every(fn (StepState $step): bool => $step->isCompleted());
     }
 
     /**

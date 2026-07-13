@@ -58,6 +58,27 @@ class ProgressTest extends TestCase
         Event::assertDispatched(FlowCompleted::class);
     }
 
+    public function test_a_journey_of_optional_steps_completes_when_all_are_settled(): void
+    {
+        Event::fake([FlowCompleted::class]);
+
+        $this->step('first', ['is_required' => false]);
+        $this->step('second', ['is_required' => false]);
+
+        // "Every required step is done" is vacuously true of a journey with no
+        // required steps — which used to stamp completed_at and fire
+        // FlowCompleted at the first touch, with the journey barely begun.
+        Onboarding::for($this->subject)->skip('first');
+
+        $this->assertFalse(Onboarding::for($this->subject)->flow('journey')->isCompleted());
+        Event::assertNotDispatched(FlowCompleted::class);
+
+        Onboarding::for($this->subject)->complete('second');
+
+        $this->assertTrue(Onboarding::for($this->subject)->flow('journey')->isCompleted());
+        Event::assertDispatched(FlowCompleted::class);
+    }
+
     public function test_restarting_clears_what_the_subject_did(): void
     {
         $this->step('first');
