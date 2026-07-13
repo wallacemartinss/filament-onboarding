@@ -45,11 +45,16 @@ class StartTourAction
             ->icon(Heroicon::OutlinedSparkles)
             ->color('gray')
             ->visible(fn (): bool => filled(static::available($keys)))
+            // There is only a question to ask when there is more than one answer.
+            // The modal has to be turned off *explicitly*: a custom modal heading
+            // is enough to make Filament open one on its own (shouldOpenModal()
+            // asks hasCustomModalHeading() before it ever looks at the schema), so
+            // a button with a single tour behind it opened an empty modal asking
+            // which tour — and offering none.
+            ->modal(fn (): bool => count(static::available($keys)) > 1)
             ->modalHeading(__('filament-onboarding::onboarding.tour.choose'))
             ->modalSubmitActionLabel(__('filament-onboarding::onboarding.tour.begin'))
             ->modalWidth('lg')
-            // One tour needs no question, and Filament shows no modal for an empty
-            // schema — so the button starts it outright.
             ->schema(fn (): array => count(static::available($keys)) > 1
                 ? [static::chooser($keys)]
                 : [])
