@@ -5,6 +5,20 @@ All notable changes to `filament-onboarding` are documented here.
 Versions follow Filament: **2.x targets Filament v5**, and 1.x is reserved for a Filament v4
 backport. That is why the first release is 2.0.0 — there is no 1.0.0 to upgrade from.
 
+## 2.2.2
+
+### Fixed
+
+- **`StartTourAction` with one tour asked which of the one.** It always set a modal heading,
+  and Filament opens a modal for that alone — `shouldOpenModal()` asks
+  `hasCustomModalHeading()` long before it looks at whether there is a schema to show. So the
+  common case, `StartTourAction::make('servers-tour')`, opened an empty modal asking "which
+  tutorial do you want?" and offering no answer. The modal is now turned off unless there is
+  more than one tour to choose between — including when the list names several and only one
+  of them exists.
+
+---
+
 ## 2.2.1
 
 **Required on Laravel 13 — and on any Laravel 12.63+ whose cache config is current.**
