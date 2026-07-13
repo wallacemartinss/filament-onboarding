@@ -7,7 +7,7 @@ namespace Wallacemartinss\FilamentOnboarding\Resources\OnboardingConditions\Sche
 use Filament\Forms\Components\{Repeater, Select, TextInput, Textarea, Toggle};
 use Filament\Schemas\Components\{Grid, Section, Tabs};
 use Filament\Schemas\Components\Tabs\Tab;
-use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\{Get, Set};
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Str;
@@ -66,6 +66,40 @@ class OnboardingConditionForm
                     ->searchable()
                     ->native(false)
                     ->live()
+                    // Every column on this form belongs to the model above it. Change
+                    // the model and they are columns of something else — `user_id`
+                    // left over from Client, pointing at a Product table that may not
+                    // have one; a `status` filter that survives onto a model without
+                    // a status. Nothing complains: the condition is simply written
+                    // against columns that are not there, and quietly never passes.
+                    ->afterStateUpdated(function (Set $set, Get $get, ?string $state): void {
+                        $foreignKeys = AppModels::foreignKeys($state);
+
+                        // Keep the answer if the new model can still answer it, and
+                        // otherwise fall back to the obvious guess.
+                        $subject = (string) $get('subject_column');
+
+                        $set('subject_column', match (true) {
+                            array_key_exists($subject, $foreignKeys)  => $subject,
+                            array_key_exists('user_id', $foreignKeys) => 'user_id',
+                            default                                   => null,
+                        });
+
+                        $scope = (string) $get('scope_column');
+
+                        $set('scope_column', array_key_exists($scope, $foreignKeys) ? $scope : null);
+
+                        // Filters over columns the new model does not have are not
+                        // filters, they are a broken query waiting to happen. The ones
+                        // that still make sense are kept.
+                        $columns = AppModels::columns($state);
+
+                        $set('filters', collect($get('filters') ?? [])
+                            ->filter(fn ($filter): bool => is_array($filter)
+                                && array_key_exists((string) ($filter['column'] ?? ''), $columns))
+                            ->values()
+                            ->all());
+                    })
                     ->required(fn (Get $get): bool => self::asks($get, ConditionType::Aggregate))
                     ->visible(fn (Get $get): bool => self::asks($get, ConditionType::Aggregate))
                     ->columnSpanFull(),
