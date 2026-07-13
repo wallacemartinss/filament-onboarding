@@ -90,6 +90,23 @@ class VisibilityTest extends TestCase
         $this->assertNull(Onboarding::for($this->subject)->flow('journey'));
     }
 
+    public function test_a_visit_makes_no_progress_in_a_flow_the_subject_cannot_see(): void
+    {
+        $this->step('see-the-page', [
+            'completion_mode' => CompletionMode::Visit,
+            'visit_url'       => '/servers/create',
+        ]);
+
+        $this->flow->update(['visibility_condition' => 'off_the_plan']);
+
+        Onboarding::for($this->subject)->handleVisit('/servers/create');
+
+        // The flow does not exist for this subject, so standing on the right
+        // page proves nothing — no tick, and no progress row invented for a
+        // journey they were never offered.
+        $this->assertDatabaseCount('onboarding_step_progress', 0);
+    }
+
     public function test_a_tour_leaves_out_the_stops_the_subject_is_not_entitled_to(): void
     {
         $this->step('tour', [

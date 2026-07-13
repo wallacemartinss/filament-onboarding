@@ -422,6 +422,12 @@ class SubjectOnboarding
     public function handleVisit(string $path, ?string $panelId = null): void
     {
         foreach ($this->manager->flows($panelId) as $flow) {
+            // A flow the subject cannot see is not a flow they can make
+            // progress in — not even by standing on the right page.
+            if (!$this->isVisible($flow->visibility_condition)) {
+                continue;
+            }
+
             foreach ($flow->steps as $step) {
                 if ($step->completion_mode !== CompletionMode::Visit) {
                     continue;
