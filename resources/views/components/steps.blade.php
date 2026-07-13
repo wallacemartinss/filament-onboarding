@@ -91,7 +91,10 @@
                     </div>
                 @endif
 
-                @if ($step->isPending() && ($step->hasAction() || $step->hasVideo()))
+                {{-- canSkip() keeps this block alive for an optional step with
+                     no destination at all: skipping is an action too, and the
+                     progress page must not be the only place it exists. --}}
+                @if ($step->isPending() && ($step->hasAction() || $step->hasVideo() || $step->canSkip()))
                     <div class="fio-step-actions">
                         @if ($step->hasVideo())
                             <button
