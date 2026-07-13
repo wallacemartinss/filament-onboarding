@@ -57,6 +57,15 @@ trait InteractsWithOnboarding
     public ?string $onboardingPanel = null;
 
     /**
+     * One engine per request, not one per question. A render asks for the
+     * current flow, whether onboarding is hidden, and whether to welcome —
+     * and each fresh SubjectOnboarding re-reads all of the subject's progress
+     * to answer. Not a Livewire property: it is rebuilt on the next request,
+     * which is exactly the lifetime progress reads should have.
+     */
+    protected ?SubjectOnboarding $memoizedOnboarding = null;
+
+    /**
      * Livewire calls this on mount for every component using the trait.
      */
     public function mountInteractsWithOnboarding(): void
@@ -415,13 +424,20 @@ trait InteractsWithOnboarding
 
     protected function onboarding(): ?SubjectOnboarding
     {
+        if ($this->memoizedOnboarding instanceof SubjectOnboarding) {
+            return $this->memoizedOnboarding;
+        }
+
         $subject = Onboarding::resolveSubject();
 
         if (!$subject instanceof Model) {
             return null;
         }
 
-        return Onboarding::for($subject, $this->onboardingScope());
+        // Safe to keep across the writes of this request: the engine updates
+        // its own progress maps as it writes, so a completeStep() re-renders
+        // with the tick already in place.
+        return $this->memoizedOnboarding = Onboarding::for($subject, $this->onboardingScope());
     }
 
     /**
