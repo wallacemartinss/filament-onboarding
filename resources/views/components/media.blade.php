@@ -44,12 +44,27 @@
                          That only survives because of the wire:ignore above: a
                          Livewire morph would otherwise replace the element the API
                          is holding on to. --}}
-                    <template x-if="media?.type === 'video' && media?.provider === 'youtube'">
+                    <template x-if="media?.type === 'video' && media?.provider === 'youtube' && ! degraded">
                         <div class="fio-modal-frame"><div x-ref="youtube"></div></div>
                     </template>
 
-                    <template x-if="media?.type === 'video' && media?.provider === 'vimeo'">
+                    <template x-if="media?.type === 'video' && media?.provider === 'vimeo' && ! degraded">
                         <div class="fio-modal-frame"><div x-ref="vimeo"></div></div>
+                    </template>
+
+                    {{-- The provider's script never arrived — an ad blocker, most
+                         often — so there is no API to build a player with. The
+                         plain embed needs nothing from us: the video still plays,
+                         and watch time is simply not measured. --}}
+                    <template x-if="degradedSrc">
+                        <div class="fio-modal-frame">
+                            <iframe
+                                :src="degradedSrc"
+                                frameborder="0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowfullscreen
+                            ></iframe>
+                        </div>
                     </template>
 
                     <template x-if="media?.type === 'video' && media?.provider === 'embed'">

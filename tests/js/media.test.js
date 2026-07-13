@@ -157,6 +157,48 @@ describe('one video opened over another', () => {
     });
 });
 
+describe('a provider script that never arrives', () => {
+    it('falls back to the plain embed instead of an empty modal', () => {
+        const component = media();
+
+        component.media = { type: 'video', provider: 'youtube', video_id: 'dQw4w9WgXcQ', trackable: true };
+        component.degraded = true;
+
+        expect(component.degradedSrc).toBe('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ');
+
+        component.media = { type: 'video', provider: 'vimeo', video_id: '76979871', trackable: true };
+
+        expect(component.degradedSrc).toBe('https://player.vimeo.com/video/76979871');
+    });
+
+    it('stops promising watch time it cannot measure', () => {
+        const component = media();
+
+        component.stepKey = 'watch-intro';
+        component.media = { type: 'video', provider: 'youtube', video_id: 'dQw4w9WgXcQ', trackable: true };
+        component.degraded = true;
+        component.duration = 100;
+        component.seconds = 50;
+
+        // A plain iframe cannot be asked where the subject is — so the footer
+        // makes no promise, and nothing is invented for the server either.
+        expect(component.isTrackable).toBe(false);
+
+        component.report(true);
+
+        expect(window.Livewire.dispatch).not.toHaveBeenCalled();
+    });
+
+    it('offers no fallback for a provider it does not know', () => {
+        const component = media();
+
+        component.media = { type: 'video', provider: 'embed', url: 'https://example.com/player', trackable: false };
+        component.degraded = true;
+
+        expect(component.degradedSrc).toBeNull();
+    });
+});
+
 describe('closing', () => {
     it('says where the video was left once more on the way out', () => {
         const component = media();

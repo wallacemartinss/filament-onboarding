@@ -25,6 +25,9 @@ export default function onboardingMedia() {
         player: null,
         poll: null,
         lastReportedAt: 0,
+        // The provider's script did not arrive, so the modal fell back to the
+        // provider's plain embed: the video plays, watch time is not measured.
+        degraded: false,
 
         init() {
             window.addEventListener('onboarding-media-open', (event) => {
@@ -49,7 +52,30 @@ export default function onboardingMedia() {
         },
 
         get isTrackable() {
-            return Boolean(this.media?.trackable);
+            // A degraded player is a plain iframe: it cannot be asked where the
+            // subject is, so the footer makes no promise and nothing reports.
+            return Boolean(this.media?.trackable) && !this.degraded;
+        },
+
+        /**
+         * What to load when the provider's API could not be built — the plain
+         * embed, straight from the id. It needs no script of ours; it simply
+         * cannot be asked about watch time, and none is invented.
+         */
+        get degradedSrc() {
+            if (!this.degraded || !this.media?.video_id) {
+                return null;
+            }
+
+            if (this.media.provider === 'youtube') {
+                return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(this.media.video_id)}`;
+            }
+
+            if (this.media.provider === 'vimeo') {
+                return `https://player.vimeo.com/video/${encodeURIComponent(this.media.video_id)}`;
+            }
+
+            return null;
         },
 
         async show(detail) {
@@ -80,6 +106,7 @@ export default function onboardingMedia() {
             this.position = media.position ?? 'center';
             this.seconds = Number(media.watched ?? 0);
             this.duration = 0;
+            this.degraded = false;
             this.open = true;
 
             this.$nextTick(() => this.mount());
@@ -121,6 +148,11 @@ export default function onboardingMedia() {
                     return await this.mountVimeo();
                 }
             } catch (error) {
+                // A blocked CDN, an ad blocker, a network that gave up. The
+                // subject still came to watch a video, so fall back to the
+                // provider's plain embed rather than an empty modal.
+                this.degraded = true;
+
                 console.warn('[filament-onboarding] the video player could not be built', error);
             }
         },
