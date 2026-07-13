@@ -1024,6 +1024,27 @@ button.fio-step-marker:hover {
     cursor: not-allowed;
 }
 
+.fio-tour-blocked {
+    margin-block-start: 0.625rem;
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+    font-size: 0.75rem;
+    line-height: 1.45;
+    color: var(--danger-600, #dc2626);
+}
+
+.fio-tour-blocked .fio-icon {
+    flex-shrink: 0;
+    inline-size: 0.9375rem;
+    block-size: 0.9375rem;
+    margin-block-start: 0.125rem;
+}
+
+.dark .fio .fio-tour-blocked {
+    color: var(--danger-400, #f87171);
+}
+
 .fio-tour-waiting {
     margin-block-start: 0.625rem;
     display: flex;

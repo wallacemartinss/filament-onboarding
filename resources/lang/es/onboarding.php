@@ -18,7 +18,10 @@ return [
     ],
 
     'tour' => [
-        'start'    => '¿Cómo funciona?',
+        'blocked'  => 'La pantalla aún no avanzó. Si falta completar algo, complétalo y pulsa siguiente otra vez — el tutorial te acompaña.',
+        'start'    => 'Ver el tutorial',
+        'choose'   => '¿Qué tutorial quieres ver?',
+        'begin'    => 'Empezar',
         'waiting'  => 'Esperando a que aparezca en la pantalla — sigue en el formulario y el tutorial te acompaña.',
         'skip'     => 'Omitir',
         'previous' => 'Atrás',

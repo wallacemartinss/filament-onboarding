@@ -57,8 +57,10 @@ backport. That is why the first release is 2.0.0 — there is no 1.0.0 to upgrad
 
 ### Added
 
-- **`StartTourAction`** — a header action for any page or resource that starts one tour in
-  place ("How does it work?"), visible only when the subject can actually take it.
+- **`StartTourAction`** — a header action for any page or resource that starts a tour in
+  place ("View the tutorial"), visible only when the subject can actually take it. Hand it
+  several tours and it asks which one, naming each by its title — a screen can be walked
+  more than one way.
 - A **JavaScript test suite** (vitest), and CI that runs it and refuses a stale `dist`.
 
 ---

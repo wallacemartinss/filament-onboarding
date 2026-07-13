@@ -229,30 +229,120 @@ describe('what to draw the spotlight around', () => {
     });
 });
 
-describe('what the scroll listener may and may not do', () => {
+describe('keeping up with a page that moves on its own', () => {
     beforeEach(() => {
         document.body.innerHTML = '';
     });
 
-    it('re-measures without dragging the subject back to the spotlight', () => {
-        const field = withBox(document.createElement('input'), { top: -500, left: 0, width: 200, height: 40 });
-        field.id = 'name';
+    it('follows the element when the page grows under it', () => {
+        // The real one: a file upload widget mounts, grows, and pushes the form
+        // down. No scroll, no resize — and the old runner, which only listened
+        // for those two, left the spotlight on the field above.
+        const field = withBox(document.createElement('input'));
+        field.id = 'email';
         document.body.append(field);
-
-        field.scrollIntoView = vi.fn();
 
         const component = tour();
 
         component.active = true;
-        component.steps = [{ selector: '#name' }];
+        component.steps = [{ selector: '#email' }];
         component.index = 0;
+        component.target = field;
 
         component.measure();
 
-        // The subject scrolled away from it on purpose. The spotlight follows the
-        // element; the page stays where they put it.
+        expect(component.spotlight.top).toBe(2); // 10 - 8 of padding
+
+        // The upload widget mounted: everything below it moved down 88px.
+        withBox(field, { top: 98, left: 10, width: 200, height: 40 });
+
+        component.measure();
+
+        expect(component.spotlight.top).toBe(90);
+    });
+
+    it('arms the watcher when it lands on a stop', async () => {
+        const field = withBox(document.createElement('input'));
+        field.id = 'email';
+        document.body.append(field);
+
+        const component = tour();
+
+        component.active = true;
+        component.stepKey = 'a-tour';
+        component.steps = [{ selector: '#email' }];
+        component.index = 0;
+
+        await component.render();
+
+        // This is the fix, and the thing that was missing: rendering a stop leaves
+        // something behind that keeps up with the element. Without it the spotlight
+        // is drawn once and never again, and the first widget that mounts late
+        // moves the field out from under it.
+        expect(component.target).toBe(field);
+        expect(component.watchFrame).not.toBeNull();
+    });
+
+    it('writes nothing while the element stays put', () => {
+        const field = withBox(document.createElement('input'));
+        field.id = 'email';
+        document.body.append(field);
+
+        const component = tour();
+
+        component.active = true;
+        component.steps = [{ selector: '#email' }];
+        component.index = 0;
+        component.target = field;
+        component.placePopover = vi.fn();
+
+        component.measure();
+        component.measure();
+        component.measure();
+
+        // One rectangle read per frame is cheap. Rewriting Alpine state per frame
+        // is not, and this runs for as long as the tour is open.
+        expect(component.placePopover).toHaveBeenCalledOnce();
+    });
+
+    it('goes back to waiting when the element leaves the page', () => {
+        const field = withBox(document.createElement('input'));
+        field.id = 'email';
+        document.body.append(field);
+
+        const component = tour();
+
+        component.active = true;
+        component.steps = [{ selector: '#email' }];
+        component.index = 0;
+        component.target = field;
+        component.render = vi.fn();
+
+        field.remove();
+
+        component.measure();
+
+        expect(component.render).toHaveBeenCalledOnce();
+        expect(component.target).toBeNull();
+    });
+
+    it('never scrolls the subject from the watcher', () => {
+        const field = withBox(document.createElement('input'), { top: -500, left: 0, width: 200, height: 40 });
+        field.scrollIntoView = vi.fn();
+        document.body.append(field);
+
+        const component = tour();
+
+        component.active = true;
+        component.steps = [{ selector: '#email' }];
+        component.index = 0;
+        component.target = field;
+
+        component.measure();
+
+        // They scrolled away on purpose. The spotlight follows the element; the
+        // page stays where they put it.
         expect(field.scrollIntoView).not.toHaveBeenCalled();
-        expect(component.spotlight.top).toBe(-508);
     });
 
     it('tells the server which stop was reached once, not once per frame', () => {
@@ -273,7 +363,6 @@ describe('what the scroll listener may and may not do', () => {
 
         expect(dispatch).toHaveBeenCalledOnce();
 
-        // A new stop is news, and gets reported.
         component.index = 1;
         component.report();
 
@@ -294,10 +383,9 @@ describe('what the scroll listener may and may not do', () => {
 
         component.close();
 
-        // A render in flight checks this token after every await: bumping it is
-        // what stops a dead render from scrolling the page under them.
         expect(component.renderToken).toBeGreaterThan(before);
         expect(component.pollTimers).toHaveLength(0);
+        expect(component.watchFrame).toBeNull();
     });
 });
 
@@ -327,7 +415,7 @@ describe('the keyboard', () => {
         expect(component.close).not.toHaveBeenCalled();
     });
 
-    it('still walks the tour from the page itself', () => {
+    it('still walks the tour from the page itself', async () => {
         const component = tour();
 
         component.active = true;
@@ -337,6 +425,122 @@ describe('the keyboard', () => {
 
         component.onKeydown({ key: 'ArrowRight', target: document.body });
 
+        // next() asks the application whether it will go there before it moves,
+        // so the answer lands a microtask later.
+        await Promise.resolve();
+
         expect(component.index).toBe(1);
     });
 });
+
+describe('a form that refuses to move on', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '';
+    });
+
+    /**
+     * The wizard has required fields. The tour presses its next button, the form
+     * puts "this field is required" on the screen and stays exactly where it was.
+     * The tour used to walk on regardless — explaining the timezone, a wizard step
+     * away, while the subject stared at the errors.
+     */
+    it('stays where the subject is when the form will not advance', async () => {
+        const onScreen = withBox(document.createElement('input'));
+        onScreen.id = 'ip-address';
+
+        // The wizard's next button, wired to a form that refuses: nothing new
+        // appears when it is pressed.
+        const next = withBox(document.createElement('button'));
+        next.id = 'next-step';
+
+        document.body.append(onScreen, next);
+
+        const component = tour();
+
+        component.active = true;
+        component.stepKey = 'a-tour';
+        component.steps = [
+            { selector: '#ip-address', title: 'IP' },
+            { selector: '#timezone', advance: '#next-step', title: 'Timezone' },
+        ];
+        component.index = 0;
+        component.target = onScreen;
+        component.render = vi.fn();
+
+        await component.next();
+
+        expect(component.index).toBe(0);
+        expect(component.blocked).toBe(true);
+        expect(component.render).not.toHaveBeenCalled();
+    });
+
+    it('follows the subject the moment they fill the form in and it moves', async () => {
+        const onScreen = withBox(document.createElement('input'));
+        onScreen.id = 'ip-address';
+
+        const next = withBox(document.createElement('button'));
+        next.id = 'next-step';
+
+        document.body.append(onScreen, next);
+
+        const component = tour();
+
+        component.active = true;
+        component.stepKey = 'a-tour';
+        component.steps = [
+            { selector: '#ip-address' },
+            { selector: '#timezone', advance: '#next-step' },
+        ];
+        component.index = 0;
+        component.target = onScreen;
+        component.render = vi.fn();
+
+        await component.next();
+
+        expect(component.blocked).toBe(true);
+
+        // They fill it in, the wizard moves, and the field of the next stop is
+        // suddenly there. The observer is watching for exactly this.
+        const timezone = withBox(document.createElement('input'));
+        timezone.id = 'timezone';
+        document.body.append(timezone);
+
+        await new Promise((resolve) => setTimeout(resolve, 50));
+
+        expect(component.index).toBe(1);
+        expect(component.blocked).toBe(false);
+        expect(component.render).toHaveBeenCalled();
+    });
+
+    it('moves on when the form does what it is asked', async () => {
+        const next = withBox(document.createElement('button'));
+        next.id = 'next-step';
+
+        // This button works: pressing it puts the next step's field on the page.
+        next.addEventListener('click', () => {
+            const timezone = withBox(document.createElement('input'));
+            timezone.id = 'timezone';
+            document.body.append(timezone);
+        });
+
+        document.body.append(next);
+
+        const component = tour();
+
+        component.active = true;
+        component.stepKey = 'a-tour';
+        component.steps = [
+            { selector: '#provider' },
+            { selector: '#timezone', advance: '#next-step' },
+        ];
+        component.index = 0;
+        component.render = vi.fn();
+
+        await component.next();
+
+        expect(component.index).toBe(1);
+        expect(component.blocked).toBe(false);
+        expect(component.render).toHaveBeenCalledOnce();
+    });
+});
+

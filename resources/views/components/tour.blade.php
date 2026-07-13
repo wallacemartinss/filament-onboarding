@@ -49,6 +49,15 @@
                     </p>
                 </template>
 
+                {{-- The form refused to move on — a required field, most likely.
+                     The tour stays where the subject is and says why. --}}
+                <template x-if="blocked">
+                    <p class="fio-tour-blocked">
+                        <x-filament-onboarding::icons.alert />
+                        {{ __('filament-onboarding::onboarding.tour.blocked') }}
+                    </p>
+                </template>
+
                 <div class="fio-tour-actions">
                     {{-- With many stops the dots outgrow the popover; the
                          counter above already says where the subject is. --}}

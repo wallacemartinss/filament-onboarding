@@ -16,6 +16,10 @@ const POPOVER_MARGIN = 12;
 const POPOVER_FALLBACK_WIDTH = 320;
 const POPOVER_FALLBACK_HEIGHT = 180;
 const ELEMENT_TIMEOUT = 3000;
+// Pressing the control the stop names — a wizard's next, a tab — is a round-trip
+// to the server and a re-render. Give it room: calling it "blocked" too early
+// would put a warning on the screen for a page that was merely thinking.
+const ADVANCE_TIMEOUT = 3000;
 const SCROLL_TIMEOUT = 800;
 const TINY_ELEMENT = 8;
 
@@ -28,14 +32,18 @@ export default function onboardingTour() {
         // The element a stop points at is not here yet: the subject is on
         // another step of a wizard, or a section is still closed.
         waiting: false,
+        // The application will not go there: a required field is empty, and the
+        // form refused to move. The tour stays where the subject is.
+        blocked: false,
         spotlight: { top: 0, left: 0, width: 0, height: 0, visible: false },
         popover: { top: 0, left: 0 },
-        reposition: null,
+        target: null,
+        lastRect: null,
+        watchFrame: null,
         onPageShow: null,
         observer: null,
         observerQueued: false,
         renderToken: 0,
-        repositionQueued: false,
         reportedIndex: null,
         pollTimers: [],
 
@@ -47,36 +55,6 @@ export default function onboardingTour() {
 
                 this.start(detail.key, detail.steps ?? []);
             });
-
-            // Scrolling and resizing move the element, so the spotlight has to
-            // follow it. That is *all* they do: re-measure, in place.
-            //
-            // Rendering from here instead was two bugs in one. It scrolled the
-            // subject back — render() pulls the element into view, and the check
-            // for "in view" wants the whole element, so nudging the page one
-            // pixel snapped it back to centre and the subject could not read
-            // around the spotlight. And it reported to the server on every frame:
-            // a two-second scroll was a hundred Livewire round-trips, each one an
-            // UPDATE plus a re-render of every surface, for a stop that never
-            // changed.
-            this.reposition = () => {
-                if (!this.active || this.repositionQueued) {
-                    return;
-                }
-
-                this.repositionQueued = true;
-
-                requestAnimationFrame(() => {
-                    this.repositionQueued = false;
-
-                    if (this.active) {
-                        this.measure();
-                    }
-                });
-            };
-
-            window.addEventListener('resize', this.reposition, { passive: true });
-            window.addEventListener('scroll', this.reposition, { passive: true, capture: true });
 
             // Coming back through the browser's history can restore this page
             // from the back-forward cache, script and all: init() does not run
@@ -98,9 +76,8 @@ export default function onboardingTour() {
         },
 
         destroy() {
-            window.removeEventListener('resize', this.reposition);
-            window.removeEventListener('scroll', this.reposition, { capture: true });
             window.removeEventListener('pageshow', this.onPageShow);
+            this.stopWatching();
             this.stopPolling();
             this.stopObserving();
         },
@@ -172,10 +149,24 @@ export default function onboardingTour() {
             return this.index === 0;
         },
 
-        next() {
-            // The element of this stop is not on screen: the way forward is the
-            // form, not the tour. The button is disabled too — this guards the
-            // arrow key.
+        /**
+         * Move to the next stop — but never ahead of the application.
+         *
+         * A stop that lives behind a control (a wizard's next button) is only
+         * reached if that control actually works. It often does not: the form has
+         * required fields, they are empty, and pressing next puts the errors on
+         * the screen and stays exactly where it was. The tour used to walk on
+         * regardless, and ended up explaining the timezone — three fields and a
+         * wizard step away — while the subject stared at "this field is required".
+         *
+         * So: press the control, and *check*. If the form moved, so does the
+         * tour. If it did not, the tour stays on the stop the subject can see,
+         * says why, and waits — and the moment they fill the fields in and the
+         * form moves, it follows them there on its own.
+         */
+        async next() {
+            // Waiting on an element that has not turned up: the way forward is
+            // the form, not the tour. (This guards the arrow key too.)
             if (this.waiting) {
                 return;
             }
@@ -184,19 +175,101 @@ export default function onboardingTour() {
                 return this.finish();
             }
 
-            const target = this.index + 1;
+            const targetIndex = this.index + 1;
 
-            if (this.navigateIfNeeded(target)) {
+            if (this.navigateIfNeeded(targetIndex)) {
                 return;
             }
 
-            this.index = target;
+            const target = this.steps[targetIndex];
 
-            // Asked to move on, so bring the application along if the stop knows
-            // how: the next field may live on the next step of a wizard.
-            this.advanceApplication();
+            if (await this.applicationRefusesToAdvance(target)) {
+                this.blocked = true;
+
+                // It will not be blocked forever: the subject fills the form in,
+                // it moves, and this takes the tour with it.
+                this.observeUntil(targetIndex);
+
+                return;
+            }
+
+            this.blocked = false;
+            this.index = targetIndex;
 
             this.render();
+        },
+
+        /**
+         * Ask the application to go where this stop lives, and say whether it
+         * refused.
+         *
+         * Only stops that name the control get this treatment. A stop with no
+         * `advance` is not behind anything: the tour goes there, and waits if it
+         * has to.
+         */
+        async applicationRefusesToAdvance(step) {
+            if (!step?.advance || !step.selector) {
+                return false;
+            }
+
+            if (this.find(step.selector)) {
+                return false;
+            }
+
+            const control = this.find(step.advance);
+
+            if (!control) {
+                return false;
+            }
+
+            control.click();
+
+            return await this.waitForElement(step.selector, ADVANCE_TIMEOUT) === null;
+        },
+
+        /**
+         * Watch the page until the application catches up with this stop.
+         */
+        observeUntil(index) {
+            this.stopObserving();
+
+            const selector = this.steps[index]?.selector;
+
+            if (!selector) {
+                return;
+            }
+
+            this.observer = new MutationObserver(() => {
+                if (this.observerQueued) {
+                    return;
+                }
+
+                this.observerQueued = true;
+
+                requestAnimationFrame(() => {
+                    this.observerQueued = false;
+
+                    if (!this.active) {
+                        return this.stopObserving();
+                    }
+
+                    if (!this.find(selector)) {
+                        return;
+                    }
+
+                    this.stopObserving();
+                    this.blocked = false;
+                    this.index = index;
+                    this.render();
+                });
+            });
+
+            this.observer.observe(document.body, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['class', 'style', 'hidden'],
+            });
         },
 
         previous() {
@@ -210,6 +283,7 @@ export default function onboardingTour() {
                 return;
             }
 
+            this.blocked = false;
             this.index = target;
             this.render();
         },
@@ -234,11 +308,14 @@ export default function onboardingTour() {
         close() {
             this.active = false;
             this.waiting = false;
+            this.blocked = false;
             this.steps = [];
             this.index = 0;
             this.stepKey = null;
             this.reportedIndex = null;
+            this.target = null;
             this.spotlight.visible = false;
+            this.stopWatching();
 
             // A render already in flight must not act after the tour is gone: it
             // would scroll the page under a subject who just dismissed it.
@@ -281,27 +358,6 @@ export default function onboardingTour() {
             return true;
         },
 
-        /**
-         * The control that carries the application to this stop — a wizard's
-         * "next", a tab, a disclosure.
-         *
-         * Clicked only when the subject asked to move on and the element is not
-         * on screen: the tour nudges the application, it does not drive it.
-         */
-        advanceApplication() {
-            const step = this.step;
-
-            if (!step?.advance) {
-                return;
-            }
-
-            if (step.selector && this.find(step.selector)) {
-                return;
-            }
-
-            this.find(step.advance)?.click();
-        },
-
         clearStorage() {
             sessionStorage.removeItem(STORAGE_KEY);
         },
@@ -319,6 +375,8 @@ export default function onboardingTour() {
                 return this.close();
             }
 
+            this.blocked = false;
+
             this.persist();
             this.report();
 
@@ -335,7 +393,9 @@ export default function onboardingTour() {
                 // a tour that gave up after three seconds could never walk
                 // anybody through a multi-step form.
                 this.waiting = Boolean(step.selector);
+                this.target = null;
                 this.spotlight.visible = false;
+                this.stopWatching();
 
                 await this.placePopover(null);
 
@@ -361,37 +421,96 @@ export default function onboardingTour() {
                 return;
             }
 
-            this.spotlight = {
-                top: rect.top - SPOTLIGHT_PADDING,
-                left: rect.left - SPOTLIGHT_PADDING,
-                width: rect.width + SPOTLIGHT_PADDING * 2,
-                height: rect.height + SPOTLIGHT_PADDING * 2,
-                visible: true,
-            };
+            this.target = element;
+
+            this.draw(rect);
 
             await this.placePopover(rect, step.placement ?? 'auto');
+
+            this.startWatching();
         },
 
         /**
-         * Follow the element where it is now — no scrolling, no reporting, no
-         * waiting. Called on scroll and resize, many times a second.
+         * Keep up with the element, frame by frame, for as long as the tour is on
+         * screen.
+         *
+         * Listening for `scroll` and `resize` is not enough, and the reason is
+         * ordinary: **pages move on their own**. A file upload widget mounts and
+         * grows, an image finishes loading, a Livewire render swaps a section, a
+         * font arrives — the element slides down the page and neither event
+         * fires. The spotlight stays where the element *was*, which is now the
+         * field above it, and the tour ends up explaining the e-mail while
+         * pointing at the name. (Scrolling appeared to "fix" it, because scrolling
+         * was the only thing that made it measure again.)
+         *
+         * So it does not wait to be told. One `getBoundingClientRect` per frame,
+         * on one element, only while a tour is open — and only writes when the
+         * rectangle actually changed.
+         */
+        startWatching() {
+            this.stopWatching();
+
+            const tick = () => {
+                if (!this.active) {
+                    return;
+                }
+
+                this.watchFrame = requestAnimationFrame(tick);
+
+                this.measure();
+            };
+
+            this.watchFrame = requestAnimationFrame(tick);
+        },
+
+        stopWatching() {
+            if (this.watchFrame !== null) {
+                cancelAnimationFrame(this.watchFrame);
+            }
+
+            this.watchFrame = null;
+            this.lastRect = null;
+        },
+
+        /**
+         * Where the element is now — and, if it moved, follow it. No scrolling, no
+         * reporting: this runs on every frame.
          */
         measure() {
-            const step = this.step;
-
-            if (!step?.selector || this.waiting) {
+            if (this.waiting || !this.step?.selector) {
                 return;
             }
 
-            const found = this.find(step.selector);
+            // Gone from the page under us: a Livewire morph, a wizard step left
+            // behind. The full render knows how to wait for it to come back.
+            if (!this.target?.isConnected) {
+                this.target = null;
 
-            if (!found) {
-                // It went away under us — a Livewire morph, a wizard step left
-                // behind. Go through the full render, which knows how to wait.
                 return this.render();
             }
 
-            const rect = this.resolveTarget(found).getBoundingClientRect();
+            const rect = this.target.getBoundingClientRect();
+
+            if (!this.hasMoved(rect)) {
+                return;
+            }
+
+            this.draw(rect);
+            this.placePopover(rect, this.step.placement ?? 'auto');
+        },
+
+        hasMoved(rect) {
+            const previous = this.lastRect;
+
+            return previous === null
+                || Math.abs(rect.top - previous.top) > 0.5
+                || Math.abs(rect.left - previous.left) > 0.5
+                || Math.abs(rect.width - previous.width) > 0.5
+                || Math.abs(rect.height - previous.height) > 0.5;
+        },
+
+        draw(rect) {
+            this.lastRect = rect;
 
             this.spotlight = {
                 top: rect.top - SPOTLIGHT_PADDING,
@@ -400,8 +519,6 @@ export default function onboardingTour() {
                 height: rect.height + SPOTLIGHT_PADDING * 2,
                 visible: true,
             };
-
-            this.placePopover(rect, step.placement ?? 'auto');
         },
 
         persist() {
@@ -629,7 +746,7 @@ export default function onboardingTour() {
          * The element may still be on its way in — a Livewire render, a lazy
          * widget — so give it a moment before giving up on it.
          */
-        waitForElement(selector) {
+        waitForElement(selector, timeout = ELEMENT_TIMEOUT) {
             return new Promise((resolve) => {
                 const existing = this.find(selector);
 
@@ -648,7 +765,7 @@ export default function onboardingTour() {
                         return resolve(element);
                     }
 
-                    if (performance.now() - startedAt > ELEMENT_TIMEOUT) {
+                    if (performance.now() - startedAt > timeout) {
                         this.clearPoll(poll);
 
                         resolve(null);

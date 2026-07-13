@@ -193,7 +193,7 @@ A selector that no longer matches does not break the tour: the page dims and the
 
 Tours report the stop the user reached, so a tour abandoned half-way shows as half-way — and can be resumed.
 
-### A "how does it work?" button on the page itself
+### A "view the tutorial" button on the page itself
 
 The launcher starts tours from the checklist. For the pages that deserve their own invitation, drop a header action on them:
 
@@ -209,7 +209,17 @@ protected function getHeaderActions(): array
 }
 ```
 
-It renders a "How does it work?" button (relabel it like any Filament action) that starts that one tour in place. The button only exists when the tour does: an unknown key, a step without a tour, or a journey hidden from this subject by a visibility condition all make it disappear — a plan that cannot see the journey never sees the invitation.
+**A screen can be walked more than one way.** A server is created *with* a provider, or by bringing one you already own — two tours, one button. Hand it several keys and it asks which, naming each by its own title, so nobody has to guess what is behind a button:
+
+```php
+StartTourAction::make([
+    'servers-tour',
+    'create-server-cloud-tour',
+    'create-server-byos-tour',
+]),
+```
+
+With one tour there is nothing to ask, and it starts outright. Only tours the subject can actually take are offered — an unknown key, a step with no tour, or one hidden by a visibility condition is left out, and when none survive the button is not there at all. A plan that cannot see the journey never sees the invitation.
 
 ### Tours that walk through a wizard
 

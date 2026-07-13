@@ -18,7 +18,10 @@ return [
     ],
 
     'tour' => [
-        'start'    => 'How does it work?',
+        'blocked'  => 'The screen has not moved on yet. If something is required, fill it in and press next again — the tour follows you there.',
+        'start'    => 'View the tutorial',
+        'choose'   => 'Which tutorial do you want?',
+        'begin'    => 'Start',
         'waiting'  => 'Waiting for this to show up on the page — carry on with the form and the tour follows you.',
         'skip'     => 'Skip',
         'previous' => 'Back',
