@@ -17,6 +17,7 @@ use Filament\Tables\Columns\{IconColumn, TextColumn};
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Unique;
 use Wallacemartinss\FilamentOnboarding\Enums\{CompletionMode, MediaSource, MediaType, ModalPosition, StepType};
 use Wallacemartinss\FilamentOnboarding\Facades\Onboarding;
 use Wallacemartinss\FilamentOnboarding\Models\OnboardingStep;
@@ -117,6 +118,13 @@ class StepsRelationManager extends RelationManager
                     ->placeholder('connect-server')
                     ->required()
                     ->alphaDash()
+                    // The database is unique on (flow_id, key); without this
+                    // rule a repeated key surfaces as a QueryException instead
+                    // of a validation message under the field.
+                    ->unique(
+                        ignoreRecord: true,
+                        modifyRuleUsing: fn (Unique $rule): Unique => $rule->where('flow_id', $this->getOwnerRecord()->getKey()),
+                    )
                     ->maxLength(255),
             ]),
         ];
