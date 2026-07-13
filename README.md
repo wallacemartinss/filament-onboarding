@@ -71,7 +71,7 @@ That is the whole install. Create a journey in the panel, add its steps, and it 
 | Tag | What it gives you |
 |-----|-------------------|
 | `filament-onboarding-config` | `config/filament-onboarding.php` |
-| `filament-onboarding-migrations` | the four tables and the media columns |
+| `filament-onboarding-migrations` | the five tables, and the columns later releases added |
 | `filament-onboarding-views` | every Blade view — checklist, launcher, tour popover, media modal, progress page |
 | `filament-onboarding-translations` | the UI strings, per locale |
 | `filament-onboarding-styles` | the stylesheet, to restyle without forking |
@@ -260,6 +260,11 @@ A step can carry an image to show or a video to watch. Both open in a modal over
 ```
 
 A **private disk is signed at render time**, so a bucket kept closed stays closed.
+
+> The signing decision reads `media.visibility` here, or `'visibility' => 'private'` on the
+> disk in `config/filesystems.php`. A bucket that is private *on AWS* but says nothing in the
+> config gets a plain URL — which the bucket then refuses. If the files are private, say so
+> in one of those two places.
 
 ### Watch time is real
 

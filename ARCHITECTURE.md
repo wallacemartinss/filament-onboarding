@@ -280,6 +280,11 @@ Both directions are handled, and neither takes control away from the subject:
 
 While waiting, `waiting` is true: the popover says so, and **the next button is disabled** (the guard in `next()` also covers the arrow key). A waiting tour cannot be paged through — pressing next five times on a form that has not moved would walk the popover through five stops of nothing. The way forward is the form; the observer brings the tour along. Escape hatches stay live: back, and skip.
 
+Two authoring traps follow from this design — traps for the flow author, not for this file:
+
+- **A late stop on always-visible chrome hijacks the wait.** `firstStopOnScreenAhead()` jumps to the *nearest later stop whose element is on screen*. If a tour is waiting on a wizard field while its final stop points at something that is always there — the topbar, a help menu — the first DOM mutation jumps the tour straight to the end. Late stops should point at things that only exist late (the wizard's last pane), or carry a `url`: a stop on another page is never jumped to.
+- **`navigateIfNeeded()` compares the pathname only, on purpose.** A stop whose URL differs from the current page only in the query string (`?tab=…`) does not navigate — Filament keeps tabs and filters in the query, and a full reload there would throw away form state mid-tour. Reaching another *tab* is the `advance` selector's job (press the tab, wait for its content); a stop URL is for another *page*.
+
 ### Selector resolution (`find()`)
 
 Three forms, in this order:

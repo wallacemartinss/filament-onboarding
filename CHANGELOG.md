@@ -5,6 +5,69 @@ All notable changes to `filament-onboarding` are documented here.
 Versions follow Filament: **2.x targets Filament v5**, and 1.x is reserved for a Filament v4
 backport. That is why the first release is 2.0.0 — there is no 1.0.0 to upgrade from.
 
+## Unreleased
+
+### Security
+
+- **Finishing a tour no longer completes a step whose mode says otherwise.** Any step
+  carrying a tour — including one bound to a *condition* ("has two-factor") or marked
+  *programmatic* ("only my code completes this") — could be completed from the browser by
+  clicking "next" to the end: a second front door around the very checks `completeStep()`
+  refuses. A tour now completes only a **Manual** step, where the tour is the task; for
+  every other mode it records that the tour was watched and leaves completion to the mode.
+
+### Fixed
+
+- **The scope-hardening migration survives the data it was written for.** An installation
+  that ran 2.0.0 can hold duplicate progress rows — the NULL scopes the old unique index
+  could not compare. Converting those NULLs to `''` made the duplicates collide with the
+  index mid-`UPDATE`, and `php artisan migrate` died on precisely the installations that
+  needed it. Duplicates are now merged first: the oldest row stays and inherits the
+  furthest the others got — the latest of each timestamp, the union of the metas.
+- **"Get started" on the welcome screen no longer races itself.** It was a link that also
+  fired a Livewire call: the browser navigated while the request recording the answer was
+  still in the air, and when the write lost, the welcome greeted the subject again — on
+  the very page it had just sent them to. One button, one request: the answer is recorded,
+  *then* the server redirects.
+- **Opening a video while another is up no longer crosses the wires.** A docked modal
+  leaves the page usable, so a second video can be opened over a first — whose player was
+  never torn down: its poll kept reporting the *old* video's seconds under the *new*
+  step's key, and the new player often failed to build at all (the provider's iframe had
+  replaced the mount the template still pointed at). The leaving player now settles its
+  account — reports under its own key, tears down — and the markup is re-stamped fresh.
+- **A step key is only accepted once per flow.** The database always said so; the form now
+  says it as a validation message under the field instead of a `QueryException` over the
+  whole modal.
+- **A step key shared by two journeys lands on the journey the surface is showing.** Keys
+  are unique per flow, and the panel-wide search took the first flow wearing the key —
+  ticking "invite-team" on one journey completed it on another. Surfaces now name the flow
+  they are showing (the step methods take an optional `$flowKey`, so published views keep
+  working).
+- **Visiting a URL makes no progress in a flow the subject cannot see.** `handleVisit()`
+  checked the step's visibility condition but not the flow's, so standing on the right
+  page completed steps of a journey that did not exist for that account.
+- **A journey of only optional steps completes when everything is settled** — not at the
+  first touch. "Every required step is done" is vacuously true of a journey with no
+  required steps, and used to stamp `completed_at` and fire `FlowCompleted` after the
+  first tick, with the journey barely begun.
+- **An optional step with nowhere to send you can still be skipped from the launcher.**
+  The skip button only rendered next to a destination, so a step with no URL, tour or
+  video could be skipped from the progress page alone.
+- **A provider script that never arrives costs the tracking, not the video.** When an ad
+  blocker (or a walled network) keeps the YouTube/Vimeo API out, the modal now falls back
+  to the provider's plain embed instead of opening empty. A plain iframe cannot be asked
+  about watch time, so none is invented — a video-completion step completes some other way.
+- The welcome dialog traps focus and answers Escape with "not now" — `aria-modal` was
+  promising both without delivering either. The duplicated `class` attribute on the
+  progress page's restart note now applies its spacing.
+
+### Changed
+
+- One `SubjectOnboarding` per component request instead of one per question: a launcher
+  render asked "current flow?", "hidden?", "welcome?" and each fresh engine re-read all of
+  the subject's progress. The engine keeps its own maps current as it writes, so nothing
+  stale survives the memoisation.
+
 ## 2.1.0
 
 **Upgrade from 2.0.0. Do not run 2.0.0.**
