@@ -5,6 +5,29 @@ All notable changes to `filament-onboarding` are documented here.
 Versions follow Filament: **2.x targets Filament v5**, and 1.x is reserved for a Filament v4
 backport. That is why the first release is 2.0.0 — there is no 1.0.0 to upgrade from.
 
+## 2.3.1
+
+### Fixed
+
+- **The step editor was write-once.** Every field that depends on what kind of step it is —
+  the whole **Tour** tab and all of its stops, the **condition** dropdown, the **visit URL**,
+  every **media** field — was there when a step was created and *gone* when one was opened to
+  be edited. So a tour could be written and then never touched again: to change a stop you
+  had to delete the step and start over.
+
+  The state of a field backed by an enum comes in two shapes, and the editor only knew one.
+  Creating, the state is what the browser posted — the string `'tour'`. Editing, the form was
+  filled from the record, whose attribute is *cast*, so the state is `StepType::Tour`, the
+  enum itself. `$get('type') === StepType::Tour->value` is therefore true exactly half the
+  time, and the half it answers no is the half where the field simply is not rendered. Nothing
+  threw. The form quietly showed less of itself, on the one path nobody tests: the second time
+  you open something.
+
+  Both shapes now answer the same. (Two `(string)` casts over the same state went with it —
+  an enum is not a string, and PHP says so by dying.)
+
+---
+
 ## 2.3.0
 
 **Conditions no longer need a deploy.** The package's argument has always been that a

@@ -21,7 +21,7 @@ use Illuminate\Validation\Rules\Unique;
 use Wallacemartinss\FilamentOnboarding\Enums\{CompletionMode, MediaSource, MediaType, ModalPosition, StepType};
 use Wallacemartinss\FilamentOnboarding\Facades\Onboarding;
 use Wallacemartinss\FilamentOnboarding\Models\OnboardingStep;
-use Wallacemartinss\FilamentOnboarding\Support\{IconInput, PanelTargets};
+use Wallacemartinss\FilamentOnboarding\Support\{FormState, IconInput, PanelTargets};
 
 /**
  * Authoring a step used to mean scrolling through four stacked sections, most of
@@ -60,10 +60,10 @@ class StepsRelationManager extends RelationManager
 
                     Tab::make(__('filament-onboarding::onboarding.resource.sections.tour'))
                         ->icon(Heroicon::OutlinedSparkles)
-                        ->badge(fn (Get $get): ?int => $get('type') === StepType::Tour->value
+                        ->badge(fn (Get $get): ?int => FormState::is($get('type'), StepType::Tour)
                             ? count($get('tour_steps') ?? [])
                             : null)
-                        ->visible(fn (Get $get): bool => $get('type') === StepType::Tour->value)
+                        ->visible(fn (Get $get): bool => FormState::is($get('type'), StepType::Tour))
                         ->schema($this->tourFields()),
                 ]),
         ]);
@@ -171,8 +171,8 @@ class StepsRelationManager extends RelationManager
                 ->searchable()
                 ->native(false)
                 ->columnSpanFull()
-                ->required(fn (Get $get): bool => $get('completion_mode') === CompletionMode::Condition->value)
-                ->visible(fn (Get $get): bool => $get('completion_mode') === CompletionMode::Condition->value),
+                ->required(fn (Get $get): bool => FormState::is($get('completion_mode'), CompletionMode::Condition))
+                ->visible(fn (Get $get): bool => FormState::is($get('completion_mode'), CompletionMode::Condition)),
 
             TextInput::make('visit_url')
                 ->label(__('filament-onboarding::onboarding.resource.fields.visit_url'))
@@ -180,8 +180,8 @@ class StepsRelationManager extends RelationManager
                 ->helperText(__('filament-onboarding::onboarding.resource.fields.visit_url_helper'))
                 ->placeholder('/app/*/servers/create')
                 ->columnSpanFull()
-                ->required(fn (Get $get): bool => $get('completion_mode') === CompletionMode::Visit->value)
-                ->visible(fn (Get $get): bool => $get('completion_mode') === CompletionMode::Visit->value),
+                ->required(fn (Get $get): bool => FormState::is($get('completion_mode'), CompletionMode::Visit))
+                ->visible(fn (Get $get): bool => FormState::is($get('completion_mode'), CompletionMode::Visit)),
 
             Section::make(__('filament-onboarding::onboarding.resource.sections.destination'))
                 ->description(__('filament-onboarding::onboarding.resource.sections.destination_description'))
@@ -260,7 +260,7 @@ class StepsRelationManager extends RelationManager
                     ->label(__('filament-onboarding::onboarding.resource.fields.media_source'))
                     ->prefixIcon(Heroicon::OutlinedCloudArrowUp)
                     ->options(fn (Get $get): array => collect(
-                        $get('media_type') === MediaType::Image->value
+                        FormState::is($get('media_type'), MediaType::Image)
                             ? MediaSource::forImage()
                             : MediaSource::forVideo()
                     )
@@ -278,18 +278,18 @@ class StepsRelationManager extends RelationManager
                 ->directory(fn (): string => config('filament-onboarding.media.directory', 'onboarding'))
                 ->visibility(fn (): string => config('filament-onboarding.media.visibility', 'public'))
                 ->acceptedFileTypes(fn (Get $get): array => config(
-                    'filament-onboarding.media.accept.' . ($get('media_type') === MediaType::Video->value ? 'video' : 'image'),
+                    'filament-onboarding.media.accept.' . (FormState::is($get('media_type'), MediaType::Video) ? 'video' : 'image'),
                     [],
                 ))
                 ->maxSize(fn (Get $get): int => (int) config(
-                    'filament-onboarding.media.max_size.' . ($get('media_type') === MediaType::Video->value ? 'video' : 'image'),
+                    'filament-onboarding.media.max_size.' . (FormState::is($get('media_type'), MediaType::Video) ? 'video' : 'image'),
                     5120,
                 ))
-                ->image(fn (Get $get): bool => $get('media_type') === MediaType::Image->value)
-                ->imageEditor(fn (Get $get): bool => $get('media_type') === MediaType::Image->value)
+                ->image(fn (Get $get): bool => FormState::is($get('media_type'), MediaType::Image))
+                ->imageEditor(fn (Get $get): bool => FormState::is($get('media_type'), MediaType::Image))
                 ->columnSpanFull()
-                ->required(fn (Get $get): bool => $get('media_source') === MediaSource::Upload->value)
-                ->visible(fn (Get $get): bool => static::wantsMedia($get) && $get('media_source') === MediaSource::Upload->value)
+                ->required(fn (Get $get): bool => FormState::is($get('media_source'), MediaSource::Upload))
+                ->visible(fn (Get $get): bool => static::wantsMedia($get) && FormState::is($get('media_source'), MediaSource::Upload))
                 ->afterStateUpdated(fn (Set $set): mixed => $set('media_disk', config('filament-onboarding.media.disk', 'public'))),
 
             Hidden::make('media_disk')
@@ -301,9 +301,9 @@ class StepsRelationManager extends RelationManager
                 ->helperText(__('filament-onboarding::onboarding.resource.fields.media_url_helper'))
                 ->placeholder('https://youtu.be/dQw4w9WgXcQ')
                 ->columnSpanFull()
-                ->url(fn (Get $get): bool => $get('media_source') === MediaSource::Url->value)
-                ->required(fn (Get $get): bool => static::wantsMedia($get) && filled($get('media_source')) && $get('media_source') !== MediaSource::Upload->value)
-                ->visible(fn (Get $get): bool => static::wantsMedia($get) && filled($get('media_source')) && $get('media_source') !== MediaSource::Upload->value)
+                ->url(fn (Get $get): bool => FormState::is($get('media_source'), MediaSource::Url))
+                ->required(fn (Get $get): bool => static::wantsMedia($get) && filled($get('media_source')) && !FormState::is($get('media_source'), MediaSource::Upload))
+                ->visible(fn (Get $get): bool => static::wantsMedia($get) && filled($get('media_source')) && !FormState::is($get('media_source'), MediaSource::Upload))
                 ->maxLength(2048),
 
             Tabs::make('media_translations')
@@ -342,7 +342,7 @@ class StepsRelationManager extends RelationManager
                         ->maxValue(100)
                         ->suffix('%')
                         ->default(90)
-                        ->visible(fn (Get $get): bool => $get('media_type') === MediaType::Video->value),
+                        ->visible(fn (Get $get): bool => FormState::is($get('media_type'), MediaType::Video)),
                 ]),
         ];
     }
@@ -560,7 +560,7 @@ class StepsRelationManager extends RelationManager
      */
     private static function wantsMedia(Get $get): bool
     {
-        return filled($get('media_type')) && $get('media_type') !== MediaType::None->value;
+        return filled($get('media_type')) && !FormState::is($get('media_type'), MediaType::None);
     }
 
     /**

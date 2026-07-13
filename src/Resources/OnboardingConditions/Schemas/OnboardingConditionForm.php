@@ -13,7 +13,7 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Str;
 use Wallacemartinss\FilamentOnboarding\Enums\{ConditionOperator, ConditionType};
 use Wallacemartinss\FilamentOnboarding\Facades\Onboarding;
-use Wallacemartinss\FilamentOnboarding\Support\AppModels;
+use Wallacemartinss\FilamentOnboarding\Support\{AppModels, FormState};
 
 /**
  * Writing the question, without writing code.
@@ -147,7 +147,7 @@ class OnboardingConditionForm
                     ->defaultItems(fn (Get $get): int => self::asks($get, ConditionType::Attribute) ? 1 : 0)
                     ->columnSpanFull()
                     ->itemLabel(fn (array $state): ?string => filled($state['column'] ?? null)
-                        ? trim(($state['column'] ?? '') . ' ' . Str::lower((string) (ConditionOperator::tryFrom((string) ($state['operator'] ?? ''))?->getLabel() ?? '')) . ' ' . ($state['value'] ?? ''))
+                        ? trim(($state['column'] ?? '') . ' ' . Str::lower((string) (ConditionOperator::tryFrom((string) FormState::value($state['operator'] ?? null))?->getLabel() ?? '')) . ' ' . ($state['value'] ?? ''))
                         : null)
                     ->schema([
                         Grid::make(3)->schema([
@@ -171,8 +171,8 @@ class OnboardingConditionForm
 
                             TextInput::make('value')
                                 ->label(__('filament-onboarding::onboarding.conditions.fields.value'))
-                                ->visible(fn (Get $get): bool => ConditionOperator::tryFrom((string) $get('operator'))?->needsValue() ?? true)
-                                ->required(fn (Get $get): bool => ConditionOperator::tryFrom((string) $get('operator'))?->needsValue() ?? true),
+                                ->visible(fn (Get $get): bool => ConditionOperator::tryFrom((string) FormState::value($get('operator')))?->needsValue() ?? true)
+                                ->required(fn (Get $get): bool => ConditionOperator::tryFrom((string) FormState::value($get('operator')))?->needsValue() ?? true),
                         ]),
                     ]),
             ]);
@@ -188,13 +188,7 @@ class OnboardingConditionForm
      */
     private static function asks(Get $get, ConditionType $type, string $path = 'type'): bool
     {
-        $state = $get($path);
-
-        if ($state instanceof ConditionType) {
-            return $state === $type;
-        }
-
-        return $state === $type->value;
+        return FormState::is($get($path), $type);
     }
 
     protected static function namingSection(): Section
