@@ -186,6 +186,21 @@ class OnboardingManager
     }
 
     /**
+     * The definitions, from cache when there is one.
+     *
+     * What goes into the cache is **arrays, never objects**. Laravel refuses to
+     * unserialize classes out of the cache unless the application lists them —
+     * `cache.serializable_classes` is `false` in a stock Laravel 13, to keep a
+     * leaked APP_KEY from turning cached objects into a gadget chain. Handing it
+     * a Collection of Eloquent models therefore writes fine and reads back as
+     * `__PHP_Incomplete_Class`: the second request of the panel's life, and every
+     * one after it, dies on the return type — on every page, since the launcher
+     * lives in the layout.
+     *
+     * So the models are taken apart on the way in and rebuilt on the way out. A
+     * cache holding anything else (an object written by an older release, junk
+     * from a shared prefix) reads as a miss, is re-queried and overwritten.
+     *
      * @return Collection<int, OnboardingFlow>
      */
     protected function cachedFlows(): Collection
@@ -194,11 +209,88 @@ class OnboardingManager
             return $this->queryFlows();
         }
 
-        return $this->cacheStore()->remember(
+        $cached = $this->cacheStore()->get($this->cacheKey());
+
+        $flows = is_array($cached) ? $this->hydrateFlows($cached) : null;
+
+        if ($flows instanceof Collection) {
+            return $flows;
+        }
+
+        $flows = $this->queryFlows();
+
+        $this->cacheStore()->put(
             $this->cacheKey(),
+            $this->dehydrateFlows($flows),
             (int) config('filament-onboarding.cache.ttl', 3600),
-            fn (): Collection => $this->queryFlows(),
         );
+
+        return $flows;
+    }
+
+    /**
+     * Flows and their steps as the database handed them over: plain attributes,
+     * no objects anywhere.
+     *
+     * @param  Collection<int, OnboardingFlow>  $flows
+     * @return array<int, array{flow: array<string, mixed>, steps: array<int, array<string, mixed>>}>
+     */
+    protected function dehydrateFlows(Collection $flows): array
+    {
+        return $flows
+            ->map(fn (OnboardingFlow $flow): array => [
+                'flow'  => $flow->getAttributes(),
+                'steps' => $flow->steps
+                    ->map(fn (OnboardingStep $step): array => $step->getAttributes())
+                    ->all(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Rebuild what dehydrateFlows() took apart. Anything that is not the shape
+     * it wrote is treated as a miss rather than trusted.
+     *
+     * @param  array<mixed>  $cached
+     * @return Collection<int, OnboardingFlow>|null
+     */
+    protected function hydrateFlows(array $cached): ?Collection
+    {
+        /** @var class-string<OnboardingFlow> $flowModel */
+        $flowModel = $this->flowModel();
+
+        /** @var class-string<OnboardingStep> $stepModel */
+        $stepModel = $this->stepModel();
+
+        $flows = [];
+
+        foreach ($cached as $row) {
+            if (!is_array($row) || !is_array($row['flow'] ?? null) || !is_array($row['steps'] ?? null)) {
+                return null;
+            }
+
+            $steps = [];
+
+            foreach ($row['steps'] as $attributes) {
+                if (!is_array($attributes)) {
+                    return null;
+                }
+
+                // newFromBuilder(), not make(): these attributes came out of the
+                // database, so they are raw — the casts apply on the way out, and
+                // the model knows it already exists.
+                $steps[] = (new $stepModel())->newFromBuilder($attributes);
+            }
+
+            $flow = (new $flowModel())->newFromBuilder($row['flow']);
+
+            $flow->setRelation('steps', new Collection($steps));
+
+            $flows[] = $flow;
+        }
+
+        return new Collection($flows);
     }
 
     /**
