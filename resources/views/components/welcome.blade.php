@@ -2,10 +2,21 @@
      It shows up once, over the first page after logging in, and it always offers
      the way out — "later", or "never" — because that is the price of interrupting
      somebody who came here to do something else. --}}
-<div class="fio-welcome-layer" role="dialog" aria-modal="true" aria-labelledby="fio-welcome-title">
+{{-- Escape answers "later", same as clicking outside: both are the polite way
+     out of an interruption. x-trap (Alpine's focus plugin, shipped with the
+     panel) keeps Tab inside the dialog and puts focus on the primary answer —
+     aria-modal alone promises that without delivering it. --}}
+<div
+    class="fio-welcome-layer"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="fio-welcome-title"
+    x-data
+    x-on:keydown.escape.window="$wire.remindMeLater()"
+>
     <div class="fio-welcome-backdrop" wire:click="remindMeLater" aria-hidden="true"></div>
 
-    <div class="fio-welcome fio-animate-in">
+    <div class="fio-welcome fio-animate-in" x-trap.noscroll="true">
         <div class="fio-welcome-body">
             <div class="fio-welcome-badge" @style(["color: var(--{$flow->color()}-500)"])>
                 @if ($flow->icon())
