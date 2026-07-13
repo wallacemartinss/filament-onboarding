@@ -8,30 +8,29 @@ Database-driven onboarding for Filament v5: a progress checklist that follows th
 
 Journeys are authored **in the panel, not in code**, so product people can rewrite them without a deploy. And steps bound to a **condition** catch up on their own, which means **users who signed up long before the journey existed enter it already half-done** instead of being told to do things they did years ago.
 
-<!-- Hero shot — uncomment once docs/images/principal.png exists (shot list in docs/images/README.md)
-![Filament Onboarding](docs/images/principal.png)
--->
-
-<!-- Uncomment as the images land in docs/images/ (shot list in docs/images/README.md)
-## Screenshots
+![The checklist follows the user across every page of the panel](docs/images/01-user/02_get_started_progress.png)
 
 <details>
-<summary>📸 Click to view screenshots</summary>
+<summary><b>📸 More screenshots</b> — the welcome screen, the progress page, a tour, the video modal, and the side nobody has to write code on</summary>
 
-| The welcome screen | The floating checklist |
-|:---:|:---:|
-| ![Welcome screen](docs/images/welcome.png) | ![Floating checklist](docs/images/launcher.png) |
+<br>
 
-| A guided tour | The media modal, docked |
+| The welcome screen | The progress page |
 |:---:|:---:|
-| ![Guided tour](docs/images/tour.png) | ![Media modal](docs/images/media-modal.png) |
+| ![The welcome screen](docs/images/01-user/01_get_started_welcome.png) | ![The progress page](docs/images/01-user/02_get_started_panel.png) |
+| One moment to introduce itself, and three honest answers. | Where you are, and what is left. |
 
-| The progress page | Authoring a step |
+| A guided tour | A video, docked in a corner |
 |:---:|:---:|
-| ![Progress page](docs/images/progress-page.png) | ![Step editor](docs/images/authoring-step.png) |
+| ![A guided tour](docs/images/01-user/05_get_started_create_01.png) | ![The media modal](docs/images/01-user/03_get_started_video.png) |
+| Spotlights the field, explains it, moves on. | The page stays usable behind it — and the watching is measured. |
+
+| Steps, written in the panel | Conditions, written in the panel |
+|:---:|:---:|
+| ![The steps of a journey](docs/images/02-admin/02_onbording_step.png) | ![The conditions a step can hang off](docs/images/02-admin/03_onbording_conditions.png) |
+| Five ways for a step to finish. Three of them tick themselves. | *"Have they added a client yet?"* — a form, not a commit. |
 
 </details>
--->
 
 ## Features
 
@@ -72,6 +71,7 @@ Journeys are authored **in the panel, not in code**, so product people can rewri
 ## Table of contents
 
 - [Quick start](#quick-start)
+- [Writing a journey](#writing-a-journey)
 - [How a step is completed](#how-a-step-is-completed) · [conditions](#conditions) · [visibility](#visibility-not-every-journey-is-for-everybody)
 - [Panel discovery](#panel-discovery)
 - [Tours](#tours) · [a "view the tutorial" button](#a-view-the-tutorial-button-on-the-page-itself) · [wizards](#tours-that-walk-through-a-wizard)
@@ -124,7 +124,11 @@ FilamentOnboardingPlugin::make()
     ->navigationSort(70),
 ```
 
-That is the whole install. Create a journey in the panel, add its steps, and it shows up — **including the steps that complete themselves**: the questions they hang off ("has this user added a client yet?") are written in the panel too, under Onboarding → Conditions. Nothing here needs a deploy.
+`->manageFlows()` is what puts the two resources in the menu — the journeys, and the questions they hang off:
+
+![What manageFlows() adds to the admin panel](docs/images/02-admin/01_menu.png)
+
+That is the whole install. Create a journey in the panel, add its steps, and it shows up — **including the steps that complete themselves**. Nothing here needs a deploy.
 
 ### Publishing
 
@@ -142,9 +146,29 @@ Assets (CSS and the Alpine components) are served by Filament from `public/`, so
 
 ---
 
+## Writing a journey
+
+A journey is a row. Its steps are rows. The questions those steps hang off are rows. Which means the person who knows what a new user needs to learn can write it, change it, reorder it and retire it — without ever asking for a deploy.
+
+![The journeys of a panel](docs/images/02-admin/02_onbording.png)
+
+A flow says who it is for and where it lives: the **panel** it belongs to (empty means all of them), the condition that decides who **sees** it, its place in the order, and whether the user is allowed to hide it for good. Text is written once per locale, so the same journey reads in Portuguese and in English.
+
+![Writing a flow](docs/images/02-admin/02_onbording_create.png)
+
+> The **key** is the one field that cannot change afterwards — it is what every progress row points at, and renaming it orphans them. Everything else is yours to rewrite whenever the product does.
+
+Steps are written inside the flow — and that is where a checklist turns into onboarding, because of the one field that comes next.
+
+---
+
 ## How a step is completed
 
 Every step declares how it finishes, and the checklist behaves accordingly — a step the user cannot tick off themselves is offered as a link, not as a checkbox.
+
+![The steps of a journey, and how each one finishes](docs/images/02-admin/02_onbording_step.png)
+
+The **Completed by** column is this whole section. Of the steps above, three wait for the user to tick them off, three are watching the database and will tick themselves, and one is measuring how much of a video got watched.
 
 | Mode | Finishes when |
 |------|---------------|
@@ -160,11 +184,13 @@ A condition is a question about the user — *"have they added a client yet?"* �
 
 **Most of them are written in the panel, not in code.** Onboarding → Conditions → New:
 
-> **Counts something they have** — Client · at least `1` · only the ones where `status` is `active`
->
-> **Asks about them** — `email_verified_at` is filled in
+![The questions a step can ask](docs/images/02-admin/03_onbording_conditions.png)
 
-That covers the usual ones, and it means a new journey is a thing somebody *writes*, not a thing that needs a pull request. The author never types a table name, a column or an operator: the model comes from an allowlist, the column from that table's real columns, the operator from a list — and the value they do type is bound, never interpolated into SQL.
+Two shapes cover nearly everything. **Counts something they have** — *a Product, at least one of them, and only the ones where `is_published` is true*. **Asks about them** — *`email_verified_at` is filled in*. Both are the same form, and the step editor lists them by name.
+
+![Building a condition without writing code](docs/images/02-admin/04_onbording_conditions_form.png)
+
+The author never types a table name, a column or an operator. The model comes from an allowlist you control, the column from that table's real columns, the operator from a list — and the value they do type is **bound, never interpolated into SQL**. What they are really being asked is *how does this thing know it belongs to the person being onboarded* — the `user_id` above — and that is a question a product person can answer.
 
 **For a question a form cannot ask** — an active subscription over at Stripe, a score from a service — write a class:
 
@@ -234,17 +260,19 @@ Nobody types a URL. When a step or a tour stop needs a destination, the dropdown
 
 What gets stored is the **route name**, not the URL, so renaming a resource slug does not break a journey, and `{tenant}` is filled in at render time.
 
-<!-- ![Authoring a step in the panel](docs/images/authoring-step.png) -->
-
 ---
 
 ## Tours
 
 A tour spotlights one element at a time, explains it, and moves on. It can cross pages: give a stop a page and the runner navigates there and carries on.
 
-<!-- ![A guided tour mid-flight](docs/images/tour.png) -->
+![A tour spotlighting the table it is talking about](docs/images/01-user/04_get_started_tour_01.png)
+
+The page dims, the thing being talked about does not, and the popover finds a corner near it. The user can still type in the form underneath — a tour is a guide, not a modal.
 
 ### What a stop points at is picked, not typed
+
+![Choosing what a stop spotlights](docs/images/02-admin/02_onbording_tour_options.png)
 
 Pick the **page** the stop lives on, and the package reads that page out of your panel:
 
@@ -259,6 +287,25 @@ Pick the **page** the stop lives on, and the package reads that page out of your
 | **A CSS selector of my own…** | for anything the panel cannot name. |
 
 Nobody has to know CSS, and nobody has to know that a developer went and put a hook in the code. What gets stored is the **choice** (`field:status`), not the selector — same reason a route name is stored and not a URL: the markup underneath is Filament's to change, and a journey should survive it changing.
+
+<details>
+<summary>📸 <b>A tour with no CSS in it at all</b> — four stops, picked from the dropdowns above</summary>
+
+<br>
+
+Written as `field:name`, `field:status` and `action:submit`, on the create page of a resource. Nothing was added to the application to make this work — no `data-onboarding` attribute, no hook, no deploy.
+
+| The field the form insists on | The one that means something |
+|:---:|:---:|
+| ![The tour spotlighting a required text field](docs/images/01-user/05_get_started_create_01.png) | ![The tour spotlighting a select](docs/images/01-user/05_get_started_create_02.png) |
+| `field:name` — a `TextInput`. | `field:status` — a `Select`, in the section next door. Note the name already typed in: the form kept working while the tour ran. |
+
+| The button that saves | |
+|:---:|:---:|
+| ![The tour spotlighting the save button](docs/images/01-user/05_get_started_create_03.png) | ![The tour finishing on the list](docs/images/01-user/04_get_started_tour_02.png) |
+| `action:submit` — found on a create page and on an edit one alike. | And on a list page, **the "New client" button** is offered by name: it is a link, and the package knows the route it points at. |
+
+</details>
 
 > **A form that cannot be read gives up its fields, and nothing else.** Forms are built to be *rendered*, and one that leans on the record being edited, or on who is looking, will not survive being asked what is in it outside of a request. Its fields simply are not listed — the panel does not fall over, and the CSS box is right there.
 
@@ -288,6 +335,8 @@ Finishing a tour completes its step only when the step's completion mode is **Ma
 ### A "view the tutorial" button on the page itself
 
 The launcher starts tours from the checklist. For the pages that deserve their own invitation, drop a header action on them:
+
+![A tour offered on the page it is about](docs/images/01-user/06_get_started_tutorial_00.png)
 
 ```php
 use Wallacemartinss\FilamentOnboarding\Actions\StartTourAction;
@@ -325,7 +374,31 @@ The field a stop points at often does not exist yet: it lives on the next step o
 [wire\:click="nextStep"]      the wizard's own next button
 ```
 
+![The tour has moved the wizard to its second step on its own](docs/images/01-user/06_get_started_tutorial_03.png)
+
 It is clicked only when the user moves on and the element is not on screen — and it is a **real press** (`mousedown`, `mouseup`, `click`), because plenty of things do not listen for a bare click: a Filament dropdown, for one, opens on `mousedown`. If the application refuses (a required field is empty), the tour waits and says so, rather than pointing at nothing.
+
+<details>
+<summary>📸 <b>Five stops across three wizard steps</b> — the user only ever pressed <i>Next</i> on the tour</summary>
+
+<br>
+
+| 1 · Name | 2 · SKU |
+|:---:|:---:|
+| ![Stop one, on the first step of the wizard](docs/images/01-user/06_get_started_tutorial_01.png) | ![Stop two, still on the first step](docs/images/01-user/06_get_started_tutorial_02.png) |
+| Wizard step **01**. | Still **01** — the tour has no reason to move the app yet. |
+
+| 3 · Price | 4 · Stock |
+|:---:|:---:|
+| ![Stop three, after the tour advanced the wizard](docs/images/01-user/06_get_started_tutorial_03.png) | ![Stop four, on the second step](docs/images/01-user/06_get_started_tutorial_04.png) |
+| Wizard step **02** — the field was not on screen, so the tour pressed the wizard's own *Next* to get to it. | Still **02**. |
+
+| 5 · Published | |
+|:---:|:---:|
+| ![Stop five, on the last step of the wizard](docs/images/01-user/06_get_started_tutorial_05.png) | |
+| Wizard step **03**, reached the same way. A `Toggle` is a field like any other. | |
+
+</details>
 
 **Skip when it is not there.** Some stops are about something an account may not have yet — a tag on an empty table, a chart with no data. Mark the stop **optional** and the tour steps aside instead of waiting for something that is never coming.
 
@@ -335,7 +408,7 @@ It is clicked only when the user moves on and the element is not on screen — a
 
 A step can carry an image to show or a video to watch. Both open in a modal over the panel, from the checklist, the widget or the progress page.
 
-<!-- ![The media modal, docked in a corner](docs/images/media-modal.png) -->
+![A video docked in the corner, the page still usable behind it](docs/images/01-user/03_get_started_video.png)
 
 **Images** are uploaded to the configured disk or addressed by URL, and show as a thumbnail on the step.
 
@@ -388,7 +461,7 @@ Three surfaces, all optional, all reading the same progress — tick a step off 
 FilamentOnboardingPlugin::make()->welcome(),
 ```
 
-<!-- ![The welcome screen](docs/images/welcome.png) -->
+![The welcome screen, on an account that is already 38% of the way through](docs/images/01-user/01_get_started_welcome.png)
 
 A checklist in the corner is easy to never notice, so onboarding gets one moment to introduce itself: the first page after logging in. It names the journey, says how many steps it is, and offers three answers —
 
@@ -398,11 +471,13 @@ A checklist in the corner is easy to never notice, so onboarding gets one moment
 
 It is never a dead end: the progress page stays in the menu, and it offers onboarding back. Tours keep working either way — a "view the tutorial" button is something the user reaches for, not something that reaches for them.
 
+> Look at the ring in the corner of that screenshot: **38%, on an account that has never seen this journey**. It is an old account, and it already has clients and a published product — so three of the eight steps were true before the journey was written, and the user is greeted with credit for work they had already done rather than a to-do list of things they finished last year. That is what a condition-backed step buys you, and it is the reason to reach for this package over a checklist you hardcode.
+
 ### The floating checklist
 
 `->launcher()` puts a progress button on every page of the panel — pages, resources, widgets alike, since it hangs off the body. With more than one journey, the panel shows tabs, so a finished journey never sits in front of an unfinished one.
 
-<!-- ![The floating checklist, open](docs/images/launcher.png) -->
+![The checklist open over the dashboard, with a tab per journey](docs/images/01-user/02_get_started_progress.png)
 
 ### The dashboard widget
 
@@ -413,13 +488,15 @@ use Wallacemartinss\FilamentOnboarding\Widgets\OnboardingChecklistWidget;
 OnboardingChecklistWidget::class,
 ```
 
-It hides itself once the journey is finished or dismissed.
+The same checklist, as a card on the page — it is the panel on the left of the screenshot above, sitting next to the floating one. It hides itself once the journey is finished or dismissed.
 
 ### The progress page
 
 The journey laid out in cards: a ring with the percentage, counters for done / left / skipped, the next step highlighted with its call to action, and a card per step showing its state and what to do about it.
 
-<!-- ![The progress page](docs/images/progress-page.png) -->
+![The progress page](docs/images/01-user/02_get_started_panel.png)
+
+Every card says what it is waiting for, and finished ones say how they finished — *"Done 8 minutes ago · Completes on its own"* is a step nobody was asked to tick. The last one there, **"Set up weekly reporting"**, is only shown to accounts with three clients or more: a step gated by a [visibility condition](#visibility-not-every-journey-is-for-everybody) is not counted against the people who never see it.
 
 ```php
 FilamentOnboardingPlugin::make()
