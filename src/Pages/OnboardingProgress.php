@@ -85,6 +85,12 @@ class OnboardingProgress extends Page
     /**
      * Starting over throws work away, so it asks first — through Filament's own
      * confirmation modal, not a browser dialog.
+     *
+     * A button, and not a link. These two sat at the foot of a journey as bare
+     * underlined words, which is how a control that *does* something ends up
+     * reading like a footnote: nothing about them said they could be pressed, and
+     * so nobody pressed them. Filament dresses a secondary action as a grey
+     * button — the same one its own "Cancel" wears — and that is what these are.
      */
     public function restartFlowAction(): Action
     {
@@ -92,7 +98,6 @@ class OnboardingProgress extends Page
             ->label(__('filament-onboarding::onboarding.page.restart'))
             ->icon(Heroicon::ArrowPath)
             ->color('gray')
-            ->link()
             ->requiresConfirmation()
             ->modalHeading(__('filament-onboarding::onboarding.page.restart'))
             ->modalDescription(__('filament-onboarding::onboarding.page.restart_confirm'))
@@ -125,8 +130,8 @@ class OnboardingProgress extends Page
     {
         return Action::make('dismissFlow')
             ->label(__('filament-onboarding::onboarding.checklist.dismiss'))
+            ->icon(Heroicon::EyeSlash)
             ->color('gray')
-            ->link()
             ->action(function (array $arguments): void {
                 $this->dismissFlow($arguments['flow'] ?? null);
             });
@@ -136,8 +141,8 @@ class OnboardingProgress extends Page
     {
         return Action::make('restoreFlow')
             ->label(__('filament-onboarding::onboarding.page.restore'))
+            ->icon(Heroicon::Eye)
             ->color('gray')
-            ->link()
             ->action(function (array $arguments): void {
                 $this->restoreFlow($arguments['flow'] ?? null);
             });

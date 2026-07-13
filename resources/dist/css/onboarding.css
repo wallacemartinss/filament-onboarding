@@ -562,14 +562,20 @@ button.fio-step-marker:hover {
     color: var(--fio-text);
 }
 
+/* The journey's description, which lives behind the fold and sits above the
+   tiles. It had no margin under it at all: the sentence ended and the first
+   card began, touching it — the line of text read as though it were falling
+   into the box rather than introducing it. It needs to breathe on both sides of
+   the fold: away from the header above, and away from the tiles below. */
 .fio-hero-description {
-    margin-block-start: 0.25rem;
+    margin-block: 0.875rem 1.125rem;
     font-size: 0.875rem;
+    line-height: 1.55;
     color: var(--fio-text-muted);
 }
 
 .fio-hero-note {
-    margin-block-start: 0.875rem;
+    margin-block: 0.875rem 1.125rem;
     font-size: 0.8125rem;
     color: var(--fio-text-muted);
 }
@@ -641,8 +647,14 @@ button.fio-step-marker:hover {
     color: var(--fio-text);
 }
 
+/* The foot of a journey. These used to float under the tiles with nothing
+   holding them, which is half of why they read as lost — the other half being
+   that they were underlined words rather than buttons. A rule above them says
+   where the journey ends and what you may do about it. */
 .fio-hero-actions {
-    margin-block-start: 0.875rem;
+    margin-block-start: 1.25rem;
+    padding-block-start: 1rem;
+    border-block-start: 1px solid var(--fio-border);
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -660,7 +672,11 @@ button.fio-step-marker:hover {
 .fio-tile {
     display: flex;
     flex-direction: column;
-    padding: 1rem 1.125rem 0.875rem;
+    /* Filament gives a card 24px either side (.fi-section-header is 16px 24px),
+       and it is the horizontal that reads as cramped when it is short: text that
+       starts against the border looks like it is falling out of the box. Match
+       it, and let the vertical stay a little tighter — a tile is not a section. */
+    padding: 1.125rem 1.5rem 1.25rem;
     border-radius: var(--fio-radius);
     border: 1px solid var(--fio-border);
     background-color: var(--fio-surface);
