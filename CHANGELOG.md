@@ -5,6 +5,35 @@ All notable changes to `filament-onboarding` are documented here.
 Versions follow Filament: **2.x targets Filament v5**, and 1.x is reserved for a Filament v4
 backport. That is why the first release is 2.0.0 — there is no 1.0.0 to upgrade from.
 
+## 2.2.1
+
+**Required on Laravel 13 — and on any Laravel 12.63+ whose cache config is current.**
+
+### Fixed
+
+- **The definitions cache took the whole panel down on the second request.** Laravel will not
+  unserialize classes out of the cache unless the application lists them: a stock Laravel 13
+  ships `cache.serializable_classes => false`, so that a leaked `APP_KEY` cannot be turned
+  into a gadget chain through the cache. The manager cached a `Collection` of Eloquent
+  models — which writes perfectly well, and reads back as `__PHP_Incomplete_Class`. The first
+  request of the panel's life populated the cache and worked; every request after it died on
+  the return type of `cachedFlows()`, which is a **500 on every page**, since the launcher
+  renders in the layout. Definitions are now cached as plain attributes and rebuilt on the
+  way out — casts, relations and translatable columns intact — so nothing in that cache is an
+  object. A cache holding the old shape reads as a miss and is overwritten, so upgrading
+  needs no `cache:clear`.
+
+### Changed
+
+- **The progress page folds.** It used to open every step of every journey at once: a wall of
+  cards, most of them about work already done, with the one thing the person came for buried
+  among them. Each journey is now a collapsible section whose header carries the ring, the
+  count and the next thing to do — which, for a folded journey, is usually all anyone wants.
+  A journey with something pending opens; a finished one starts folded; and the choice is
+  remembered per journey, so a completed one that gets opened stays open.
+
+---
+
 ## 2.2.0
 
 **The release to upgrade to, from anywhere.** The 2.0.0 → 2.1.0 migration now survives the
