@@ -93,7 +93,7 @@
                                 </div>
 
                                 @if ($next->hasTour())
-                                    <button type="button" class="fio-button fio-button--primary" wire:click="startTour(@js($next->key()))">
+                                    <button type="button" class="fio-button fio-button--primary" wire:click="startTour(@js($next->key()), @js($flow->key()))">
                                         <x-filament-onboarding::icons.sparkles />
                                         {{ $next->ctaLabel() ?? __('filament-onboarding::onboarding.checklist.start_tour') }}
                                     </button>
@@ -103,7 +103,7 @@
                                         <x-filament-onboarding::icons.arrow-right />
                                     </a>
                                 @elseif ($next->canSelfComplete())
-                                    <button type="button" class="fio-button fio-button--primary" wire:click="completeStep(@js($next->key()))">
+                                    <button type="button" class="fio-button fio-button--primary" wire:click="completeStep(@js($next->key()), @js($flow->key()))">
                                         <x-filament-onboarding::icons.check />
                                         {{ __('filament-onboarding::onboarding.checklist.mark_done') }}
                                     </button>
@@ -180,7 +180,7 @@
                                 <button
                                     type="button"
                                     class="fio-thumb-button"
-                                    wire:click="openMedia(@js($step->key()))"
+                                    wire:click="openMedia(@js($step->key()), @js($flow->key()))"
                                     aria-label="{{ __('filament-onboarding::onboarding.page.open_image', ['title' => $step->title()]) }}"
                                 >
                                     <img src="{{ $step->imageUrl() }}" alt="{{ $step->title() }}" class="fio-thumb" />
@@ -245,12 +245,12 @@
                                     <div class="fio-tile-actions">
                                         @if ($step->canReplay())
                                             @if ($step->hasTour())
-                                                <button type="button" class="fio-button fio-button--ghost" wire:click="startTour(@js($step->key()))">
+                                                <button type="button" class="fio-button fio-button--ghost" wire:click="startTour(@js($step->key()), @js($flow->key()))">
                                                     <x-filament-onboarding::icons.sparkles />
                                                     {{ __('filament-onboarding::onboarding.page.replay_tour') }}
                                                 </button>
                                             @elseif ($step->hasVideo())
-                                                <button type="button" class="fio-button fio-button--ghost" wire:click="openMedia(@js($step->key()))">
+                                                <button type="button" class="fio-button fio-button--ghost" wire:click="openMedia(@js($step->key()), @js($flow->key()))">
                                                     <x-filament-onboarding::icons.play />
                                                     {{ __('filament-onboarding::onboarding.page.replay_video') }}
                                                 </button>
@@ -263,21 +263,21 @@
                                         @endif
 
                                         @if ($step->canUndo())
-                                            <button type="button" class="fio-button fio-button--ghost" wire:click="undoStep(@js($step->key()))">
+                                            <button type="button" class="fio-button fio-button--ghost" wire:click="undoStep(@js($step->key()), @js($flow->key()))">
                                                 {{ __('filament-onboarding::onboarding.page.undo') }}
                                             </button>
                                         @endif
                                     </div>
                                 @else
                                     @if ($step->hasVideo())
-                                        <button type="button" class="fio-button fio-button--primary" wire:click="openMedia(@js($step->key()))">
+                                        <button type="button" class="fio-button fio-button--primary" wire:click="openMedia(@js($step->key()), @js($flow->key()))">
                                             <x-filament-onboarding::icons.play />
                                             {{ $step->ctaLabel() ?? ($video
                                                 ? __('filament-onboarding::onboarding.media.resume')
                                                 : __('filament-onboarding::onboarding.media.watch')) }}
                                         </button>
                                     @elseif ($step->hasTour())
-                                        <button type="button" class="fio-button fio-button--primary" wire:click="startTour(@js($step->key()))">
+                                        <button type="button" class="fio-button fio-button--primary" wire:click="startTour(@js($step->key()), @js($flow->key()))">
                                             <x-filament-onboarding::icons.sparkles />
                                             {{ $step->ctaLabel() ?? __('filament-onboarding::onboarding.checklist.start_tour') }}
                                         </button>
@@ -287,14 +287,14 @@
                                             <x-filament-onboarding::icons.arrow-right />
                                         </a>
                                     @elseif ($step->canSelfComplete())
-                                        <button type="button" class="fio-button fio-button--primary" wire:click="completeStep(@js($step->key()))">
+                                        <button type="button" class="fio-button fio-button--primary" wire:click="completeStep(@js($step->key()), @js($flow->key()))">
                                             <x-filament-onboarding::icons.check />
                                             {{ __('filament-onboarding::onboarding.checklist.mark_done') }}
                                         </button>
                                     @endif
 
                                     @if ($step->canSkip())
-                                        <button type="button" class="fio-button fio-button--ghost" wire:click="skipStep(@js($step->key()))">
+                                        <button type="button" class="fio-button fio-button--ghost" wire:click="skipStep(@js($step->key()), @js($flow->key()))">
                                             {{ __('filament-onboarding::onboarding.checklist.skip') }}
                                         </button>
                                     @endif

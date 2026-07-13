@@ -21,7 +21,7 @@
                 <button
                     type="button"
                     class="fio-step-marker"
-                    wire:click="completeStep(@js($step->key()))"
+                    wire:click="completeStep(@js($step->key()), @js($flow->key()))"
                     wire:loading.attr="disabled"
                     title="{{ __('filament-onboarding::onboarding.checklist.mark_done') }}"
                 >
@@ -60,7 +60,7 @@
                     <button
                         type="button"
                         class="fio-thumb-button fio-stack-tight"
-                        wire:click="openMedia(@js($step->key()))"
+                        wire:click="openMedia(@js($step->key()), @js($flow->key()))"
                         aria-label="{{ __('filament-onboarding::onboarding.page.open_image', ['title' => $step->title()]) }}"
                     >
                         <img src="{{ $step->imageUrl() }}" alt="{{ $step->title() }}" class="fio-thumb" />
@@ -73,12 +73,12 @@
                 @if ($step->isResolved() && $step->canReplay())
                     <div class="fio-step-actions">
                         @if ($step->hasTour())
-                            <button type="button" class="fio-button fio-button--ghost" wire:click="startTour(@js($step->key()))">
+                            <button type="button" class="fio-button fio-button--ghost" wire:click="startTour(@js($step->key()), @js($flow->key()))">
                                 <x-filament-onboarding::icons.sparkles />
                                 {{ __('filament-onboarding::onboarding.page.replay_tour') }}
                             </button>
                         @elseif ($step->hasVideo())
-                            <button type="button" class="fio-button fio-button--ghost" wire:click="openMedia(@js($step->key()))">
+                            <button type="button" class="fio-button fio-button--ghost" wire:click="openMedia(@js($step->key()), @js($flow->key()))">
                                 <x-filament-onboarding::icons.play />
                                 {{ __('filament-onboarding::onboarding.page.replay_video') }}
                             </button>
@@ -97,7 +97,7 @@
                             <button
                                 type="button"
                                 class="fio-button fio-button--primary"
-                                wire:click="openMedia(@js($step->key()))"
+                                wire:click="openMedia(@js($step->key()), @js($flow->key()))"
                             >
                                 <x-filament-onboarding::icons.play />
                                 {{ $step->ctaLabel() ?? __('filament-onboarding::onboarding.media.watch') }}
@@ -106,7 +106,7 @@
                             <button
                                 type="button"
                                 class="fio-button fio-button--primary"
-                                wire:click="startTour(@js($step->key()))"
+                                wire:click="startTour(@js($step->key()), @js($flow->key()))"
                             >
                                 <x-filament-onboarding::icons.sparkles />
                                 {{ $step->ctaLabel() ?? __('filament-onboarding::onboarding.checklist.start_tour') }}
@@ -122,7 +122,7 @@
                             <button
                                 type="button"
                                 class="fio-button fio-button--ghost"
-                                wire:click="skipStep(@js($step->key()))"
+                                wire:click="skipStep(@js($step->key()), @js($flow->key()))"
                             >
                                 {{ __('filament-onboarding::onboarding.checklist.skip') }}
                             </button>

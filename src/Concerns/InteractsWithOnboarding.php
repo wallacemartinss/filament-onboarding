@@ -92,9 +92,9 @@ trait InteractsWithOnboarding
      * as done forever — the checklist lies, and any application logic hanging off
      * StepCompleted fires for work nobody did.
      */
-    public function completeStep(string $stepKey): void
+    public function completeStep(string $stepKey, ?string $flowKey = null): void
     {
-        $step = $this->findStepState($stepKey);
+        $step = $this->findStepState($stepKey, $flowKey);
 
         // Only a step the subject may tick off themselves. Condition, Visit,
         // Video and Programmatic steps are settled by the thing they name.
@@ -107,9 +107,9 @@ trait InteractsWithOnboarding
         $this->afterOnboardingChanged();
     }
 
-    public function skipStep(string $stepKey): void
+    public function skipStep(string $stepKey, ?string $flowKey = null): void
     {
-        $step = $this->findStepState($stepKey);
+        $step = $this->findStepState($stepKey, $flowKey);
 
         if (!$step instanceof StepState || !$step->canSkip()) {
             return;
@@ -120,9 +120,9 @@ trait InteractsWithOnboarding
         $this->afterOnboardingChanged();
     }
 
-    public function undoStep(string $stepKey): void
+    public function undoStep(string $stepKey, ?string $flowKey = null): void
     {
-        $step = $this->findStepState($stepKey);
+        $step = $this->findStepState($stepKey, $flowKey);
 
         // A condition step cannot be taken back: the next render would put it
         // straight back, because the thing it asks about is still true.
@@ -192,9 +192,9 @@ trait InteractsWithOnboarding
      * Hand a tour to the browser. The runner takes it from here — navigating
      * first if the tour starts on another page.
      */
-    public function startTour(string $stepKey): void
+    public function startTour(string $stepKey, ?string $flowKey = null): void
     {
-        $step = $this->findStepState($stepKey);
+        $step = $this->findStepState($stepKey, $flowKey);
 
         if (!$step instanceof StepState || !$step->hasTour()) {
             return;
@@ -226,9 +226,9 @@ trait InteractsWithOnboarding
      * Open the image or the video a step carries. The modal lives with the
      * runner, hanging off the body, so it opens over any page of the panel.
      */
-    public function openMedia(string $stepKey): void
+    public function openMedia(string $stepKey, ?string $flowKey = null): void
     {
-        $step = $this->findStepState($stepKey);
+        $step = $this->findStepState($stepKey, $flowKey);
 
         $media = $step?->media();
 
@@ -275,9 +275,9 @@ trait InteractsWithOnboarding
      * Otherwise a tour glued to "has two-factor" is a second front door around
      * the very check completeStep() refuses.
      */
-    public function finishTour(string $stepKey): void
+    public function finishTour(string $stepKey, ?string $flowKey = null): void
     {
-        $step = $this->findStepState($stepKey);
+        $step = $this->findStepState($stepKey, $flowKey);
 
         // Only a step that actually has a tour finishes by finishing one.
         if (!$step instanceof StepState || !$step->hasTour()) {
@@ -389,11 +389,27 @@ trait InteractsWithOnboarding
     }
 
     /**
-     * A step by key, looked for across every journey of the panel — the progress
-     * page shows more than one at a time.
+     * The step a caller means, not merely the first one wearing the key.
+     *
+     * Step keys are only unique *within* a flow — the database says so — and a
+     * panel may hold two journeys that both have an "invite-team". A caller
+     * that names the flow is answered from that flow alone. One that does not
+     * is assumed to mean the flow this surface is showing, and only a step
+     * that is nowhere on it is looked for across the panel — which is how the
+     * events the tour runner sends (key only) still land.
      */
-    protected function findStepState(string $stepKey): ?StepState
+    protected function findStepState(string $stepKey, ?string $flowKey = null): ?StepState
     {
+        if ($flowKey !== null) {
+            return $this->onboarding()?->flow($flowKey, $this->onboardingPanelId())?->step($stepKey);
+        }
+
+        $shown = $this->flowState()?->step($stepKey);
+
+        if ($shown instanceof StepState) {
+            return $shown;
+        }
+
         return $this->onboarding()?->stepState($stepKey, $this->onboardingPanelId());
     }
 

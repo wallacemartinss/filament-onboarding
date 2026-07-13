@@ -206,6 +206,48 @@ class AuthorizationTest extends TestCase
         $this->assertFalse($this->state('tick-me')->isCompleted());
     }
 
+    public function test_a_shared_key_lands_on_the_flow_the_surface_is_showing(): void
+    {
+        // Step keys are only unique within a flow. An earlier journey wearing
+        // the same key used to catch the tick meant for a later one.
+        $decoy = OnboardingFlow::create([
+            'key'        => 'earlier-journey',
+            'title'      => ['en' => 'Earlier'],
+            'is_active'  => true,
+            'sort_order' => 0,
+        ]);
+
+        OnboardingStep::create([
+            'flow_id'         => $decoy->id,
+            'key'             => 'invite-team',
+            'type'            => StepType::Task,
+            'title'           => ['en' => 'Invite (earlier)'],
+            'completion_mode' => CompletionMode::Manual,
+            'is_required'     => false,
+        ]);
+
+        $this->flow->update(['sort_order' => 5]);
+
+        $this->step('invite-team', ['completion_mode' => CompletionMode::Manual]);
+
+        // The surface is pinned to the later journey — the launcher showing a
+        // tab, the widget given a flowKey. Its tick belongs to that journey.
+        $endpoint          = $this->endpoint();
+        $endpoint->flowKey = 'journey';
+
+        $endpoint->completeStep('invite-team');
+
+        $this->assertTrue($this->state('invite-team')->isCompleted());
+        $this->assertFalse(
+            Onboarding::for($this->subject)->flow('earlier-journey')->step('invite-team')->isCompleted()
+        );
+
+        // And a caller that names the flow outright is answered from it alone.
+        $this->endpoint()->undoStep('invite-team', 'journey');
+
+        $this->assertFalse($this->state('invite-team')->isCompleted());
+    }
+
     public function test_a_video_step_still_tracks_the_watching_it_is_for(): void
     {
         $this->step('watch-me', [
