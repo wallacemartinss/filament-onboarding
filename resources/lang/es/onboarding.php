@@ -244,6 +244,8 @@ return [
         ],
 
         'tour' => [
+            'optional'        => 'Saltar si no está',
+            'optional_helper' => 'Para algo que puede no existir aún: una etiqueta en una tabla vacía, un gráfico sin datos. El tutorial sigue en vez de esperar.',
             'advance'         => 'Avanzar con',
             'advance_helper'  => 'El control que lleva la app hasta esta parada — el botón siguiente de un wizard, una pestaña. Se pulsa cuando el usuario avanza y el elemento aún no está en pantalla.',
             'add'             => 'Añadir parada',

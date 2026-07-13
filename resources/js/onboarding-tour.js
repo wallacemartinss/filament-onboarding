@@ -222,9 +222,29 @@ export default function onboardingTour() {
                 return false;
             }
 
-            control.click();
+            this.press(control);
 
             return await this.waitForElement(step.selector, ADVANCE_TIMEOUT) === null;
+        },
+
+        /**
+         * Press a control the way a person does.
+         *
+         * `element.click()` is not a press: it fires one event, and plenty of
+         * things do not listen for it. **A Filament dropdown opens on
+         * `mousedown`** — the filter panel of a table, for one — so a tour that
+         * only clicked would sit there waiting for a panel that was never going
+         * to open. Send the whole sequence a real mouse sends.
+         *
+         * A control that listens for only one of these still gets exactly one
+         * press: the events are what a browser would have sent anyway.
+         */
+        press(element) {
+            const options = { bubbles: true, cancelable: true, button: 0 };
+
+            element.dispatchEvent(new MouseEvent('mousedown', options));
+            element.dispatchEvent(new MouseEvent('mouseup', options));
+            element.click();
         },
 
         /**
@@ -387,6 +407,14 @@ export default function onboardingTour() {
             }
 
             if (!found) {
+                // Some stops are about something that may simply not be there: a
+                // tag on a table with no tags yet, a chart with no data. Waiting
+                // for those would strand the tour on an empty page, so an
+                // optional stop steps aside for the next one.
+                if (step.optional) {
+                    return this.isLast ? this.finish() : this.next();
+                }
+
                 // Nothing to point at *yet*. The copy still reads, centred, and
                 // the DOM is watched: the element may live on a step of a wizard
                 // the subject has not reached, and the tour is content to wait —

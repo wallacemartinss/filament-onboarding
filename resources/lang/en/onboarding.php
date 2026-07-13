@@ -244,6 +244,8 @@ return [
         ],
 
         'tour' => [
+            'optional'        => 'Skip when it is not there',
+            'optional_helper' => 'For something that may not exist yet — a tag on an empty table, a chart with no data. The tour moves on instead of waiting for it.',
             'advance'         => 'Advance with',
             'advance_helper'  => 'The control that carries the app to this stop — a wizard\'s next button, a tab. Clicked when the subject moves on and the element is not on screen yet.',
             'add'             => 'Add stop',

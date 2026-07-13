@@ -99,6 +99,8 @@ Database-driven onboarding for Filament v5.
   resume where they left off, and report the stop they reached.
 - **`StartTourAction`** — a header action for any page or resource that starts one tour in
   place ("How does it work?"), visible only when the subject can actually take that tour.
+- A tour stop can be marked **optional**: about something an account may not have yet (a
+  tag, an empty chart), the tour steps aside instead of waiting for it.
 - Tours **walk through a wizard**: they follow the user when the form moves on, and an
   "Advance with" selector lets a stop bring the application to it. A tour parked on a page
   ends when the user goes somewhere else, instead of floating over the wrong screen.

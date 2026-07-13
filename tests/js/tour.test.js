@@ -544,3 +544,79 @@ describe('a form that refuses to move on', () => {
     });
 });
 
+describe('pressing a control the way a person does', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '';
+    });
+
+    /**
+     * A Filament dropdown — the filter panel of a table, for one — opens on
+     * `mousedown`, not on `click`. A tour that only called `.click()` waited
+     * forever for a panel that was never going to open.
+     */
+    it('sends mousedown, not only click', async () => {
+        const trigger = withBox(document.createElement('div'));
+        trigger.id = 'filters';
+
+        const seen = [];
+
+        ['mousedown', 'mouseup', 'click'].forEach((type) => {
+            trigger.addEventListener(type, () => seen.push(type));
+        });
+
+        // The panel only exists once the dropdown is open.
+        trigger.addEventListener('mousedown', () => {
+            const field = withBox(document.createElement('input'));
+            field.id = 'tag-filter';
+            document.body.append(field);
+        });
+
+        document.body.append(trigger);
+
+        const component = tour();
+
+        component.active = true;
+        component.steps = [
+            { selector: '#table' },
+            { selector: '#tag-filter', advance: '#filters' },
+        ];
+        component.index = 0;
+        component.render = vi.fn();
+
+        await component.next();
+
+        expect(seen).toEqual(['mousedown', 'mouseup', 'click']);
+        expect(component.index).toBe(1);
+        expect(component.blocked).toBe(false);
+    });
+});
+
+describe('a stop about something that may not be there', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '';
+    });
+
+    it('steps aside instead of stranding the tour on an empty page', async () => {
+        const later = withBox(document.createElement('div'));
+        later.id = 'always-here';
+        document.body.append(later);
+
+        const component = tour();
+
+        component.active = true;
+        component.stepKey = 'a-tour';
+        component.steps = [
+            // No tags on this account yet, so nothing to point at.
+            { selector: '#no-tags-yet', optional: true },
+            { selector: '#always-here' },
+        ];
+        component.index = 0;
+
+        await component.render();
+
+        expect(component.index).toBe(1);
+        expect(component.waiting).toBe(false);
+        expect(component.target).toBe(later);
+    });
+});
+

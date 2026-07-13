@@ -233,7 +233,9 @@ The field a stop points at often does not exist yet: it lives on the next step o
 [wire\:click="nextStep"]      the wizard's own next button
 ```
 
-It is clicked only when the user moves on and the element is not on screen. If the application refuses (a required field is empty), the tour waits and says so, rather than pointing at nothing.
+It is clicked only when the user moves on and the element is not on screen — and it is a **real press** (`mousedown`, `mouseup`, `click`), because plenty of things do not listen for a bare click: a Filament dropdown, for one, opens on `mousedown`. If the application refuses (a required field is empty), the tour waits and says so, rather than pointing at nothing.
+
+**Skip when it is not there.** Some stops are about something an account may not have yet — a tag on an empty table, a chart with no data. Mark the stop **optional** and the tour steps aside instead of waiting for something that is never coming.
 
 ---
 

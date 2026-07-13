@@ -410,6 +410,11 @@ class StepsRelationManager extends RelationManager
                             ->maxLength(255),
                     ]),
 
+                    Toggle::make('optional')
+                        ->label(__('filament-onboarding::onboarding.resource.tour.optional'))
+                        ->helperText(__('filament-onboarding::onboarding.resource.tour.optional_helper'))
+                        ->default(false),
+
                     Tabs::make('tour_translations')
                         ->contained(false)
                         ->tabs(

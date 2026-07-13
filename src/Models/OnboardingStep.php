@@ -151,6 +151,7 @@ class OnboardingStep extends Model
                 'url'       => $this->resolveTourUrl($tourStep, $parameters),
                 'condition' => $tourStep['condition'] ?? null,
                 'advance'   => $tourStep['advance'] ?? null,
+                'optional'  => (bool) ($tourStep['optional'] ?? false),
             ])
             ->all();
     }
