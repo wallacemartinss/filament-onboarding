@@ -1366,11 +1366,23 @@ button.fio-step-marker:hover {
    answers the question people came with — how far am I, what is next — and the
    steps wait behind a chevron. */
 
+/* The header *is* the card. Folding the steps away took the surface with them —
+   the journey became a bare row on the page background — and the page lost the
+   one thing that made it feel like something rather than a list. Same gradient,
+   same border, same shadow the hero had: what changed is that it now holds a
+   summary instead of everything. */
 .fio-journey-header {
     display: flex;
     flex-wrap: wrap;
-    gap: 1rem;
+    gap: 1rem 1.25rem;
     align-items: center;
+    padding: 1.125rem 1.375rem;
+    border-radius: var(--fio-radius);
+    border: 1px solid var(--fio-border);
+    background:
+        radial-gradient(120% 140% at 0% 0%, var(--fio-accent-soft), transparent 60%),
+        var(--fio-surface);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
 }
 
 .fio-journey-heading {
@@ -1405,9 +1417,10 @@ button.fio-step-marker:hover {
     block-size: 2.25rem;
     border: 1px solid var(--fio-border);
     border-radius: 9999px;
-    background-color: var(--fio-surface);
+    background-color: var(--fio-surface-muted);
     color: var(--fio-text-muted);
     cursor: pointer;
+    transition: background-color 150ms ease, color 150ms ease;
 }
 
 .fio-journey-toggle:hover {
