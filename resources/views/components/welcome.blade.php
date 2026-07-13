@@ -29,17 +29,15 @@
         </div>
 
         <div class="fio-welcome-actions">
-            @if ($progressUrl)
-                <a href="{{ $progressUrl }}" class="fio-button fio-button--primary fio-button--lg" wire:click="startOnboarding">
-                    {{ __('filament-onboarding::onboarding.welcome.begin') }}
-                    <x-filament-onboarding::icons.arrow-right />
-                </a>
-            @else
-                <button type="button" class="fio-button fio-button--primary fio-button--lg" wire:click="beginOnboarding">
-                    {{ __('filament-onboarding::onboarding.welcome.begin') }}
-                    <x-filament-onboarding::icons.arrow-right />
-                </button>
-            @endif
+            {{-- One button, one request: the welcome is marked done and *then*
+                 the server answers with where to go. An <a> with a wire:click
+                 races itself — the browser navigates while the request that
+                 records the answer is still in the air, and a welcome that was
+                 answered comes back. --}}
+            <button type="button" class="fio-button fio-button--primary fio-button--lg" wire:click="beginOnboarding">
+                {{ __('filament-onboarding::onboarding.welcome.begin') }}
+                <x-filament-onboarding::icons.arrow-right />
+            </button>
 
             <button type="button" class="fio-button fio-button--ghost" wire:click="remindMeLater">
                 {{ __('filament-onboarding::onboarding.welcome.later') }}

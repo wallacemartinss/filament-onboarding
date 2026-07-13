@@ -64,14 +64,25 @@ class OnboardingLauncher extends Component
     /**
      * "Let's go": the welcome is done with, and they are taken to the journey —
      * the progress page if the panel has one, the checklist otherwise.
+     *
+     * The write and the navigation share one request, in that order: mark the
+     * welcome answered, then redirect. Splitting them across a link's href and
+     * a wire:click is a race the write sometimes loses — and a lost write means
+     * the welcome greets them again on the very page it just sent them to.
      */
     public function beginOnboarding(): void
     {
         $this->startOnboarding();
 
-        if ($this->progressPageUrl() === null) {
+        $url = $this->progressPageUrl();
+
+        if ($url === null) {
             $this->isOpen = true;
+
+            return;
         }
+
+        $this->redirect($url);
     }
 
     #[On('onboarding-open')]
@@ -117,7 +128,6 @@ class OnboardingLauncher extends Component
             'hasTours'    => $plugin?->hasTours() ?? true,
             'position'    => $plugin?->getLauncherPosition() ?? 'bottom-right',
             'welcome'     => ($plugin?->hasWelcome() ?? false) && $this->shouldWelcome(),
-            'progressUrl' => $this->progressPageUrl(),
         ]);
     }
 
