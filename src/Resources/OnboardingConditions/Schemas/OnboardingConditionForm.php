@@ -44,7 +44,7 @@ class OnboardingConditionForm
                 Select::make('type')
                     ->label(__('filament-onboarding::onboarding.conditions.fields.type'))
                     ->options(ConditionType::class)
-                    ->default(ConditionType::Aggregate)
+                    ->default(ConditionType::Aggregate->value)
                     ->selectablePlaceholder(false)
                     ->native(false)
                     ->live()
@@ -52,63 +52,65 @@ class OnboardingConditionForm
                     ->columnSpanFull(),
 
                 // ── Aggregate: count rows of another model ──────────────────────
-                Grid::make(3)
-                    ->visible(fn (Get $get): bool => $get('type') === ConditionType::Aggregate->value)
-                    ->schema([
-                        Select::make('model')
-                            ->label(__('filament-onboarding::onboarding.conditions.fields.model'))
-                            ->helperText(__('filament-onboarding::onboarding.conditions.fields.model_helper'))
-                            ->prefixIcon(Heroicon::OutlinedCircleStack)
-                            ->options(fn (): array => AppModels::options())
-                            ->searchable()
-                            ->native(false)
-                            ->live()
-                            ->required(fn (Get $get): bool => $get('type') === ConditionType::Aggregate->value)
-                            ->columnSpan(2),
+                //
+                // The visibility lives on the fields, not on a Grid around them.
+                // Filament's Get resolves a path *relative to the component doing
+                // the asking*, so a closure hanging off a layout component two
+                // levels down from the field it names quietly reads nothing —
+                // which presents as a form that renders half of itself.
+                Select::make('model')
+                    ->label(__('filament-onboarding::onboarding.conditions.fields.model'))
+                    ->helperText(__('filament-onboarding::onboarding.conditions.fields.model_helper'))
+                    ->prefixIcon(Heroicon::OutlinedCircleStack)
+                    ->options(fn (): array => AppModels::options())
+                    ->searchable()
+                    ->native(false)
+                    ->live()
+                    ->required(fn (Get $get): bool => self::asks($get, ConditionType::Aggregate))
+                    ->visible(fn (Get $get): bool => self::asks($get, ConditionType::Aggregate))
+                    ->columnSpanFull(),
 
-                        TextInput::make('minimum')
-                            ->label(__('filament-onboarding::onboarding.conditions.fields.minimum'))
-                            ->helperText(__('filament-onboarding::onboarding.conditions.fields.minimum_helper'))
-                            ->numeric()
-                            ->minValue(1)
-                            ->default(1)
-                            ->required(),
-                    ]),
+                Select::make('subject_column')
+                    ->label(__('filament-onboarding::onboarding.conditions.fields.subject_column'))
+                    ->helperText(__('filament-onboarding::onboarding.conditions.fields.subject_column_helper'))
+                    ->prefixIcon(Heroicon::OutlinedUser)
+                    ->options(fn (Get $get): array => AppModels::foreignKeys($get('model')))
+                    ->default('user_id')
+                    ->searchable()
+                    ->native(false)
+                    ->required(fn (Get $get): bool => self::asks($get, ConditionType::Aggregate))
+                    ->visible(fn (Get $get): bool => self::asks($get, ConditionType::Aggregate) && filled($get('model'))),
 
-                Grid::make(2)
-                    ->visible(fn (Get $get): bool => $get('type') === ConditionType::Aggregate->value && filled($get('model')))
-                    ->schema([
-                        Select::make('subject_column')
-                            ->label(__('filament-onboarding::onboarding.conditions.fields.subject_column'))
-                            ->helperText(__('filament-onboarding::onboarding.conditions.fields.subject_column_helper'))
-                            ->prefixIcon(Heroicon::OutlinedUser)
-                            ->options(fn (Get $get): array => AppModels::foreignKeys($get('model')))
-                            ->default('user_id')
-                            ->searchable()
-                            ->native(false)
-                            ->required(fn (Get $get): bool => $get('type') === ConditionType::Aggregate->value),
+                Select::make('scope_column')
+                    ->label(__('filament-onboarding::onboarding.conditions.fields.scope_column'))
+                    ->helperText(__('filament-onboarding::onboarding.conditions.fields.scope_column_helper'))
+                    ->prefixIcon(Heroicon::OutlinedBuildingOffice2)
+                    ->options(fn (Get $get): array => AppModels::foreignKeys($get('model')))
+                    ->placeholder(__('filament-onboarding::onboarding.conditions.fields.scope_column_none'))
+                    ->searchable()
+                    ->native(false)
+                    ->visible(fn (Get $get): bool => self::asks($get, ConditionType::Aggregate) && filled($get('model'))),
 
-                        Select::make('scope_column')
-                            ->label(__('filament-onboarding::onboarding.conditions.fields.scope_column'))
-                            ->helperText(__('filament-onboarding::onboarding.conditions.fields.scope_column_helper'))
-                            ->prefixIcon(Heroicon::OutlinedBuildingOffice2)
-                            ->options(fn (Get $get): array => AppModels::foreignKeys($get('model')))
-                            ->placeholder(__('filament-onboarding::onboarding.conditions.fields.scope_column_none'))
-                            ->searchable()
-                            ->native(false),
-                    ]),
+                TextInput::make('minimum')
+                    ->label(__('filament-onboarding::onboarding.conditions.fields.minimum'))
+                    ->helperText(__('filament-onboarding::onboarding.conditions.fields.minimum_helper'))
+                    ->numeric()
+                    ->minValue(1)
+                    ->default(1)
+                    ->required(fn (Get $get): bool => self::asks($get, ConditionType::Aggregate))
+                    ->visible(fn (Get $get): bool => self::asks($get, ConditionType::Aggregate) && filled($get('model'))),
 
                 // ── Filters, for either shape ───────────────────────────────────
                 Repeater::make('filters')
-                    ->label(fn (Get $get): string => $get('type') === ConditionType::Attribute->value
+                    ->label(fn (Get $get): string => self::asks($get, ConditionType::Attribute)
                         ? __('filament-onboarding::onboarding.conditions.fields.filters_attribute')
                         : __('filament-onboarding::onboarding.conditions.fields.filters'))
-                    ->helperText(fn (Get $get): string => $get('type') === ConditionType::Attribute->value
+                    ->helperText(fn (Get $get): string => self::asks($get, ConditionType::Attribute)
                         ? __('filament-onboarding::onboarding.conditions.fields.filters_attribute_helper')
                         : __('filament-onboarding::onboarding.conditions.fields.filters_helper'))
                     ->addActionLabel(__('filament-onboarding::onboarding.conditions.fields.add_filter'))
-                    ->visible(fn (Get $get): bool => $get('type') === ConditionType::Attribute->value || filled($get('model')))
-                    ->defaultItems(fn (Get $get): int => $get('type') === ConditionType::Attribute->value ? 1 : 0)
+                    ->visible(fn (Get $get): bool => self::asks($get, ConditionType::Attribute) || filled($get('model')))
+                    ->defaultItems(fn (Get $get): int => self::asks($get, ConditionType::Attribute) ? 1 : 0)
                     ->columnSpanFull()
                     ->itemLabel(fn (array $state): ?string => filled($state['column'] ?? null)
                         ? trim(($state['column'] ?? '') . ' ' . Str::lower((string) (ConditionOperator::tryFrom((string) ($state['operator'] ?? ''))?->getLabel() ?? '')) . ' ' . ($state['value'] ?? ''))
@@ -117,7 +119,7 @@ class OnboardingConditionForm
                         Grid::make(3)->schema([
                             Select::make('column')
                                 ->label(__('filament-onboarding::onboarding.conditions.fields.column'))
-                                ->options(fn (Get $get): array => $get('../../type') === ConditionType::Attribute->value
+                                ->options(fn (Get $get): array => self::asks($get, ConditionType::Attribute, '../../type')
                                     ? AppModels::subjectColumns()
                                     : AppModels::columns($get('../../model')))
                                 ->searchable()
@@ -127,7 +129,7 @@ class OnboardingConditionForm
                             Select::make('operator')
                                 ->label(__('filament-onboarding::onboarding.conditions.fields.operator'))
                                 ->options(ConditionOperator::class)
-                                ->default(ConditionOperator::Equals)
+                                ->default(ConditionOperator::Equals->value)
                                 ->selectablePlaceholder(false)
                                 ->native(false)
                                 ->live()
@@ -140,6 +142,25 @@ class OnboardingConditionForm
                         ]),
                     ]),
             ]);
+    }
+
+    /**
+     * Whether the condition being written is of this kind.
+     *
+     * The state of a Select backed by an enum is the *value* while the form is
+     * being filled in, and the *enum* once a record has been loaded into it —
+     * so a `=== 'aggregate'` is true half the time, and half the time it silently
+     * hides the fields it was guarding.
+     */
+    private static function asks(Get $get, ConditionType $type, string $path = 'type'): bool
+    {
+        $state = $get($path);
+
+        if ($state instanceof ConditionType) {
+            return $state === $type;
+        }
+
+        return $state === $type->value;
     }
 
     protected static function namingSection(): Section

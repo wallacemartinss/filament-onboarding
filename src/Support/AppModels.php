@@ -141,8 +141,10 @@ final class AppModels
      */
     private static function discover(): array
     {
-        $path      = (string) config('filament-onboarding.conditions_builder.path', app_path('Models'));
-        $namespace = (string) config('filament-onboarding.conditions_builder.namespace', 'App\\Models');
+        // Same trap as in ConditionDiscovery: the key exists and holds null, so
+        // config()'s own default would never get a look in.
+        $path      = (string) (config('filament-onboarding.conditions_builder.path') ?: app_path('Models'));
+        $namespace = (string) (config('filament-onboarding.conditions_builder.namespace') ?: 'App\\Models');
 
         $filesystem = app(Filesystem::class);
 

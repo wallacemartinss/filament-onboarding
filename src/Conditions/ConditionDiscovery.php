@@ -32,8 +32,11 @@ final class ConditionDiscovery
             return [];
         }
 
-        $path      = (string) config('filament-onboarding.discovery.path', app_path('Onboarding/Conditions'));
-        $namespace = (string) config('filament-onboarding.discovery.namespace', 'App\\Onboarding\\Conditions');
+        // `?:` and not config()'s default: the key *exists* and holds null (that
+        // is how the shipped config says "wherever you would expect"), and a
+        // default only applies to a key that is missing altogether.
+        $path      = (string) (config('filament-onboarding.discovery.path') ?: app_path('Onboarding/Conditions'));
+        $namespace = (string) (config('filament-onboarding.discovery.namespace') ?: 'App\\Onboarding\\Conditions');
 
         $filesystem = app(Filesystem::class);
 

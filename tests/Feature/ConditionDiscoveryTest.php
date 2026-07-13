@@ -81,6 +81,47 @@ class ConditionDiscoveryTest extends TestCase
         $this->assertSame([], ConditionDiscovery::discover());
     }
 
+    public function test_the_shipped_config_means_the_conventional_directory(): void
+    {
+        // The config ships `'path' => null`, which reads as "wherever you would
+        // expect". A `config($key, $default)` never sees that: the default is for
+        // a key that is *missing*, and this one is present and null. Every real
+        // installation goes through this line, and it discovered nothing.
+        config()->set('filament-onboarding.discovery.path', null);
+        config()->set('filament-onboarding.discovery.namespace', null);
+
+        $directory = app_path('Onboarding/Conditions');
+
+        // The package's own test kernel has no autoloader for App\ — a real
+        // application does. Give it one, so this tests the path resolution and
+        // not the harness.
+        /** @var \Composer\Autoload\ClassLoader $loader */
+        $loader = require __DIR__ . '/../../vendor/autoload.php';
+        $loader->addPsr4('App\\Onboarding\\Conditions\\', $directory);
+
+        File::ensureDirectoryExists($directory);
+        File::put($directory . '/HasThingCondition.php', <<<'PHP'
+            <?php
+
+            namespace App\Onboarding\Conditions;
+
+            use Illuminate\Database\Eloquent\Model;
+            use Wallacemartinss\FilamentOnboarding\Contracts\OnboardingCondition;
+
+            class HasThingCondition implements OnboardingCondition
+            {
+                public function isCompleted(Model $subject, ?Model $scope = null): bool
+                {
+                    return true;
+                }
+            }
+            PHP);
+
+        $this->assertArrayHasKey('has_thing', ConditionDiscovery::discover());
+
+        File::delete($directory . '/HasThingCondition.php');
+    }
+
     public function test_the_generator_writes_a_condition_that_is_found(): void
     {
         $directory = sys_get_temp_dir() . '/fio-' . uniqid();
