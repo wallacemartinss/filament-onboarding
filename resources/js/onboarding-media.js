@@ -52,11 +52,27 @@ export default function onboardingMedia() {
             return Boolean(this.media?.trackable);
         },
 
-        show(detail) {
+        async show(detail) {
             const media = detail.media;
 
             if (!media) {
                 return;
+            }
+
+            // A docked modal leaves the page usable, so a second video gets
+            // opened over a first. Settle the account of the player that is
+            // leaving — report what it saw under its *own* key, tear it down so
+            // its poll cannot write the old video's seconds under the new key —
+            // and unstamp the markup, because the provider's API replaced the
+            // mount element with its iframe and a stale template would hand the
+            // next mount() refs that no longer exist.
+            if (this.open) {
+                this.report(true);
+                this.teardown();
+
+                this.open = false;
+
+                await this.$nextTick();
             }
 
             this.stepKey = detail.key;
