@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import onboardingTour from '../../resources/js/onboarding-tour.js';
 
@@ -15,14 +15,26 @@ import onboardingTour from '../../resources/js/onboarding-tour.js';
  * jsdom does no layout, so `getClientRects()` is stubbed per element: this is
  * about the decision the runner makes given a box, not about the box itself.
  */
+const components = [];
+
 function tour() {
     const component = onboardingTour();
 
     component.$nextTick = (callback) => (callback ? callback() : Promise.resolve());
     component.$refs = {};
 
+    components.push(component);
+
     return component;
 }
+
+afterEach(() => {
+    // Some tests leave a MutationObserver watching the body and pollers
+    // counting down. The next test's DOM reset — and the harness teardown
+    // after the last one — would fire them into an environment that no longer
+    // has a requestAnimationFrame to give.
+    components.splice(0).forEach((component) => component.destroy());
+});
 
 /**
  * Give an element a box (or take it away, the way `display: none` does).
