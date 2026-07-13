@@ -38,6 +38,13 @@ return [
     ],
 
     'page' => [
+        'collapse' => 'Plegar el recorrido',
+        'expand'   => 'Abrir el recorrido',
+        'meta'     => [
+            'completed' => ':count de :total completadas',
+            'remaining' => '{1}1 pendiente|[2,*]:count pendientes',
+            'skipped'   => '{1}1 omitida|[2,*]:count omitidas',
+        ],
         'open_image'           => 'Abrir la imagen: :title',
         'title'                => 'Primeros pasos',
         'subheading'           => 'Dónde estás y qué falta.',

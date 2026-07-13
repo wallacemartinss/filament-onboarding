@@ -38,6 +38,13 @@ return [
     ],
 
     'page' => [
+        'collapse' => 'Fold this journey away',
+        'expand'   => 'Open this journey',
+        'meta'     => [
+            'completed' => ':count of :total done',
+            'remaining' => '{1}1 left|[2,*]:count left',
+            'skipped'   => '{1}1 skipped|[2,*]:count skipped',
+        ],
         'open_image'           => 'Open the image: :title',
         'title'                => 'Getting started',
         'subheading'           => 'Where you are, and what is left.',

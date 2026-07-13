@@ -22,9 +22,20 @@
                 $skipped = $flow->steps->filter(fn ($step) => $step->isSkipped())->count();
             @endphp
 
-            <section class="fio-journey" wire:key="fio-journey-{{ $flow->key() }}">
-                <div class="fio-hero">
-                    <div class="fio-hero-ring">
+            {{-- A journey is a section you can fold away.
+                 The page used to lay every step of every journey out at once: a
+                 wall of cards, most of them about work already done, and the one
+                 thing somebody came here for buried in the middle of it. Now the
+                 header carries the answer — how far, what is next — and the steps
+                 are one click behind it. A journey with nothing pending starts
+                 folded; the choice is remembered, per journey. --}}
+            <section
+                class="fio-journey"
+                wire:key="fio-journey-{{ $flow->key() }}"
+                x-data="{ open: $persist(@js(! $flow->isFinished() && ! $flow->isDismissed())).as('fio-journey-{{ $flow->key() }}') }"
+            >
+                <header class="fio-journey-header">
+                    <div class="fio-hero-ring fio-hero-ring--sm">
                         <svg viewBox="0 0 88 88" aria-hidden="true">
                             <circle class="fio-ring-track" cx="44" cy="44" r="40" />
                             <circle
@@ -40,104 +51,93 @@
                         <span class="fio-hero-percentage">{{ $flow->percentage() }}%</span>
                     </div>
 
-                    <div class="fio-hero-body">
-                        <div class="fio-hero-heading">
-                            <h2 class="fio-hero-title">
-                                @if ($flow->icon())
-                                    <x-filament::icon
-                                        :icon="$flow->icon()"
-                                        class="fio-inline-icon fio-inline-icon--lg"
-                                    />
-                                @endif
+                    <div class="fio-journey-heading">
+                        <h2 class="fio-hero-title">
+                            @if ($flow->icon())
+                                <x-filament::icon
+                                    :icon="$flow->icon()"
+                                    class="fio-inline-icon fio-inline-icon--lg"
+                                />
+                            @endif
 
-                                {{ $flow->title() }}
-                            </h2>
+                            {{ $flow->title() }}
 
                             @if ($flow->isDismissed())
                                 <span class="fio-chip">
                                     {{ __('filament-onboarding::onboarding.page.hidden') }}
                                 </span>
                             @endif
-                        </div>
+                        </h2>
 
-                        @if ($flow->description())
-                            <p class="fio-hero-description">{{ $flow->description() }}</p>
-                        @endif
+                        {{-- The numbers on one line: what the wall of cards was
+                             being read for anyway. --}}
+                        <p class="fio-journey-meta">
+                            <span class="fio-journey-meta-done">{{ __('filament-onboarding::onboarding.page.meta.completed', ['count' => $flow->completedCount(), 'total' => $flow->total()]) }}</span>
 
-                        <div class="fio-stats">
-                            <div class="fio-stat">
-                                <span class="fio-stat-value">{{ $flow->completedCount() }}</span>
-                                <span class="fio-stat-label">{{ __('filament-onboarding::onboarding.page.stats.completed') }}</span>
-                            </div>
-
-                            <div class="fio-stat">
-                                <span class="fio-stat-value">{{ $flow->pendingSteps()->count() }}</span>
-                                <span class="fio-stat-label">{{ __('filament-onboarding::onboarding.page.stats.remaining') }}</span>
-                            </div>
-
-                            <div class="fio-stat">
-                                <span class="fio-stat-value">{{ $skipped }}</span>
-                                <span class="fio-stat-label">{{ __('filament-onboarding::onboarding.page.stats.skipped') }}</span>
-                            </div>
-                        </div>
-
-                        @if ($flow->isFinished())
-                            <p class="fio-hero-note">
-                                {{ __('filament-onboarding::onboarding.checklist.completed_description') }}
-                            </p>
-                        @elseif ($next)
-                            <div class="fio-next">
-                                <div>
-                                    <span class="fio-next-label">{{ __('filament-onboarding::onboarding.page.next') }}</span>
-                                    <p class="fio-next-title">{{ $next->title() }}</p>
-                                </div>
-
-                                @if ($next->hasTour())
-                                    <button type="button" class="fio-button fio-button--primary" wire:click="startTour(@js($next->key()), @js($flow->key()))">
-                                        <x-filament-onboarding::icons.sparkles />
-                                        {{ $next->ctaLabel() ?? __('filament-onboarding::onboarding.checklist.start_tour') }}
-                                    </button>
-                                @elseif ($next->url())
-                                    <a href="{{ $next->url() }}" class="fio-button fio-button--primary">
-                                        {{ $next->ctaLabel() ?? __('filament-onboarding::onboarding.checklist.go') }}
-                                        <x-filament-onboarding::icons.arrow-right />
-                                    </a>
-                                @elseif ($next->canSelfComplete())
-                                    <button type="button" class="fio-button fio-button--primary" wire:click="completeStep(@js($next->key()), @js($flow->key()))">
-                                        <x-filament-onboarding::icons.check />
-                                        {{ __('filament-onboarding::onboarding.checklist.mark_done') }}
-                                    </button>
-                                @endif
-                            </div>
-                        @endif
-
-                        {{-- Filament's own actions: its confirmation modal, its button
-                             styling, its keyboard handling — no browser dialogs. --}}
-                        <div class="fio-hero-actions">
-                            @if ($flow->isStarted())
-                                {{ ($this->restartFlowAction)(['flow' => $flow->key()]) }}
+                            @if ($flow->pendingSteps()->count() > 0)
+                                <span>·</span>
+                                <span>{{ trans_choice('filament-onboarding::onboarding.page.meta.remaining', $flow->pendingSteps()->count(), ['count' => $flow->pendingSteps()->count()]) }}</span>
                             @endif
 
-                            @if ($flow->isDismissible())
-                                @if ($flow->isDismissed())
-                                    {{ ($this->restoreFlowAction)(['flow' => $flow->key()]) }}
-                                @else
-                                    {{ ($this->dismissFlowAction)(['flow' => $flow->key()]) }}
-                                @endif
+                            @if ($skipped > 0)
+                                <span>·</span>
+                                <span>{{ trans_choice('filament-onboarding::onboarding.page.meta.skipped', $skipped, ['count' => $skipped]) }}</span>
                             @endif
-                        </div>
-
-                        @if ($flow->isFinished() && $flow->hasConditionSteps())
-                            {{-- Restarting cannot undo what is simply true: a step that
-                                 asks the application comes straight back completed. --}}
-                            <p class="fio-footer-note fio-stack-tight">
-                                {{ __('filament-onboarding::onboarding.page.restart_note') }}
-                            </p>
-                        @endif
+                        </p>
                     </div>
-                </div>
 
-                <div class="fio-tiles">
+                    {{-- The next thing to do, in the header: on a folded journey it
+                         is the only thing most people want from this page. --}}
+                    @if (! $flow->isFinished() && $next)
+                        <div class="fio-journey-next">
+                            @if ($next->hasTour())
+                                <button type="button" class="fio-button fio-button--primary" wire:click="startTour(@js($next->key()), @js($flow->key()))">
+                                    <x-filament-onboarding::icons.sparkles />
+                                    {{ $next->ctaLabel() ?? __('filament-onboarding::onboarding.checklist.start_tour') }}
+                                </button>
+                            @elseif ($next->url())
+                                <a href="{{ $next->url() }}" class="fio-button fio-button--primary">
+                                    {{ $next->ctaLabel() ?? __('filament-onboarding::onboarding.checklist.go') }}
+                                    <x-filament-onboarding::icons.arrow-right />
+                                </a>
+                            @elseif ($next->canSelfComplete())
+                                <button type="button" class="fio-button fio-button--primary" wire:click="completeStep(@js($next->key()), @js($flow->key()))">
+                                    <x-filament-onboarding::icons.check />
+                                    {{ __('filament-onboarding::onboarding.checklist.mark_done') }}
+                                </button>
+                            @endif
+                        </div>
+                    @endif
+
+                    <button
+                        type="button"
+                        class="fio-journey-toggle"
+                        x-on:click="open = ! open"
+                        :aria-expanded="open ? 'true' : 'false'"
+                        aria-controls="fio-journey-body-{{ $flow->key() }}"
+                        :aria-label="open
+                            ? @js(__('filament-onboarding::onboarding.page.collapse'))
+                            : @js(__('filament-onboarding::onboarding.page.expand'))"
+                    >
+                        <span class="fio-journey-chevron" :class="{ 'fio-journey-chevron--open': open }">
+                            <x-filament-onboarding::icons.chevron-down />
+                        </span>
+                    </button>
+                </header>
+
+                <div id="fio-journey-body-{{ $flow->key() }}" x-show="open" x-collapse>
+                    @if ($flow->description())
+                        <p class="fio-hero-description">{{ $flow->description() }}</p>
+                    @endif
+
+                    @if ($flow->isFinished())
+                        <p class="fio-hero-note">
+                            {{ __('filament-onboarding::onboarding.checklist.completed_description') }}
+                        </p>
+                    @endif
+
+                    <div class="fio-tiles">
+
                     @foreach ($flow->steps as $index => $step)
                         @php $tour = $step->tourProgress(); @endphp
 
@@ -308,6 +308,31 @@
                             </footer>
                         </article>
                     @endforeach
+                    </div>
+
+                    {{-- Filament's own actions: its confirmation modal, its button
+                         styling, its keyboard handling — no browser dialogs. --}}
+                    <div class="fio-hero-actions">
+                        @if ($flow->isStarted())
+                            {{ ($this->restartFlowAction)(['flow' => $flow->key()]) }}
+                        @endif
+
+                        @if ($flow->isDismissible())
+                            @if ($flow->isDismissed())
+                                {{ ($this->restoreFlowAction)(['flow' => $flow->key()]) }}
+                            @else
+                                {{ ($this->dismissFlowAction)(['flow' => $flow->key()]) }}
+                            @endif
+                        @endif
+                    </div>
+
+                    @if ($flow->isFinished() && $flow->hasConditionSteps())
+                        {{-- Restarting cannot undo what is simply true: a step that
+                             asks the application comes straight back completed. --}}
+                        <p class="fio-footer-note fio-stack-tight">
+                            {{ __('filament-onboarding::onboarding.page.restart_note') }}
+                        </p>
+                    @endif
                 </div>
             </section>
         @empty

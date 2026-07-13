@@ -38,6 +38,13 @@ return [
     ],
 
     'page' => [
+        'collapse' => 'Recolher a jornada',
+        'expand'   => 'Abrir a jornada',
+        'meta'     => [
+            'completed' => ':count de :total concluídas',
+            'remaining' => '{1}1 restante|[2,*]:count restantes',
+            'skipped'   => '{1}1 pulada|[2,*]:count puladas',
+        ],
         'open_image'           => 'Abrir a imagem: :title',
         'title'                => 'Primeiros passos',
         'subheading'           => 'Onde você está e o que falta.',
