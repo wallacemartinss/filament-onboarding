@@ -387,7 +387,9 @@ class FilamentOnboardingPlugin implements Plugin
 
     protected function renderLauncher(): string
     {
-        if (!$this->hasLauncher() && !$this->hasTours()) {
+        // The welcome rides on the same component, so turning the launcher and
+        // the tours off must not silently take ->welcome() down with them.
+        if (!$this->hasLauncher() && !$this->hasTours() && !$this->hasWelcome()) {
             return '';
         }
 
