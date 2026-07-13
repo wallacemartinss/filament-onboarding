@@ -5,7 +5,21 @@ All notable changes to `filament-onboarding` are documented here.
 Versions follow Filament: **2.x targets Filament v5**, and 1.x is reserved for a Filament v4
 backport. That is why the first release is 2.0.0 — there is no 1.0.0 to upgrade from.
 
-## Unreleased
+## 2.2.0
+
+**The release to upgrade to, from anywhere.** The 2.0.0 → 2.1.0 migration now survives the
+duplicate rows 2.0.0 left behind, so nothing stands between 2.0.0 and here.
+
+### Added
+
+- **A welcome screen** (`->welcome()`) — shown once, on the first page after logging in, with
+  "get started", "not now" (this session) and "do not show this again" (which takes the
+  floating button and its ring with it). Reversible from the progress page.
+- **`StartTourAction` accepts several tours** — hand it a list and it asks which one, naming
+  each by its own title; a screen can be walked more than one way. With a single tour there
+  is nothing to ask, and it starts outright.
+- A tour stop can be marked **optional**: about something an account may not have yet (a
+  tag, an empty chart), the tour steps aside instead of waiting for it.
 
 ### Security
 
@@ -53,6 +67,13 @@ backport. That is why the first release is 2.0.0 — there is no 1.0.0 to upgrad
 - **An optional step with nowhere to send you can still be skipped from the launcher.**
   The skip button only rendered next to a destination, so a step with no URL, tour or
   video could be skipped from the progress page alone.
+- **"Advance with" presses the control the way a mouse does** — mousedown, mouseup, click.
+  Plenty of things do not listen for a bare click: a Filament dropdown (the filter panel of
+  a table, for one) opens on mousedown, so a tour pointing into it waited forever for a
+  panel that was never going to open.
+- **Switching tabs mid-tour no longer reads as a stuck form.** Pressing a control is a
+  round trip and a re-render; calling it "blocked" after 1.5 s put a warning on screen for
+  a page that was merely thinking. The window is 3 s, and the message fits both cases.
 - **A provider script that never arrives costs the tracking, not the video.** When an ad
   blocker (or a walled network) keeps the YouTube/Vimeo API out, the modal now falls back
   to the provider's plain embed instead of opening empty. A plain iframe cannot be asked
@@ -120,13 +141,8 @@ backport. That is why the first release is 2.0.0 — there is no 1.0.0 to upgrad
 
 ### Added
 
-- **A welcome screen** (`->welcome()`) — shown once, on the first page after logging in, with
-  "get started", "not now" (this session) and "do not show this again" (which takes the
-  floating button and its ring with it). Reversible from the progress page.
-- **`StartTourAction`** — a header action for any page or resource that starts a tour in
-  place ("View the tutorial"), visible only when the subject can actually take it. Hand it
-  several tours and it asks which one, naming each by its title — a screen can be walked
-  more than one way.
+- **`StartTourAction`** — a header action for any page or resource that starts one tour in
+  place ("How does it work?"), visible only when the subject can actually take it.
 - A **JavaScript test suite** (vitest), and CI that runs it and refuses a stale `dist`.
 
 ---
@@ -135,7 +151,8 @@ backport. That is why the first release is 2.0.0 — there is no 1.0.0 to upgrad
 
 > **Withdrawn.** This release lets any authenticated user complete any onboarding step by
 > calling the component's methods directly, and a condition that throws returns a 500 on
-> every page of the panel. Use 2.1.0.
+> every page of the panel. Upgrade to 2.2.0 — its migration is the one that survives the
+> duplicate progress rows this release could write.
 
 Database-driven onboarding for Filament v5.
 
@@ -162,8 +179,6 @@ Database-driven onboarding for Filament v5.
   resume where they left off, and report the stop they reached.
 - **`StartTourAction`** — a header action for any page or resource that starts one tour in
   place ("How does it work?"), visible only when the subject can actually take that tour.
-- A tour stop can be marked **optional**: about something an account may not have yet (a
-  tag, an empty chart), the tour steps aside instead of waiting for it.
 - Tours **walk through a wizard**: they follow the user when the form moves on, and an
   "Advance with" selector lets a stop bring the application to it. A tour parked on a page
   ends when the user goes somewhere else, instead of floating over the wrong screen.
