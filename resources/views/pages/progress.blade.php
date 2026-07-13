@@ -1,5 +1,19 @@
 <x-filament-panels::page>
     <div class="fio fio-dash">
+        {{-- Somebody who turned onboarding off still has this page in the menu.
+             This is the way back — without it, "do not show this again" would be
+             a door that locks behind you. --}}
+        @if ($this->isOnboardingHidden())
+            <div class="fio-callout" role="status">
+                <p class="fio-callout-text">{{ __('filament-onboarding::onboarding.welcome.off') }}</p>
+
+                <button type="button" class="fio-button fio-button--primary" wire:click="showOnboardingAgain">
+                    <x-filament-onboarding::icons.arrow-path />
+                    {{ __('filament-onboarding::onboarding.welcome.back') }}
+                </button>
+            </div>
+        @endif
+
         @forelse ($this->flows() as $flow)
             @php
                 $circumference = 2 * M_PI * 40;

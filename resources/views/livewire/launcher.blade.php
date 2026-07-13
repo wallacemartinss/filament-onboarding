@@ -14,6 +14,10 @@
          video, and this is what opens it. --}}
     @include('filament-onboarding::components.media')
 
+    @if ($welcome && $flow)
+        @include('filament-onboarding::components.welcome')
+    @endif
+
     @if ($hasLauncher && $flow && ! $flow->isDismissed())
         <div class="fio-launcher fio-launcher--{{ $position }}">
             @if ($isOpen)

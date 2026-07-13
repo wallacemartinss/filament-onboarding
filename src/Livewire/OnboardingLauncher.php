@@ -61,6 +61,19 @@ class OnboardingLauncher extends Component
         $this->videoProgress($key, $seconds, $duration);
     }
 
+    /**
+     * "Let's go": the welcome is done with, and they are taken to the journey —
+     * the progress page if the panel has one, the checklist otherwise.
+     */
+    public function beginOnboarding(): void
+    {
+        $this->startOnboarding();
+
+        if ($this->progressPageUrl() === null) {
+            $this->isOpen = true;
+        }
+    }
+
     #[On('onboarding-open')]
     public function open(): void
     {
@@ -91,13 +104,40 @@ class OnboardingLauncher extends Component
             ->filter(fn (FlowState $flow): bool => !$flow->isDismissed())
             ->values();
 
+        // Somebody who turned onboarding off gets no button, no ring, and no
+        // welcome. Tours and the media modal stay wired: they are opened by hand
+        // — from the progress page, from a "view the tutorial" button — and
+        // turning the checklist off is not the same as never wanting help again.
+        $hidden = $this->isOnboardingHidden();
+
         return view('filament-onboarding::livewire.launcher', [
             'flow'        => $this->flowState(),
             'flows'       => $flows,
-            'hasLauncher' => $plugin?->hasLauncher() ?? true,
+            'hasLauncher' => ($plugin?->hasLauncher() ?? true) && !$hidden,
             'hasTours'    => $plugin?->hasTours() ?? true,
             'position'    => $plugin?->getLauncherPosition() ?? 'bottom-right',
+            'welcome'     => ($plugin?->hasWelcome() ?? false) && $this->shouldWelcome(),
+            'progressUrl' => $this->progressPageUrl(),
         ]);
+    }
+
+    /**
+     * Where "let's go" leads: the page that lays the journey out, when the panel
+     * has one. Without it, the welcome screen simply opens the checklist.
+     */
+    protected function progressPageUrl(): ?string
+    {
+        $plugin = $this->plugin();
+
+        if (!$plugin?->hasProgressPage()) {
+            return null;
+        }
+
+        try {
+            return \Wallacemartinss\FilamentOnboarding\Pages\OnboardingProgress::getUrl();
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     protected function plugin(): ?FilamentOnboardingPlugin

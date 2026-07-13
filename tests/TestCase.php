@@ -78,6 +78,7 @@ abstract class TestCase extends Orchestra
         'add_media_to_onboarding_steps',
         'add_visibility_to_onboarding',
         'harden_onboarding_progress_scope',
+        'create_onboarding_preferences',
     ];
 
     private function runPackageMigrations(): void

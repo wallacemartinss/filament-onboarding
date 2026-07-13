@@ -57,6 +57,9 @@ backport. That is why the first release is 2.0.0 — there is no 1.0.0 to upgrad
 
 ### Added
 
+- **A welcome screen** (`->welcome()`) — shown once, on the first page after logging in, with
+  "get started", "not now" (this session) and "do not show this again" (which takes the
+  floating button and its ring with it). Reversible from the progress page.
 - **`StartTourAction`** — a header action for any page or resource that starts a tour in
   place ("View the tutorial"), visible only when the subject can actually take it. Hand it
   several tours and it asks which one, naming each by its title — a screen can be walked

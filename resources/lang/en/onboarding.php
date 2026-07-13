@@ -17,6 +17,14 @@ return [
         'footer_note'           => 'You can pick this up later.',
     ],
 
+    'welcome' => [
+        'begin' => 'Get started',
+        'later' => 'Not now',
+        'never' => 'Do not show this again',
+        'steps' => '{0}Nothing here yet|{1}1 step, at your own pace|[2,*]:count steps, at your own pace',
+        'back'  => 'Turn onboarding back on',
+        'off'   => 'You turned onboarding off. The checklist and the progress ring are gone — but this page stays.',
+    ],
     'tour' => [
         'blocked'  => 'The screen has not moved on yet. If something is required, fill it in and press next again — the tour follows you there.',
         'start'    => 'View the tutorial',

@@ -19,6 +19,12 @@ use Wallacemartinss\FilamentOnboarding\SubjectOnboarding;
 trait InteractsWithOnboarding
 {
     /**
+     * "Show me later" lives in the session: it is an answer about *now*, and the
+     * next time they come back is a new now.
+     */
+    protected const LATER_KEY = 'filament-onboarding.welcome.later';
+
+    /**
      * Pin the component to one flow. Left null, it follows whichever flow the
      * subject is currently walking.
      */
@@ -274,6 +280,73 @@ trait InteractsWithOnboarding
         $this->onboarding()?->complete($step->step, ['completed_by' => 'tour']);
 
         $this->afterOnboardingChanged();
+    }
+
+    /**
+     * The welcome screen: the three answers a person can give it.
+     *
+     * "Later" is a session flag, not a row: it means "not now", and the next time
+     * they log in is a new now. "Never" is a row, because a promise not to show
+     * something again cannot expire when the cookie does — and it takes the
+     * floating button with it, ring and all.
+     */
+    public function startOnboarding(): void
+    {
+        $this->onboarding()?->markWelcomed();
+
+        $this->afterOnboardingChanged();
+    }
+
+    public function remindMeLater(): void
+    {
+        session()->put(static::LATER_KEY, true);
+
+        $this->afterOnboardingChanged();
+    }
+
+    public function neverShowOnboarding(): void
+    {
+        $this->onboarding()?->hide();
+
+        $this->afterOnboardingChanged();
+    }
+
+    /**
+     * Give it back to somebody who turned it off — from the progress page, which
+     * stays in the menu precisely so there is a way back.
+     */
+    public function showOnboardingAgain(): void
+    {
+        $this->onboarding()?->show();
+
+        session()->forget(static::LATER_KEY);
+
+        $this->afterOnboardingChanged();
+    }
+
+    public function isOnboardingHidden(): bool
+    {
+        return $this->onboarding()?->isHidden() ?? false;
+    }
+
+    /**
+     * Whether the welcome screen is due: there is something to welcome them to,
+     * they have not been welcomed before, they have not asked to be left alone —
+     * and they have not said "later" in this session.
+     */
+    public function shouldWelcome(): bool
+    {
+        $onboarding = $this->onboarding();
+
+        if ($onboarding === null || $onboarding->isHidden() || $onboarding->hasBeenWelcomed()) {
+            return false;
+        }
+
+        if (session()->get(static::LATER_KEY, false)) {
+            return false;
+        }
+
+        return $this->flowState() instanceof FlowState;
     }
 
     public function flowState(): ?FlowState

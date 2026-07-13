@@ -281,6 +281,20 @@ FilamentOnboardingPlugin::make()->modalPosition('bottom-right'),
 
 Three surfaces, all optional, all reading the same progress — tick a step off in one and the others update behind it.
 
+### The welcome screen
+
+```php
+FilamentOnboardingPlugin::make()->welcome(),
+```
+
+A checklist in the corner is easy to never notice, so onboarding gets one moment to introduce itself: the first page after logging in. It names the journey, says how many steps it is, and offers three answers —
+
+- **Get started** → the progress page (or the checklist, when the panel has no progress page).
+- **Not now** → gone for this session. Nothing is written down: "later" is an answer about *now*, and the next login is a new now.
+- **Do not show this again** → gone for good. **The floating button and the ring go with it** — hiding the welcome but leaving the badge blinking in the corner would be answering a different question than the one they were asked.
+
+It is never a dead end: the progress page stays in the menu, and it offers onboarding back. Tours keep working either way — a "view the tutorial" button is something the user reaches for, not something that reaches for them.
+
 ### The floating checklist
 
 `->launcher()` puts a progress button on every page of the panel — pages, resources, widgets alike, since it hangs off the body. With more than one journey, the panel shows tabs, so a finished journey never sits in front of an unfinished one.

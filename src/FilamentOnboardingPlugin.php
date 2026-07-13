@@ -23,6 +23,8 @@ class FilamentOnboardingPlugin implements Plugin
 
     protected bool|Closure $hasTours = true;
 
+    protected bool|Closure $hasWelcome = false;
+
     protected bool $managesFlows = false;
 
     protected string $launcherPosition = 'bottom-right';
@@ -142,6 +144,26 @@ class FilamentOnboardingPlugin implements Plugin
     /**
      * Where the floating button sits: bottom-right, bottom-left, top-right or top-left.
      */
+    /**
+     * Greet the subject when they arrive, once.
+     *
+     * A checklist in the corner is easy to never notice. The welcome screen is
+     * the one moment onboarding gets to introduce itself — and, in the same
+     * breath, to offer the way out: not now, or not ever. The way out is the
+     * price of the interruption.
+     */
+    public function welcome(bool|Closure $condition = true): static
+    {
+        $this->hasWelcome = $condition;
+
+        return $this;
+    }
+
+    public function hasWelcome(): bool
+    {
+        return (bool) $this->evaluate($this->hasWelcome);
+    }
+
     public function launcherPosition(string $position): static
     {
         $this->launcherPosition = $position;

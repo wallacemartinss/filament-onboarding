@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\{Builder, Model};
 use Illuminate\Support\Collection;
 use Wallacemartinss\FilamentOnboarding\Enums\CompletionMode;
 use Wallacemartinss\FilamentOnboarding\Events\{FlowCompleted, StepCompleted};
-use Wallacemartinss\FilamentOnboarding\Models\{OnboardingFlow, OnboardingFlowProgress, OnboardingStep, OnboardingStepProgress};
+use Wallacemartinss\FilamentOnboarding\Models\{OnboardingFlow, OnboardingFlowProgress, OnboardingPreference, OnboardingStep, OnboardingStepProgress};
 use Wallacemartinss\FilamentOnboarding\States\{FlowState, StepState};
 
 /**
@@ -25,6 +25,8 @@ class SubjectOnboarding
 
     /** @var array<string, bool> */
     protected array $syncedPanels = [];
+
+    protected ?OnboardingPreference $preference = null;
 
     public function __construct(
         protected OnboardingManager $manager,
@@ -349,6 +351,69 @@ class SubjectOnboarding
         }
 
         return $this->stepProgressQuery()->where('flow_id', $flow->getKey())->count();
+    }
+
+    /**
+     * Whether this subject wants to see onboarding at all.
+     *
+     * This is not the same as having finished it, and not the same as dismissing
+     * a journey. It is the person saying "stop showing me this" — and when they
+     * say it, everything goes: the welcome screen, the floating button, the ring
+     * with the percentage. A checklist that keeps hovering over somebody who
+     * asked it to leave is not onboarding, it is nagging.
+     *
+     * It is theirs to take back (`show()`), which is why the progress page stays
+     * reachable from the menu.
+     */
+    public function isHidden(): bool
+    {
+        return $this->preference()->hidden_at !== null;
+    }
+
+    public function hide(): void
+    {
+        $this->preference()->forceFill([
+            'hidden_at'   => now(),
+            'welcomed_at' => now(),
+        ])->save();
+    }
+
+    public function show(): void
+    {
+        $this->preference()->forceFill(['hidden_at' => null])->save();
+    }
+
+    /**
+     * Whether the subject has already been through the welcome screen.
+     *
+     * Said once, and never again — "later" is a different answer, and it does not
+     * live here (it lives in the session, because it means "not now" rather than
+     * "not ever").
+     */
+    public function hasBeenWelcomed(): bool
+    {
+        return $this->preference()->welcomed_at !== null;
+    }
+
+    public function markWelcomed(): void
+    {
+        if ($this->hasBeenWelcomed()) {
+            return;
+        }
+
+        $this->preference()->forceFill(['welcomed_at' => now()])->save();
+    }
+
+    public function preference(): OnboardingPreference
+    {
+        if ($this->preference instanceof OnboardingPreference) {
+            return $this->preference;
+        }
+
+        /** @var class-string<OnboardingPreference> $model */
+        $model = $this->manager->preferenceModel();
+
+        return $this->preference = $model::query()->firstOrCreate($this->subjectKeys());
     }
 
     /**

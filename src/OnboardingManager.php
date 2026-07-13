@@ -8,7 +8,7 @@ use Closure;
 use Illuminate\Database\Eloquent\{Collection, Model};
 use Illuminate\Support\Facades\Cache;
 use Wallacemartinss\FilamentOnboarding\Conditions\ConditionRegistry;
-use Wallacemartinss\FilamentOnboarding\Models\{OnboardingFlow, OnboardingFlowProgress, OnboardingStep, OnboardingStepProgress};
+use Wallacemartinss\FilamentOnboarding\Models\{OnboardingFlow, OnboardingFlowProgress, OnboardingPreference, OnboardingStep, OnboardingStepProgress};
 
 class OnboardingManager
 {
@@ -167,6 +167,12 @@ class OnboardingManager
     public function stepProgressModel(): string
     {
         return config('filament-onboarding.models.step_progress', OnboardingStepProgress::class);
+    }
+
+    /** @return class-string<OnboardingPreference> */
+    public function preferenceModel(): string
+    {
+        return config('filament-onboarding.models.preferences', OnboardingPreference::class);
     }
 
     /**

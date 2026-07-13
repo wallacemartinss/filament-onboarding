@@ -2,7 +2,7 @@
 
 declare(strict_types = 1);
 
-use Wallacemartinss\FilamentOnboarding\Models\{OnboardingFlow, OnboardingFlowProgress, OnboardingStep, OnboardingStepProgress};
+use Wallacemartinss\FilamentOnboarding\Models\{OnboardingFlow, OnboardingFlowProgress, OnboardingPreference, OnboardingStep, OnboardingStepProgress};
 
 return [
 
@@ -149,6 +149,7 @@ return [
         'steps'         => 'onboarding_steps',
         'flow_progress' => 'onboarding_flow_progress',
         'step_progress' => 'onboarding_step_progress',
+        'preferences'   => 'onboarding_preferences',
     ],
 
     'models' => [
@@ -156,6 +157,7 @@ return [
         'step'          => OnboardingStep::class,
         'flow_progress' => OnboardingFlowProgress::class,
         'step_progress' => OnboardingStepProgress::class,
+        'preferences'   => OnboardingPreference::class,
     ],
 
     /*

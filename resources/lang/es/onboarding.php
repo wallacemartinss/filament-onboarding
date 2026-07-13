@@ -17,6 +17,14 @@ return [
         'footer_note'           => 'Puedes continuar más tarde.',
     ],
 
+    'welcome' => [
+        'begin' => 'Empezar',
+        'later' => 'Ahora no',
+        'never' => 'No volver a mostrar',
+        'steps' => '{0}Nada por aquí|{1}1 paso, a tu ritmo|[2,*]:count pasos, a tu ritmo',
+        'back'  => 'Volver a activar el onboarding',
+        'off'   => 'Desactivaste el onboarding. La lista y el círculo de progreso ya no aparecen, pero esta página sigue aquí.',
+    ],
     'tour' => [
         'blocked'  => 'La pantalla aún no avanzó. Si falta completar algo, complétalo y pulsa siguiente otra vez — el tutorial te acompaña.',
         'start'    => 'Ver el tutorial',
