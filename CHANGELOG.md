@@ -5,6 +5,44 @@ All notable changes to `filament-onboarding` are documented here.
 Versions follow Filament: **2.x targets Filament v5**, and 1.x is reserved for a Filament v4
 backport. That is why the first release is 2.0.0 — there is no 1.0.0 to upgrade from.
 
+## 2.4.1
+
+**Two controls at the foot of a journey that nobody was pressing.** "Start over" and "Hide"
+sat under the last step as bare underlined words — which is how a control that *does*
+something ends up reading like a footnote. And the text above them was touching the cards
+below it: a description with no margin under it does not introduce the thing it describes, it
+falls into it.
+
+### Fixed
+
+- **"Start over" and "Hide" are buttons.** Grey ones, with icons and a rule above them — the
+  same secondary button Filament dresses its own "Cancel" in. A link is for going somewhere;
+  these two change something, and they should look like it.
+- **The progress page got its air back.** The journey description had **no bottom margin at
+  all** — zero pixels between it and the first card — and the step cards carried 18 px of
+  horizontal padding where Filament gives a card 24 px (`.fi-section-header`). Both now match
+  what the panel around them does.
+
+### Changed
+
+- **The Composer archive no longer carries the whole repository.** There was no
+  `.gitattributes`, so `tests/`, `.github/` and the docs were being unpacked into the `vendor/`
+  directory of everyone who installs this package. This release adds 2.7 MB of screenshots to
+  that repository, so the file had to exist before the screenshots did — and with it the
+  install actually **shrinks, from 1.0 MB to 0.8 MB**, rather than growing to about 3.5 MB.
+  Nothing needed at runtime was excluded: `src`, `config`, `database`, `resources/` and
+  `stubs` all still ship.
+
+### Documentation
+
+- **The README shows the package instead of describing it.** Twenty-two screenshots of it
+  running in a real panel, each placed next to the claim it proves — the wizard sequence under
+  the sentence that says the tour presses the wizard's own *Next*, the welcome screen under the
+  paragraph about accounts that start part-done, because the ring behind that modal reads 38%
+  on a user who has never seen the journey.
+- **A "Writing a journey" section.** The README had always claimed that flows, steps and the
+  conditions they hang off are written in the panel, and had never once shown the panel.
+
 ## 2.4.0
 
 **A tour stop is picked, not typed.** Writing one meant typing
