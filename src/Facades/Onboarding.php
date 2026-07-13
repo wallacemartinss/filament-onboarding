@@ -25,6 +25,9 @@ use Wallacemartinss\FilamentOnboarding\OnboardingManager;
  * @method static class-string<\Wallacemartinss\FilamentOnboarding\Models\OnboardingStep> stepModel()
  * @method static class-string<\Wallacemartinss\FilamentOnboarding\Models\OnboardingFlowProgress> flowProgressModel()
  * @method static class-string<\Wallacemartinss\FilamentOnboarding\Models\OnboardingStepProgress> stepProgressModel()
+ * @method static class-string<\Wallacemartinss\FilamentOnboarding\Models\OnboardingPreference> preferenceModel()
+ * @method static class-string<\Wallacemartinss\FilamentOnboarding\Models\OnboardingCondition> conditionModel()
+ * @method static array<string, array{condition: \Closure, label: string}> recordedConditions()
  * @method static array<int, string> locales()
  *
  * @see OnboardingManager

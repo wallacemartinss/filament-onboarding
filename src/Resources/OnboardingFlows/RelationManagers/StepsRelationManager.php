@@ -161,7 +161,12 @@ class StepsRelationManager extends RelationManager
             Select::make('condition_key')
                 ->label(__('filament-onboarding::onboarding.resource.fields.condition'))
                 ->prefixIcon(Heroicon::OutlinedBolt)
-                ->helperText(__('filament-onboarding::onboarding.resource.fields.condition_helper'))
+                // An empty dropdown with no explanation is the single most likely
+                // thing to be reported as a bug here: the mode is picked, nothing
+                // is on offer, and nothing on the screen says why or what to do.
+                ->helperText(fn (): string => filled(Onboarding::conditions()->options())
+                    ? __('filament-onboarding::onboarding.resource.fields.condition_helper')
+                    : __('filament-onboarding::onboarding.resource.fields.condition_none'))
                 ->options(fn (): array => Onboarding::conditions()->options())
                 ->searchable()
                 ->native(false)

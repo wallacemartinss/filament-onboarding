@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Blade;
 use Wallacemartinss\FilamentOnboarding\Enums\ModalPosition;
 use Wallacemartinss\FilamentOnboarding\Facades\Onboarding;
 use Wallacemartinss\FilamentOnboarding\Pages\OnboardingProgress;
+use Wallacemartinss\FilamentOnboarding\Resources\OnboardingConditions\OnboardingConditionResource;
 use Wallacemartinss\FilamentOnboarding\Resources\OnboardingFlows\OnboardingFlowResource;
 
 class FilamentOnboardingPlugin implements Plugin
@@ -86,6 +87,11 @@ class FilamentOnboardingPlugin implements Plugin
         if ($this->managesFlows) {
             $panel->resources([
                 OnboardingFlowResource::class,
+                // The conditions come with the journeys: a step that completes
+                // itself is the point of the thing, and a panel that can write
+                // journeys but not the questions they hang off would send its
+                // author back to a code editor for the most valuable half.
+                OnboardingConditionResource::class,
             ]);
         }
 

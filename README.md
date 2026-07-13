@@ -38,8 +38,9 @@ Journeys are authored **in the panel, not in code**, so product people can rewri
 - 🚀 **Welcome screen** — greets the user once, with "get started", "not now" and "don't show this again"
 - ✅ **Floating checklist** — a progress button on every page of the panel, with tabs when there is more than one journey
 - 🧭 **Guided spotlight tours** — cross pages, walk through wizards, and wait for the form instead of pointing at nothing
-- 🖊️ **Authored in the panel** — flows and steps are database records with a full admin resource; rewriting a journey is not a deploy
+- 🖊️ **Authored in the panel** — flows, steps **and the conditions they hang off** are database records with a full admin resource; a new journey is not a deploy
 - 🪄 **Five completion modes** — by hand, by a **condition** (retroactively), by **visiting a page**, by **watching a video**, or from your own code
+- 🧩 **Conditions without code** — "has at least one client, that is active" is a form, not a commit; and `make:onboarding-condition` covers the questions a form cannot ask, with nothing to register
 - 👁️ **Visibility conditions** — gate a journey, a step or a single tour stop on a plan or a feature flag
 - 🎬 **Images & videos** — upload (S3, R2, local), direct URL, YouTube or Vimeo; **watch time is measured**, not guessed
 - 📊 **Progress page & dashboard widget** — the journey laid out in cards, and the checklist as a card
@@ -123,7 +124,7 @@ FilamentOnboardingPlugin::make()
     ->navigationSort(70),
 ```
 
-That is the whole install. Create a journey in the panel, add its steps, and it shows up.
+That is the whole install. Create a journey in the panel, add its steps, and it shows up — **including the steps that complete themselves**: the questions they hang off ("has this user added a client yet?") are written in the panel too, under Onboarding → Conditions. Nothing here needs a deploy.
 
 ### Publishing
 
@@ -148,51 +149,58 @@ Every step declares how it finishes, and the checklist behaves accordingly — a
 | Mode | Finishes when |
 |------|---------------|
 | **Manual** | The user ticks it off. |
-| **Condition** | A named check the application registered passes — *including retroactively*. |
+| **Condition** | A named question about the user passes — *including retroactively*. |
 | **Page visit** | The user reaches a URL (`*` wildcards allowed). |
 | **Watching the video** | Enough of the step's video has been watched (90% by default). |
 | **Programmatic** | Your code calls `Onboarding::for($user)->complete('key')`. |
 
 ### Conditions
 
-A condition is a named question about the subject, registered by the application and picked from a dropdown when the step is written.
+A condition is a question about the user — *"have they added a client yet?"* — and it is what makes a step complete itself, including for people who did the thing long before the journey existed. It is picked from a dropdown when the step is written.
+
+**Most of them are written in the panel, not in code.** Onboarding → Conditions → New:
+
+> **Counts something they have** — Client · at least `1` · only the ones where `status` is `active`
+>
+> **Asks about them** — `email_verified_at` is filled in
+
+That covers the usual ones, and it means a new journey is a thing somebody *writes*, not a thing that needs a pull request. The author never types a table name, a column or an operator: the model comes from an allowlist, the column from that table's real columns, the operator from a list — and the value they do type is bound, never interpolated into SQL.
+
+**For a question a form cannot ask** — an active subscription over at Stripe, a score from a service — write a class:
+
+```bash
+php artisan make:onboarding-condition HasActivePlan
+```
 
 ```php
-use Wallacemartinss\FilamentOnboarding\Facades\Onboarding;
+// app/Onboarding/Conditions/HasActivePlanCondition.php — answers to `has_active_plan`
+class HasActivePlanCondition implements OnboardingCondition, HasConditionLabel
+{
+    public static function label(): string
+    {
+        return __('Has an active plan');   // what the step editor shows
+    }
 
+    public function isCompleted(Model $subject, ?Model $scope = null): bool
+    {
+        return $subject->subscription()?->active() ?? false;
+    }
+}
+```
+
+**There is nothing to register.** Anything in `app/Onboarding/Conditions` is found on its own and is in the dropdown — writing the class and then naming it in a config file would be saying the same thing twice, and the second half is the half that gets forgotten in the deploy where it matters.
+
+You can still register one by hand, for a condition that lives elsewhere or ships in a package of your own:
+
+```php
 Onboarding::condition('has_server', fn (User $user, ?Tenant $tenant): bool =>
     $tenant->servers()->exists()
 );
 ```
 
-Or as a class — which is what you want when both panels need it (the admin panel to offer it in the dropdown, the app panel to evaluate it):
+Code always wins a name clash: a condition written in the panel cannot take a key a class already answers to, so a row can never quietly redefine what a step means.
 
-```php
-// config/filament-onboarding.php
-'conditions' => [
-    'has_server' => \App\Onboarding\Conditions\HasServerCondition::class,
-],
-```
-
-```php
-use Wallacemartinss\FilamentOnboarding\Contracts\{HasConditionLabel, OnboardingCondition};
-
-class HasServerCondition implements OnboardingCondition, HasConditionLabel
-{
-    // Without this, the panel shows the raw key.
-    public static function label(): string
-    {
-        return __('onboarding.conditions.has_server');
-    }
-
-    public function isCompleted(Model $subject, ?Model $scope = null): bool
-    {
-        return $scope?->servers()->exists() ?? false;
-    }
-}
-```
-
-Conditions are evaluated only for pending steps, and the result is persisted the first time it passes — so an established account opens the checklist and finds its history already reflected there. A condition that is no longer registered never completes a step: it goes quiet instead of throwing on every request.
+Conditions are evaluated only for pending steps, and the result is persisted the first time it passes — so an established account opens the checklist and finds its history already reflected there. A condition that is no longer registered never completes a step, and one that throws answers "no" and is reported: it goes quiet instead of taking the panel down with it.
 
 ### Visibility: not every journey is for everybody
 
@@ -544,7 +552,9 @@ The icon field takes any Blade icon name — `heroicon-o-server`, `phosphor-rock
 |-----|--------------|
 | `locales` | Locales offered when writing content. |
 | `fallback_locale` | Used when the reader's locale has no content. Defaults to the app fallback. |
-| `conditions` | Named checks, as classes. |
+| `conditions` | Conditions registered by hand. Most need nothing here — they are written in the panel, or found in `app/Onboarding/Conditions`. |
+| `discovery` | Where condition classes are found. |
+| `conditions_builder` | Which models a condition may be built over in the panel (an allowlist; empty offers `app/Models`). |
 | `cache` | Journey **definitions** are cached and flushed on write. Progress is never cached. |
 | `media` | Disk, directory, visibility, signed-URL TTL, accepted types and size limits. |
 | `modal` | Default position of the media modal. |

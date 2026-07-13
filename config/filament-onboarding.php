@@ -2,7 +2,7 @@
 
 declare(strict_types = 1);
 
-use Wallacemartinss\FilamentOnboarding\Models\{OnboardingFlow, OnboardingFlowProgress, OnboardingPreference, OnboardingStep, OnboardingStepProgress};
+use Wallacemartinss\FilamentOnboarding\Models\{OnboardingCondition, OnboardingFlow, OnboardingFlowProgress, OnboardingPreference, OnboardingStep, OnboardingStepProgress};
 
 return [
 
@@ -31,19 +31,72 @@ return [
     | Conditions
     |--------------------------------------------------------------------------
     |
-    | Steps completed automatically are bound to a named condition. Register
-    | them here as invokable classes or implementations of the
-    | OnboardingCondition contract, then pick the key in the panel.
+    | A condition is the question a step asks about somebody — "have they added
+    | a client yet?" — and there is nothing to put here for most of them.
     |
-    |   'has_server' => \App\Onboarding\Conditions\HasServerCondition::class,
+    | Three ways to have one, cheapest first:
     |
-    | Conditions may also be registered at runtime:
+    |   1. Write it in the panel. Onboarding → Conditions → New. Covers "has at
+    |      least N of X, matching some filters" and "this column of the user is
+    |      set to that", which is most of them. No code, and no deploy.
     |
-    |   Onboarding::condition('has_server', fn (Model $subject) => ...);
+    |   2. Write a class. `php artisan make:onboarding-condition HasActivePlan`
+    |      puts it in app/Onboarding/Conditions, where it is found on its own —
+    |      for the questions a form cannot ask (an API call, a subscription).
+    |
+    |   3. List it here, or register it at runtime — for a condition that lives
+    |      somewhere else, or comes from a package of your own:
+    |
+    |          'has_server' => \App\Onboarding\Conditions\HasServerCondition::class,
+    |
+    |          Onboarding::condition('has_server', fn (Model $subject) => ...);
+    |
+    | Code always wins a name clash: a condition written in the panel cannot take
+    | a key that a class already answers to.
     |
     */
 
     'conditions' => [],
+
+    /*
+    | Where condition classes are found. Turn discovery off and register them by
+    | hand above instead.
+    */
+
+    'discovery' => [
+        'enabled'   => true,
+        'path'      => null, // defaults to app_path('Onboarding/Conditions')
+        'namespace' => 'App\Onboarding\Conditions',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | The condition builder
+    |--------------------------------------------------------------------------
+    |
+    | What an author may build a condition over, in the panel.
+    |
+    | `models` is an allowlist. Left empty, the application's own models
+    | (app/Models) are offered — which is what an author expects, and what the
+    | panel exposes anyway. Name them explicitly to narrow it:
+    |
+    |   'models' => [\App\Models\Client::class, \App\Models\Invoice::class],
+    |
+    | Nothing an author types reaches the database as SQL: the model comes from
+    | this list, the column from that table's real columns, the operator from an
+    | enum, and the value is bound.
+    |
+    */
+
+    'conditions_builder' => [
+        'models'    => [],
+        'path'      => null, // defaults to app_path('Models')
+        'namespace' => 'App\Models',
+
+        // Whose columns an "attribute" condition asks about. Defaults to the
+        // application's user model.
+        'subject_model' => null,
+    ],
 
     /*
     |--------------------------------------------------------------------------
@@ -150,6 +203,7 @@ return [
         'flow_progress' => 'onboarding_flow_progress',
         'step_progress' => 'onboarding_step_progress',
         'preferences'   => 'onboarding_preferences',
+        'conditions'    => 'onboarding_conditions',
     ],
 
     'models' => [
@@ -158,6 +212,7 @@ return [
         'flow_progress' => OnboardingFlowProgress::class,
         'step_progress' => OnboardingStepProgress::class,
         'preferences'   => OnboardingPreference::class,
+        'condition'     => OnboardingCondition::class,
     ],
 
     /*

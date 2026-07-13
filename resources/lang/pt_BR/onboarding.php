@@ -88,6 +88,29 @@ return [
     ],
 
     'enums' => [
+
+        'condition_type' => [
+            'aggregate' => [
+                'label'       => 'Conta algo que a pessoa tem',
+                'description' => 'Clientes, faturas, servidores — qualquer coisa dela. "Pelo menos um cliente."',
+            ],
+            'attribute' => [
+                'label'       => 'Pergunta sobre a pessoa',
+                'description' => 'Uma coluna do próprio usuário. "O e-mail dela está confirmado."',
+            ],
+        ],
+
+        'condition_operator' => [
+            'equals'                => 'é',
+            'not_equals'            => 'não é',
+            'greater_than'          => 'é maior que',
+            'greater_than_or_equal' => 'é pelo menos',
+            'less_than'             => 'é menor que',
+            'less_than_or_equal'    => 'é no máximo',
+            'contains'              => 'contém',
+            'is_set'                => 'está preenchido',
+            'is_empty'              => 'está vazio',
+        ],
         'step_type' => [
             'task' => 'Tarefa',
             'tour' => 'Tour',
@@ -220,6 +243,7 @@ return [
             'completion_mode'       => 'Concluída por',
             'condition'             => 'Condição',
             'condition_helper'      => 'Registrada pela aplicação. Etapas já cumpridas voltam concluídas.',
+            'condition_none'        => 'Nenhuma condição ainda — escreva uma em Onboarding → Condições (ou rode php artisan make:onboarding-condition) e ela aparece aqui.',
             'visit_url'             => 'URL',
             'visit_url_helper'      => 'Aceita o coringa *: /app/*/servers/create',
             'cta_label'             => 'Texto do botão',
@@ -282,6 +306,56 @@ return [
                 'index'  => 'listagem',
                 'create' => 'criar',
             ],
+        ],
+    ],
+
+    'conditions' => [
+        'singular'   => 'Condição',
+        'plural'     => 'Condições',
+        'subheading' => 'As perguntas que suas etapas fazem sobre alguém — escritas aqui, não no código.',
+        'at_least'   => 'pelo menos :count',
+
+        'sections' => [
+            'question'             => 'A pergunta',
+            'question_description' => 'O que precisa ser verdade sobre alguém para a etapa estar feita.',
+            'naming'               => 'Como ela se chama',
+            'naming_description'   => 'O nome que aparece na lista para quem escreve uma etapa.',
+        ],
+
+        'fields' => [
+            'type'                     => 'O que ela pergunta',
+            'model'                    => 'Contando o quê',
+            'model_helper'             => 'O que a pessoa precisa ter: clientes, faturas, servidores.',
+            'minimum'                  => 'Pelo menos',
+            'minimum_helper'           => 'Quantos. Um, quase sempre.',
+            'subject_column'           => 'Que pertence a ela por',
+            'subject_column_helper'    => 'A coluna que guarda o id de quem está sendo onboardado.',
+            'scope_column'             => 'E ao tenant por',
+            'scope_column_helper'      => 'Só quando o model é escopado por tenant. Deixe vazio se não for.',
+            'scope_column_none'        => 'Não é escopado por tenant',
+            'filters'                  => 'Somente os que…',
+            'filters_helper'           => 'Opcional. Sem nenhum, todos contam.',
+            'filters_attribute'        => 'Verdadeiro quando…',
+            'filters_attribute_helper' => 'Todas estas precisam valer.',
+            'add_filter'               => 'Adicionar regra',
+            'column'                   => 'Campo',
+            'operator'                 => 'É',
+            'value'                    => 'Valor',
+            'label'                    => 'Nome',
+            'label_helper'             => 'Como ela aparece no editor de etapas.',
+            'key_helper'               => 'Como as etapas se referem a ela. Não mude depois que etapas já a usam.',
+            'key_taken'                => 'A chave [:key] pertence a uma condição registrada no código.',
+            'is_active_helper'         => 'Uma condição inativa nunca passa.',
+            'question'                 => 'Pergunta',
+        ],
+
+        'placeholders' => [
+            'label' => 'Já cadastrou um cliente',
+        ],
+
+        'empty' => [
+            'heading'     => 'Nenhuma condição ainda',
+            'description' => 'A condição é o que permite uma etapa se concluir sozinha — inclusive para quem fez aquilo há muito tempo. Escreva uma aqui, ou rode php artisan make:onboarding-condition para uma pergunta que um formulário não consegue fazer.',
         ],
     ],
 

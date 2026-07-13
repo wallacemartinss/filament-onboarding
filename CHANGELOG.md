@@ -5,6 +5,45 @@ All notable changes to `filament-onboarding` are documented here.
 Versions follow Filament: **2.x targets Filament v5**, and 1.x is reserved for a Filament v4
 backport. That is why the first release is 2.0.0 — there is no 1.0.0 to upgrade from.
 
+## 2.3.0
+
+**Conditions no longer need a deploy.** The package's argument has always been that a
+journey is a thing you *write*, not a thing you ship — and it held right up to the most
+valuable kind of step, the one that completes itself, which needed a closure in a service
+provider and a commit to go with it. A product person could rewrite the copy of a journey
+without asking anybody, and then had to open a pull request to ask "have they added a client
+yet?".
+
+### Added
+
+- **Conditions are written in the panel.** Onboarding → Conditions → New, and the two shapes
+  cover what onboarding actually asks:
+  - **Counts something they have** — `Client · at least 1 · only where status is active`.
+    Optionally scoped to the tenant, so a client added in one does not tick the step in another.
+  - **Asks about them** — `email_verified_at is filled in`.
+
+  No code, no deploy. And no SQL either: the model comes from an allowlist
+  (`conditions_builder.models`, which offers `app/Models` when left empty), the column from
+  that table's real columns, the operator from an enum — and the one thing an author types,
+  the value, is bound rather than interpolated.
+- **`php artisan make:onboarding-condition HasActivePlan`** — for the questions a form cannot
+  ask (a subscription, an API call, a score). It writes the class, tells you the key it
+  answers to, and there is **nothing to register**.
+- **Condition classes are discovered.** Anything in `app/Onboarding/Conditions` is found and
+  registered on its own. Writing the class *and* naming it in a config file was saying the
+  same thing twice, and the second half is the half that gets forgotten in the deploy where
+  it matters. (`discovery.enabled => false` to opt out.)
+- Code always wins a name clash: a condition written in the panel cannot take a key a class
+  already answers to, so a row can never quietly redefine what a step means.
+
+### Fixed
+
+- **The step editor stops showing an empty dropdown with no explanation.** Picking the
+  "condition" completion mode with no conditions registered offered nothing and said nothing —
+  the single most reportable thing in the package. It now says where to write one.
+
+---
+
 ## 2.2.2
 
 ### Fixed

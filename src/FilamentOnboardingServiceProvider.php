@@ -11,8 +11,8 @@ use Illuminate\Database\Eloquent\Model;
 use Livewire\Livewire;
 use Spatie\LaravelPackageTools\{Package, PackageServiceProvider};
 use Wallacemartinss\FilamentOnboarding\Assets\{VersionedAlpineComponent, VersionedCss};
-use Wallacemartinss\FilamentOnboarding\Commands\ResetOnboardingCommand;
-use Wallacemartinss\FilamentOnboarding\Conditions\ConditionRegistry;
+use Wallacemartinss\FilamentOnboarding\Commands\{MakeConditionCommand, ResetOnboardingCommand};
+use Wallacemartinss\FilamentOnboarding\Conditions\{ConditionDiscovery, ConditionRegistry};
 use Wallacemartinss\FilamentOnboarding\Livewire\OnboardingLauncher;
 use Wallacemartinss\FilamentOnboarding\Widgets\OnboardingChecklistWidget;
 
@@ -33,8 +33,12 @@ class FilamentOnboardingServiceProvider extends PackageServiceProvider
                 'add_visibility_to_onboarding',
                 'harden_onboarding_progress_scope',
                 'create_onboarding_preferences',
+                'create_onboarding_conditions',
             ])
-            ->hasCommand(ResetOnboardingCommand::class);
+            ->hasCommands([
+                ResetOnboardingCommand::class,
+                MakeConditionCommand::class,
+            ]);
     }
 
     public function packageRegistered(): void
@@ -50,7 +54,7 @@ class FilamentOnboardingServiceProvider extends PackageServiceProvider
     public function packageBooted(): void
     {
         $this->registerDefaultResolvers();
-        $this->registerConditionsFromConfig();
+        $this->registerConditions();
         $this->registerPublishableAssets();
 
         Livewire::component('filament-onboarding-launcher', OnboardingLauncher::class);
@@ -150,11 +154,34 @@ class FilamentOnboardingServiceProvider extends PackageServiceProvider
         });
     }
 
-    private function registerConditionsFromConfig(): void
+    /**
+     * Where the questions come from — all three sources, wired at boot.
+     *
+     * The order matters, and it is the order of how deliberate each one is: what
+     * the application registered by hand, then what it merely wrote (and the
+     * package found), then what somebody built in the panel. Code wins a name
+     * clash, so a row can never quietly redefine what `has_server` means.
+     *
+     * The panel's conditions are *deferred*: the registry is built while the
+     * application boots, and the database is not something to reach for there.
+     * They are read on the first question anybody asks, and cached.
+     */
+    private function registerConditions(): void
     {
-        /** @var array<string, \Closure|class-string> $conditions */
-        $conditions = config('filament-onboarding.conditions', []);
+        $registry = $this->app->make(ConditionRegistry::class);
 
-        $this->app->make(ConditionRegistry::class)->registerMany($conditions);
+        /** @var array<string, \Closure|class-string> $configured */
+        $configured = config('filament-onboarding.conditions', []);
+
+        $registry->registerMany($configured);
+
+        // Written in app/Onboarding/Conditions, and registered nowhere: writing
+        // the class and then naming it in a config file is saying the same thing
+        // twice, and the second half is what gets forgotten in a deploy.
+        $registry->registerMany(ConditionDiscovery::discover());
+
+        $registry->loadRecordsUsing(
+            fn (): array => $this->app->make(OnboardingManager::class)->recordedConditions(),
+        );
     }
 }

@@ -7,8 +7,8 @@ namespace Wallacemartinss\FilamentOnboarding;
 use Closure;
 use Illuminate\Database\Eloquent\{Collection, Model};
 use Illuminate\Support\Facades\Cache;
-use Wallacemartinss\FilamentOnboarding\Conditions\ConditionRegistry;
-use Wallacemartinss\FilamentOnboarding\Models\{OnboardingFlow, OnboardingFlowProgress, OnboardingPreference, OnboardingStep, OnboardingStepProgress};
+use Wallacemartinss\FilamentOnboarding\Conditions\{ConditionRegistry, RecordedCondition};
+use Wallacemartinss\FilamentOnboarding\Models\{OnboardingCondition, OnboardingFlow, OnboardingFlowProgress, OnboardingPreference, OnboardingStep, OnboardingStepProgress};
 
 class OnboardingManager
 {
@@ -140,9 +140,37 @@ class OnboardingManager
         return $this->flows($panelId)->firstWhere('key', $key);
     }
 
+    /**
+     * The conditions an author built in the panel, ready for the registry.
+     *
+     * Cached alongside the flows, and for the same reason: this is read on every
+     * page (a visibility check asks the registry, and the registry asks here), and
+     * it changes only when somebody writes one.
+     *
+     * @return array<string, array{condition: \Closure, label: string}>
+     */
+    public function recordedConditions(): array
+    {
+        $conditions = [];
+
+        foreach ($this->cachedConditions() as $record) {
+            $conditions[$record->key] = [
+                'condition' => fn (Model $subject, ?Model $scope = null): bool => (new RecordedCondition($record))->passes($subject, $scope),
+                'label'     => $record->translate('label') ?? $record->key,
+            ];
+        }
+
+        return $conditions;
+    }
+
     public function flushCache(): void
     {
         $this->cacheStore()->forget($this->cacheKey());
+        $this->cacheStore()->forget($this->cacheKey('conditions'));
+
+        // The registry read the panel's conditions into memory when the first
+        // question of this request was asked. That copy is now yesterday's.
+        $this->conditions->forgetRecords();
     }
 
     /** @return class-string<OnboardingFlow> */
@@ -175,6 +203,12 @@ class OnboardingManager
         return config('filament-onboarding.models.preferences', OnboardingPreference::class);
     }
 
+    /** @return class-string<OnboardingCondition> */
+    public function conditionModel(): string
+    {
+        return config('filament-onboarding.models.condition', OnboardingCondition::class);
+    }
+
     /**
      * @return array<int, string>
      */
@@ -183,6 +217,63 @@ class OnboardingManager
         $locales = config('filament-onboarding.locales', []);
 
         return filled($locales) ? array_values((array) $locales) : [app()->getLocale()];
+    }
+
+    /**
+     * The conditions written in the panel — the same array-only cache the flows
+     * get, for the same reason, and rebuilt into models on the way out.
+     *
+     * @return Collection<int, OnboardingCondition>
+     */
+    protected function cachedConditions(): Collection
+    {
+        if (!config('filament-onboarding.cache.enabled', true)) {
+            return $this->queryConditions();
+        }
+
+        $cached = $this->cacheStore()->get($this->cacheKey('conditions'));
+
+        /** @var class-string<OnboardingCondition> $model */
+        $model = $this->conditionModel();
+
+        if (is_array($cached)) {
+            $records = [];
+
+            foreach ($cached as $attributes) {
+                if (!is_array($attributes)) {
+                    $records = null;
+
+                    break;
+                }
+
+                $records[] = (new $model())->newFromBuilder($attributes);
+            }
+
+            if ($records !== null) {
+                return new Collection($records);
+            }
+        }
+
+        $conditions = $this->queryConditions();
+
+        $this->cacheStore()->put(
+            $this->cacheKey('conditions'),
+            $conditions->map(fn (OnboardingCondition $condition): array => $condition->getAttributes())->values()->all(),
+            (int) config('filament-onboarding.cache.ttl', 3600),
+        );
+
+        return $conditions;
+    }
+
+    /**
+     * @return Collection<int, OnboardingCondition>
+     */
+    protected function queryConditions(): Collection
+    {
+        /** @var class-string<OnboardingCondition> $model */
+        $model = $this->conditionModel();
+
+        return $model::query()->active()->orderBy('key')->get();
     }
 
     /**
@@ -313,8 +404,8 @@ class OnboardingManager
         return Cache::store(config('filament-onboarding.cache.store'));
     }
 
-    protected function cacheKey(): string
+    protected function cacheKey(string $for = 'flows'): string
     {
-        return config('filament-onboarding.cache.prefix', 'filament-onboarding') . '.flows';
+        return config('filament-onboarding.cache.prefix', 'filament-onboarding') . '.' . $for;
     }
 }

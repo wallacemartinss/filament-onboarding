@@ -1,0 +1,38 @@
+<?php
+
+namespace {{ namespace }};
+
+use Illuminate\Database\Eloquent\Model;
+use Wallacemartinss\FilamentOnboarding\Contracts\HasConditionLabel;
+use Wallacemartinss\FilamentOnboarding\Contracts\OnboardingCondition;
+
+/**
+ * Answers to the key `{{ key }}` — pick it from the dropdown when writing a step.
+ *
+ * This class is discovered on its own: there is nothing to register anywhere.
+ */
+class {{ class }} implements OnboardingCondition, HasConditionLabel
+{
+    /**
+     * What whoever writes the step sees in the dropdown, instead of the raw key.
+     */
+    public static function label(): string
+    {
+        return __('{{ label }}');
+    }
+
+    /**
+     * Whether the subject has already done what the step asks for.
+     *
+     * Runs on every page of the panel, so keep it cheap — an exists() rather than
+     * a get(), a cached call rather than a fresh one. It runs for the subject
+     * being onboarded (usually the authenticated user) and, in a tenanted app,
+     * within the tenant they are being onboarded in.
+     */
+    public function isCompleted(Model $subject, ?Model $scope = null): bool
+    {
+        // return $subject->subscriptions()->active()->exists();
+
+        return false;
+    }
+}

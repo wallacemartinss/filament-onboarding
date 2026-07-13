@@ -88,6 +88,29 @@ return [
     ],
 
     'enums' => [
+
+        'condition_type' => [
+            'aggregate' => [
+                'label'       => 'Counts something they have',
+                'description' => 'Clients, invoices, servers — anything of theirs. "At least one client."',
+            ],
+            'attribute' => [
+                'label'       => 'Asks about them',
+                'description' => 'A column on the user themselves. "Their email is verified."',
+            ],
+        ],
+
+        'condition_operator' => [
+            'equals'                => 'is',
+            'not_equals'            => 'is not',
+            'greater_than'          => 'is more than',
+            'greater_than_or_equal' => 'is at least',
+            'less_than'             => 'is less than',
+            'less_than_or_equal'    => 'is at most',
+            'contains'              => 'contains',
+            'is_set'                => 'is filled in',
+            'is_empty'              => 'is empty',
+        ],
         'step_type' => [
             'task' => 'Task',
             'tour' => 'Tour',
@@ -220,6 +243,7 @@ return [
             'completion_mode'       => 'Completed by',
             'condition'             => 'Condition',
             'condition_helper'      => 'Registered by the application. Steps already fulfilled come back completed.',
+            'condition_none'        => 'No conditions yet — write one under Onboarding → Conditions (or run php artisan make:onboarding-condition), and it shows up here.',
             'visit_url'             => 'URL',
             'visit_url_helper'      => 'Supports the * wildcard: /app/*/servers/create',
             'cta_label'             => 'Button label',
@@ -282,6 +306,56 @@ return [
                 'index'  => 'list',
                 'create' => 'create',
             ],
+        ],
+    ],
+
+    'conditions' => [
+        'singular'   => 'Condition',
+        'plural'     => 'Conditions',
+        'subheading' => 'The questions your steps can ask about somebody — written here, not in code.',
+        'at_least'   => 'at least :count',
+
+        'sections' => [
+            'question'             => 'The question',
+            'question_description' => 'What has to be true of somebody for the step to be done.',
+            'naming'               => 'What it is called',
+            'naming_description'   => 'The name whoever writes a step picks from the dropdown.',
+        ],
+
+        'fields' => [
+            'type'                     => 'What it asks',
+            'model'                    => 'Counting what',
+            'model_helper'             => 'The thing they have to have: clients, invoices, servers.',
+            'minimum'                  => 'At least',
+            'minimum_helper'           => 'How many. One, almost always.',
+            'subject_column'           => 'That belongs to them through',
+            'subject_column_helper'    => 'The column holding the id of whoever is being onboarded.',
+            'scope_column'             => 'And to the tenant through',
+            'scope_column_helper'      => 'Only when the model is scoped to a tenant. Leave empty otherwise.',
+            'scope_column_none'        => 'Not scoped to a tenant',
+            'filters'                  => 'Only the ones where…',
+            'filters_helper'           => 'Optional. Without any, all of them count.',
+            'filters_attribute'        => 'True when…',
+            'filters_attribute_helper' => 'All of these have to hold.',
+            'add_filter'               => 'Add a rule',
+            'column'                   => 'Field',
+            'operator'                 => 'Is',
+            'value'                    => 'Value',
+            'label'                    => 'Name',
+            'label_helper'             => 'What it is called in the step editor.',
+            'key_helper'               => 'How steps refer to it. Cannot be changed once steps use it.',
+            'key_taken'                => 'The key [:key] belongs to a condition registered in code.',
+            'is_active_helper'         => 'An inactive condition never passes.',
+            'question'                 => 'Asks',
+        ],
+
+        'placeholders' => [
+            'label' => 'Has added a client',
+        ],
+
+        'empty' => [
+            'heading'     => 'No conditions yet',
+            'description' => 'A condition is what lets a step complete itself — including for people who did the thing long ago. Write one here, or run php artisan make:onboarding-condition for a question a form cannot ask.',
         ],
     ],
 

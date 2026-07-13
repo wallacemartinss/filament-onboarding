@@ -79,6 +79,7 @@ abstract class TestCase extends Orchestra
         'add_visibility_to_onboarding',
         'harden_onboarding_progress_scope',
         'create_onboarding_preferences',
+        'create_onboarding_conditions',
     ];
 
     private function runPackageMigrations(): void
@@ -113,6 +114,18 @@ abstract class TestCase extends Orchestra
         Schema::create('subjects', function (Blueprint $table): void {
             $table->uuid('id')->primary();
             $table->string('name')->nullable();
+            $table->timestamp('verified_at')->nullable();
+            $table->timestamps();
+        });
+
+        // Something a subject can have some of — what a condition written in the
+        // panel counts.
+        Schema::create('notes', function (Blueprint $table): void {
+            $table->uuid('id')->primary();
+            $table->uuid('subject_id')->nullable();
+            $table->uuid('tenant_id')->nullable();
+            $table->string('title')->nullable();
+            $table->boolean('is_published')->default(false);
             $table->timestamps();
         });
     }
