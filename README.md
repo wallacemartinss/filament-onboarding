@@ -1,18 +1,61 @@
 # Filament Onboarding
 
-Database-driven onboarding for Filament v5: a progress checklist that follows the user across every page of the panel, guided spotlight tours, and steps that can be completed by watching a video.
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/wallacemartinss/filament-onboarding.svg?style=flat-square)](https://packagist.org/packages/wallacemartinss/filament-onboarding)
+[![Tests](https://img.shields.io/github/actions/workflow/status/wallacemartinss/filament-onboarding/tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/wallacemartinss/filament-onboarding/actions/workflows/tests.yml)
+[![Total Downloads](https://img.shields.io/packagist/dt/wallacemartinss/filament-onboarding.svg?style=flat-square)](https://packagist.org/packages/wallacemartinss/filament-onboarding)
 
-Journeys are authored in the panel, not in code, so product people can rewrite them without a deploy. And steps bound to a **condition** catch up on their own, which means **users who signed up long before the journey existed enter it already half-done** instead of being told to do things they did years ago.
+Database-driven onboarding for Filament v5: a progress checklist that follows the user across every page of the panel, guided spotlight tours, and steps that complete themselves — by a condition your app registers, by reaching a page, or by watching a video.
 
-- **Checklist** — a floating progress button on every page (pages, resources, widgets), plus an optional dashboard widget.
-- **Tours** — spotlight an element, explain it, move on. Tours cross pages: the runner navigates and picks up where it left off.
-- **Progress page** — an optional page laying the journey out: what is done, what is next, what is left.
-- **Images and videos** — S3, R2, local, YouTube, Vimeo. **Watch time is measured**, not guessed, and can complete the step.
-- **Panel discovery** — destinations, pages and widgets come from dropdowns built out of your own panel. Nobody types a URL.
-- **Any locale** — content is stored per locale and read back in whichever locale the user picked.
-- **Multi-tenant** — progress is scoped, so the same user onboards separately in each tenant.
+Journeys are authored **in the panel, not in code**, so product people can rewrite them without a deploy. And steps bound to a **condition** catch up on their own, which means **users who signed up long before the journey existed enter it already half-done** instead of being told to do things they did years ago.
 
-Requires PHP 8.2+, Laravel 12 and Filament v5. Runs on PostgreSQL and MySQL/MariaDB.
+<!-- Hero shot — uncomment once docs/images/principal.png exists (shot list in docs/images/README.md)
+![Filament Onboarding](docs/images/principal.png)
+-->
+
+<!-- Uncomment as the images land in docs/images/ (shot list in docs/images/README.md)
+## Screenshots
+
+<details>
+<summary>📸 Click to view screenshots</summary>
+
+| The welcome screen | The floating checklist |
+|:---:|:---:|
+| ![Welcome screen](docs/images/welcome.png) | ![Floating checklist](docs/images/launcher.png) |
+
+| A guided tour | The media modal, docked |
+|:---:|:---:|
+| ![Guided tour](docs/images/tour.png) | ![Media modal](docs/images/media-modal.png) |
+
+| The progress page | Authoring a step |
+|:---:|:---:|
+| ![Progress page](docs/images/progress-page.png) | ![Step editor](docs/images/authoring-step.png) |
+
+</details>
+-->
+
+## Features
+
+- 🚀 **Welcome screen** — greets the user once, with "get started", "not now" and "don't show this again"
+- ✅ **Floating checklist** — a progress button on every page of the panel, with tabs when there is more than one journey
+- 🧭 **Guided spotlight tours** — cross pages, walk through wizards, and wait for the form instead of pointing at nothing
+- 🖊️ **Authored in the panel** — flows and steps are database records with a full admin resource; rewriting a journey is not a deploy
+- 🪄 **Five completion modes** — by hand, by a **condition** (retroactively), by **visiting a page**, by **watching a video**, or from your own code
+- 👁️ **Visibility conditions** — gate a journey, a step or a single tour stop on a plan or a feature flag
+- 🎬 **Images & videos** — upload (S3, R2, local), direct URL, YouTube or Vimeo; **watch time is measured**, not guessed
+- 📊 **Progress page & dashboard widget** — the journey laid out in cards, and the checklist as a card
+- 🎯 **Panel discovery** — destinations, pages and widgets picked from dropdowns built out of your own panel; nobody types a URL
+- 🌍 **Any locale** — content stored per locale and read back in the reader's, with a fallback chain
+- 🏢 **Multi-tenant** — progress is scoped, so the same user onboards separately in each tenant
+- 🔔 **Events & a fluent API** — `StepCompleted` / `FlowCompleted`, and `Onboarding::for($user)` for everything else
+- 🎨 **Yours to style** — CSS variables, a replaceable stylesheet, publishable views
+- 🔒 **Server-side guards** — every browser-reachable action re-checks what the interface checked
+
+## Requirements
+
+- PHP 8.2+
+- Laravel 12+
+- Filament 5.0+
+- PostgreSQL or MySQL/MariaDB
 
 | Package | Filament |
 |---|---|
@@ -20,13 +63,29 @@ Requires PHP 8.2+, Laravel 12 and Filament v5. Runs on PostgreSQL and MySQL/Mari
 | `^1.0` | v4 (planned) |
 
 > **2.0.0 is withdrawn** — it lets any authenticated user complete any onboarding step, and
-> a condition that throws returns a 500 on every page of the panel. Require `^2.1`.
+> a condition that throws returns a 500 on every page of the panel. Require `^2.1` (Composer
+> resolves it to 2.2+, whose migration survives the duplicate rows 2.0.0 could write).
 
 > Maintaining or extending the package? Read **[ARCHITECTURE.md](ARCHITECTURE.md)** — the data model, panel discovery, the tour runner, the player, asset versioning, and the traps that will bite you if you "clean up" the wrong line.
 
+## Table of contents
+
+- [Quick start](#quick-start)
+- [How a step is completed](#how-a-step-is-completed) · [conditions](#conditions) · [visibility](#visibility-not-every-journey-is-for-everybody)
+- [Panel discovery](#panel-discovery)
+- [Tours](#tours) · [a "view the tutorial" button](#a-view-the-tutorial-button-on-the-page-itself) · [wizards](#tours-that-walk-through-a-wizard)
+- [Images and videos](#images-and-videos)
+- [Where onboarding shows up](#where-onboarding-shows-up) · [welcome](#the-welcome-screen) · [checklist](#the-floating-checklist) · [widget](#the-dashboard-widget) · [progress page](#the-progress-page)
+- [Programmatic API](#programmatic-api)
+- [Who onboards, and in what context](#who-onboards-and-in-what-context)
+- [Locales](#locales)
+- [Making it look like your product](#making-it-look-like-your-product)
+- [Configuration](#configuration)
+- [Upgrading](#upgrading)
+
 ---
 
-## Installation
+## Quick start
 
 ```bash
 composer require wallacemartinss/filament-onboarding:^2.1
@@ -167,11 +226,15 @@ Nobody types a URL. When a step or a tour stop needs a destination, the dropdown
 
 What gets stored is the **route name**, not the URL, so renaming a resource slug does not break a journey, and `{tenant}` is filled in at render time.
 
+<!-- ![Authoring a step in the panel](docs/images/authoring-step.png) -->
+
 ---
 
 ## Tours
 
 A tour spotlights one element at a time, explains it, and moves on. It can cross pages: give a stop a page and the runner navigates there and carries on.
+
+<!-- ![A guided tour mid-flight](docs/images/tour.png) -->
 
 Three ways to point at something:
 
@@ -245,6 +308,8 @@ It is clicked only when the user moves on and the element is not on screen — a
 
 A step can carry an image to show or a video to watch. Both open in a modal over the panel, from the checklist, the widget or the progress page.
 
+<!-- ![The media modal, docked in a corner](docs/images/media-modal.png) -->
+
 **Images** are uploaded to the configured disk or addressed by URL, and show as a thumbnail on the step.
 
 **Videos** come from an upload, a direct `.mp4`, YouTube or Vimeo — paste the link however it came, the id is dug out of watch, share and shorts URLs alike. Any other provider can be embedded in an iframe.
@@ -296,6 +361,8 @@ Three surfaces, all optional, all reading the same progress — tick a step off 
 FilamentOnboardingPlugin::make()->welcome(),
 ```
 
+<!-- ![The welcome screen](docs/images/welcome.png) -->
+
 A checklist in the corner is easy to never notice, so onboarding gets one moment to introduce itself: the first page after logging in. It names the journey, says how many steps it is, and offers three answers —
 
 - **Get started** → the progress page (or the checklist, when the panel has no progress page).
@@ -307,6 +374,8 @@ It is never a dead end: the progress page stays in the menu, and it offers onboa
 ### The floating checklist
 
 `->launcher()` puts a progress button on every page of the panel — pages, resources, widgets alike, since it hangs off the body. With more than one journey, the panel shows tabs, so a finished journey never sits in front of an unfinished one.
+
+<!-- ![The floating checklist, open](docs/images/launcher.png) -->
 
 ### The dashboard widget
 
@@ -322,6 +391,8 @@ It hides itself once the journey is finished or dismissed.
 ### The progress page
 
 The journey laid out in cards: a ring with the percentage, counters for done / left / skipped, the next step highlighted with its call to action, and a card per step showing its state and what to do about it.
+
+<!-- ![The progress page](docs/images/progress-page.png) -->
 
 ```php
 FilamentOnboardingPlugin::make()
