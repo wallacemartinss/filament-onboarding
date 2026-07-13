@@ -244,21 +244,40 @@ A tour spotlights one element at a time, explains it, and moves on. It can cross
 
 <!-- ![A guided tour mid-flight](docs/images/tour.png) -->
 
-Three ways to point at something:
+### What a stop points at is picked, not typed
 
-```
-[data-onboarding="create-server"]        a CSS selector
-@widget:App\Filament\...\StatsWidget     a widget, picked from the panel
-@livewire:edit_password_form             any Livewire component, by name
-```
+Pick the **page** the stop lives on, and the package reads that page out of your panel:
 
-The last one matters more than it looks. A form section rendered by a third-party plugin has no hook of its own, and **Filament builds a section's id from its heading — which is translated**. Anchoring to `#form.update-password::section` gives you a tour that works in English and silently spotlights nothing in Portuguese. Addressing the component sidesteps that entirely.
+| Pick this | And it finds |
+|---|---|
+| **Status** | the field, label and all — every field of the form, by the label it wears. A `Select` and a `Toggle` too. |
+| **The save button** | the one that submits, on a create page and an edit one. |
+| **The table** · **The search box** | on any list page. |
+| **Column: Status** | the column, by the heading it carries. |
+| **The "New client" button** | it is a link to the create page, and the package has the route. |
+| **A widget** | any widget of the panel. |
+| **A CSS selector of my own…** | for anything the panel cannot name. |
 
-For anything you own, a stable hook is cheapest:
+Nobody has to know CSS, and nobody has to know that a developer went and put a hook in the code. What gets stored is the **choice** (`field:status`), not the selector — same reason a route name is stored and not a URL: the markup underneath is Filament's to change, and a journey should survive it changing.
+
+> **A form that cannot be read gives up its fields, and nothing else.** Forms are built to be *rendered*, and one that leans on the record being edited, or on who is looking, will not survive being asked what is in it outside of a request. Its fields simply are not listed — the panel does not fall over, and the CSS box is right there.
+
+### When you write the selector yourself
+
+For anything the panel cannot name — a particular card, a paragraph, a third-party widget's insides — a stable hook on the thing you own is cheapest:
 
 ```php
 Action::make('create')->extraAttributes(['data-onboarding' => 'create-server']),
 ```
+
+And two selectors the package understands that CSS does not:
+
+```
+@widget:App\Filament\...\StatsWidget     a widget, by the component it is
+@livewire:edit_password_form             any Livewire component, by name
+```
+
+The last one matters more than it looks. A form section rendered by a third-party plugin has no hook of its own, and **Filament builds a section's id from its heading — which is translated**. Anchoring to `#form.update-password::section` gives you a tour that works in English and silently spotlights nothing in Portuguese. Addressing the component sidesteps that entirely.
 
 A selector that no longer matches does not break the tour: the page dims and the popover is centred, so the copy still reads.
 

@@ -1227,6 +1227,14 @@ button.fio-step-marker:hover {
 
 /* ------------------------------------------------------- welcome screen */
 
+/* A tour dims the page and speaks for itself. The welcome screen — which asks
+   whether you would like to begin — has nothing to say to somebody who plainly
+   has. Two modals over one screen is one too many, and the runner says which of
+   them is in charge. */
+.fio-tour-running .fio-welcome-layer {
+    display: none;
+}
+
 .fio-welcome-layer {
     position: fixed;
     inset: 0;

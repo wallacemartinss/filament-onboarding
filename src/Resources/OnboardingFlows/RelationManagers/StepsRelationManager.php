@@ -21,7 +21,7 @@ use Illuminate\Validation\Rules\Unique;
 use Wallacemartinss\FilamentOnboarding\Enums\{CompletionMode, MediaSource, MediaType, ModalPosition, StepType};
 use Wallacemartinss\FilamentOnboarding\Facades\Onboarding;
 use Wallacemartinss\FilamentOnboarding\Models\OnboardingStep;
-use Wallacemartinss\FilamentOnboarding\Support\{FormState, IconInput, PanelTargets};
+use Wallacemartinss\FilamentOnboarding\Support\{FormState, IconInput, PanelTargets, SpotlightTargets};
 
 /**
  * Authoring a step used to mean scrolling through four stacked sections, most of
@@ -366,23 +366,9 @@ class StepsRelationManager extends RelationManager
                 ->defaultItems(1)
                 ->columnSpanFull()
                 ->schema([
-                    Grid::make(2)->schema([
-                        Select::make('widget')
-                            ->label(__('filament-onboarding::onboarding.resource.tour.widget'))
-                            ->prefixIcon(Heroicon::OutlinedSquares2x2)
-                            ->helperText(__('filament-onboarding::onboarding.resource.tour.widget_helper'))
-                            ->options(fn (): array => PanelTargets::widgetOptions($this->panelId()))
-                            ->searchable()
-                            ->native(false),
-
-                        TextInput::make('selector')
-                            ->label(__('filament-onboarding::onboarding.resource.tour.selector'))
-                            ->prefixIcon(Heroicon::OutlinedViewfinderCircle)
-                            ->helperText(__('filament-onboarding::onboarding.resource.tour.selector_helper'))
-                            ->placeholder('[data-onboarding="create-server"]')
-                            ->maxLength(255),
-                    ]),
-
+                    // The page comes first, because it is what everything below can
+                    // be worked out from: what a stop may point at depends entirely
+                    // on where the stop is.
                     Grid::make(3)->schema([
                         Select::make('route')
                             ->label(__('filament-onboarding::onboarding.resource.tour.route'))
@@ -391,6 +377,9 @@ class StepsRelationManager extends RelationManager
                             ->options(fn (): array => PanelTargets::pageOptions($this->panelId()))
                             ->searchable()
                             ->native(false)
+                            ->live()
+                            // The targets belonged to the page that was there before.
+                            ->afterStateUpdated(fn (Set $set): mixed => $set('target', null))
                             ->columnSpan(2),
 
                         Select::make('placement')
@@ -404,6 +393,46 @@ class StepsRelationManager extends RelationManager
                             ->selectablePlaceholder(false)
                             ->native(false),
                     ]),
+
+                    // What to spotlight, picked rather than typed. The options are
+                    // read out of the panel itself: the fields of that page's form
+                    // by their labels, its table, its buttons, its widgets.
+                    Select::make('target')
+                        ->label(__('filament-onboarding::onboarding.resource.tour.target'))
+                        ->prefixIcon(Heroicon::OutlinedViewfinderCircle)
+                        ->helperText(__('filament-onboarding::onboarding.resource.tour.target_helper'))
+                        ->options(fn (Get $get): array => SpotlightTargets::options(
+                            $get('route'),
+                            $this->panelId(),
+                        ))
+                        ->searchable()
+                        ->native(false)
+                        ->live()
+                        ->columnSpanFull()
+                        // A stop written before this list existed says the same thing
+                        // in the older words. Show it as what it is, rather than as
+                        // an empty box over a selector nobody can see.
+                        ->afterStateHydrated(function (Set $set, Get $get, ?string $state): void {
+                            if (filled($state)) {
+                                return;
+                            }
+
+                            $set('target', match (true) {
+                                filled($get('widget'))   => 'widget:' . $get('widget'),
+                                filled($get('selector')) => 'custom',
+                                default                  => null,
+                            });
+                        }),
+
+                    TextInput::make('selector')
+                        ->label(__('filament-onboarding::onboarding.resource.tour.selector'))
+                        ->prefixIcon(Heroicon::OutlinedCodeBracket)
+                        ->helperText(__('filament-onboarding::onboarding.resource.tour.selector_helper'))
+                        ->placeholder('[data-onboarding="create-server"]')
+                        ->columnSpanFull()
+                        ->required(fn (Get $get): bool => $get('target') === 'custom')
+                        ->visible(fn (Get $get): bool => $get('target') === 'custom')
+                        ->maxLength(255),
 
                     Grid::make(2)->schema([
                         Select::make('condition')
@@ -541,17 +570,43 @@ class StepsRelationManager extends RelationManager
      */
     private static function tourStopLabel(array $state): string
     {
-        $target = $state['selector'] ?? null;
-
-        if (blank($target) && filled($state['widget'] ?? null)) {
-            $target = class_basename((string) $state['widget']);
-        }
-
         $title = collect($state['title'] ?? [])->filter()->first();
 
-        return collect([$title, $target])
+        return collect([$title, static::tourStopTarget($state)])
             ->filter()
             ->implode(' — ') ?: __('filament-onboarding::onboarding.resource.tour.add');
+    }
+
+    /**
+     * What the stop points at, said the way a person would say it: "Status", not
+     * `field:status` — and certainly not `.fi-fo-field:has(label[for="form.status"])`.
+     *
+     * @param  array<string, mixed>  $state
+     */
+    private static function tourStopTarget(array $state): ?string
+    {
+        $target = $state['target'] ?? null;
+
+        if (filled($target) && $target !== 'custom') {
+            [$kind, $value] = array_pad(explode(':', (string) $target, 2), 2, null);
+
+            return match ($kind) {
+                'field'          => Str::headline((string) $value),
+                'widget'         => class_basename((string) $value),
+                'action', 'part' => Str::headline((string) $value),
+                'link'           => Str::headline(Str::afterLast((string) $value, '.')),
+                default          => (string) $target,
+            };
+        }
+
+        if (filled($state['selector'] ?? null)) {
+            return (string) $state['selector'];
+        }
+
+        // Written before the picker existed.
+        return filled($state['widget'] ?? null)
+            ? class_basename((string) $state['widget'])
+            : null;
     }
 
     /**

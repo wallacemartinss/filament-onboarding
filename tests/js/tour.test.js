@@ -401,6 +401,60 @@ describe('keeping up with a page that moves on its own', () => {
     });
 });
 
+describe('a tour and the welcome screen do not argue over the same page', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        document.documentElement.classList.remove('fio-tour-running');
+    });
+
+    /**
+     * Both are modal, and the state is reachable: a tour parks itself in
+     * sessionStorage to cross a page, while "not now" lives in the server's
+     * session. Let the session turn over in between — it expires, it rotates on a
+     * login — and the page comes back with the tour resuming *and* the welcome
+     * certain it was never answered.
+     *
+     * The stylesheet stands the welcome down while this class is on the document.
+     */
+    it('says so on the document while it runs', () => {
+        const component = tour();
+
+        component.start('a-tour', [{ selector: '#somewhere' }]);
+
+        expect(document.documentElement.classList.contains('fio-tour-running')).toBe(true);
+
+        component.close();
+
+        expect(document.documentElement.classList.contains('fio-tour-running')).toBe(false);
+    });
+
+    it('says so when it resumes on the other side of a page, too', () => {
+        sessionStorage.setItem('filament-onboarding.tour', JSON.stringify({
+            key: 'a-tour',
+            steps: [{ selector: '#somewhere' }],
+            index: 0,
+            path: window.location.pathname,
+        }));
+
+        tour().resume();
+
+        expect(document.documentElement.classList.contains('fio-tour-running')).toBe(true);
+
+        sessionStorage.clear();
+    });
+
+    it('leaves nothing behind when the component goes', () => {
+        const component = tour();
+
+        component.start('a-tour', [{ selector: '#somewhere' }]);
+        component.destroy();
+
+        // A page that keeps the class after the tour is gone hides a welcome
+        // screen that is owed to somebody.
+        expect(document.documentElement.classList.contains('fio-tour-running')).toBe(false);
+    });
+});
+
 describe('the keyboard', () => {
     beforeEach(() => {
         document.body.innerHTML = '';

@@ -76,6 +76,8 @@ export default function onboardingTour() {
         },
 
         destroy() {
+            document.documentElement.classList.remove('fio-tour-running');
+
             window.removeEventListener('pageshow', this.onPageShow);
             this.stopWatching();
             this.stopPolling();
@@ -112,7 +114,8 @@ export default function onboardingTour() {
                 this.stepKey = key;
                 this.steps = steps;
                 this.index = index ?? 0;
-                this.active = true;
+
+                this.open();
 
                 this.$nextTick(() => this.render());
             } catch {
@@ -133,8 +136,28 @@ export default function onboardingTour() {
                 return;
             }
 
-            this.active = true;
+            this.open();
             this.$nextTick(() => this.render());
+        },
+
+        /**
+         * A tour is running, and the page had better know it.
+         *
+         * The welcome screen is a modal, and so is this. Two of them at once is
+         * one too many — and the state is reachable: a tour parks itself in
+         * sessionStorage to cross a page, while "not now" lives in the server's
+         * session. Let the session turn over in between — it expires, it rotates
+         * on a login — and the page comes back with the tour resuming *and* the
+         * welcome sure it was never answered. Both then argue over the same
+         * screen.
+         *
+         * Whatever the route in, the answer is the same: somebody walking a tour
+         * has already started. There is nothing left to invite them to.
+         */
+        open() {
+            this.active = true;
+
+            document.documentElement.classList.add('fio-tour-running');
         },
 
         get step() {
@@ -327,6 +350,9 @@ export default function onboardingTour() {
 
         close() {
             this.active = false;
+
+            document.documentElement.classList.remove('fio-tour-running');
+
             this.waiting = false;
             this.blocked = false;
             this.steps = [];

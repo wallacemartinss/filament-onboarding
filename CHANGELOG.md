@@ -5,6 +5,46 @@ All notable changes to `filament-onboarding` are documented here.
 Versions follow Filament: **2.x targets Filament v5**, and 1.x is reserved for a Filament v4
 backport. That is why the first release is 2.0.0 — there is no 1.0.0 to upgrade from.
 
+## 2.4.0
+
+**A tour stop is picked, not typed.** Writing one meant typing
+`[data-onboarding="client-submit"]`, which assumed two things about whoever was expected to
+do it: that they know CSS, and that they know a developer went and put that hook in the code.
+Journeys are supposed to be product's to write. Product knows neither of those.
+
+### Added
+
+- **"What to spotlight" is a dropdown, read out of your own panel.** Pick the page a stop
+  lives on, and the package offers what is on it:
+  - **the fields of that page's form, by the labels they wear** — including a `Select` and a
+    `Toggle`, which have no id of their own; the spotlight lands on the whole field, label
+    and all, rather than on the box you type in
+  - **the save button**, which answers on a create page and an edit one alike
+  - **the table**, **the search box**, and **each column by its heading**
+  - **the "New client" button** — which is not the page's own, it is a link to the create
+    page, and the package has the route
+  - **any widget of the panel**
+  - and **a CSS selector of your own**, for what the panel cannot name
+
+  What is stored is the *choice* (`field:status`), not the selector — the same reason a route
+  name is stored and not a URL: the markup is Filament's to change, and a journey should
+  survive it changing.
+
+  A form that cannot be read from the outside — one that leans on the record being edited, or
+  on who is looking — gives up its fields and nothing else: they are not listed, the panel
+  does not fall over, and the CSS box is right there.
+
+### Fixed
+
+- **A tour and the welcome screen no longer argue over the same screen.** Both are modal, and
+  the state is reachable: a tour parks itself in `sessionStorage` to cross a page, while "not
+  now" lives in the server's session. Let the session turn over in between — it expires, it
+  rotates on a login — and the page comes back with the tour resuming *and* the welcome sure
+  it was never answered. Somebody walking a tour has already started; there is nothing left
+  to invite them to, so the welcome stands down while one is running.
+
+---
+
 ## 2.3.1
 
 ### Fixed

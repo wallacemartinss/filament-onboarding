@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 use Wallacemartinss\FilamentOnboarding\Concerns\HasTranslatableColumns;
 use Wallacemartinss\FilamentOnboarding\Enums\{CompletionMode, MediaSource, MediaType, ModalPosition, StepType};
 use Wallacemartinss\FilamentOnboarding\Facades\Onboarding;
-use Wallacemartinss\FilamentOnboarding\Support\{MediaUrl, PanelTargets, TranslatableText, VideoEmbed};
+use Wallacemartinss\FilamentOnboarding\Support\{MediaUrl, PanelTargets, SpotlightTargets, TranslatableText, VideoEmbed};
 
 /**
  * @property string $id
@@ -153,7 +153,7 @@ class OnboardingStep extends Model
 
         return collect($this->tour_steps)
             ->map(fn (array $tourStep): array => [
-                'selector'  => $this->resolveTourSelector($tourStep),
+                'selector'  => $this->resolveTourSelector($tourStep, $parameters),
                 'title'     => TranslatableText::resolve($tourStep['title'] ?? null),
                 'body'      => TranslatableText::resolve($tourStep['body'] ?? null),
                 'placement' => $tourStep['placement'] ?? 'auto',
@@ -234,14 +234,33 @@ class OnboardingStep extends Model
     }
 
     /**
-     * A tour stop points at a CSS selector, or at a widget picked from the panel
-     * — widgets have no selector of their own, so they are addressed by the
-     * Livewire component they are and found in the DOM by the tour runner.
+     * What a stop points at, in the language the browser speaks.
+     *
+     * Three ways of saying it, in the order of how much the author had to know:
+     *
+     *   target   — what they picked from a list: `field:status`, `action:submit`,
+     *              `part:table`. The **choice** is what is stored, and the CSS is
+     *              worked out here, at render — same reason a route name is stored
+     *              and not a URL. Filament's markup is Filament's to change.
+     *   selector — CSS they wrote themselves, for what the panel cannot name.
+     *   widget   — how a widget was picked before the list existed. Still read, so
+     *              a journey written against an older release keeps working.
      *
      * @param  array<string, mixed>  $tourStep
+     * @param  array<string, mixed>  $parameters
      */
-    private function resolveTourSelector(array $tourStep): ?string
+    private function resolveTourSelector(array $tourStep, array $parameters = []): ?string
     {
+        $target = $tourStep['target'] ?? null;
+
+        if (filled($target) && $target !== 'custom') {
+            $selector = SpotlightTargets::selector((string) $target, $parameters);
+
+            if (filled($selector)) {
+                return $selector;
+            }
+        }
+
         $selector = $tourStep['selector'] ?? null;
 
         if (filled($selector)) {
