@@ -130,7 +130,7 @@
                         @if ($flow->isFinished() && $flow->hasConditionSteps())
                             {{-- Restarting cannot undo what is simply true: a step that
                                  asks the application comes straight back completed. --}}
-                            <p class="fio-footer-note" class="fio-stack-tight">
+                            <p class="fio-footer-note fio-stack-tight">
                                 {{ __('filament-onboarding::onboarding.page.restart_note') }}
                             </p>
                         @endif
