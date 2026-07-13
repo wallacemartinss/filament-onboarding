@@ -41,6 +41,25 @@ yet?".
 - **The step editor stops showing an empty dropdown with no explanation.** Picking the
   "condition" completion mode with no conditions registered offered nothing and said nothing —
   the single most reportable thing in the package. It now says where to write one.
+- **The journey header is a card again.** Folding the steps away in 2.2.1 took the surface
+  with them: `.fio-hero` was what carried the radial gradient, the border and the shadow, and
+  the new header left each journey as a bare row on the page background. The header carries
+  them now — same gradient, same border, same shadow, holding a summary rather than
+  everything.
+
+### Upgrading
+
+New tables ship with new releases, and this one adds `onboarding_conditions`:
+
+```bash
+composer update wallacemartinss/filament-onboarding
+php artisan vendor:publish --tag=filament-onboarding-migrations   # existing files are left alone
+php artisan migrate
+php artisan filament:assets
+```
+
+Conditions registered in code keep working exactly as they did — in the config, at runtime,
+or (now) simply by existing in `app/Onboarding/Conditions`. Nothing needs to be rewritten.
 
 ---
 
