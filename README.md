@@ -1,10 +1,10 @@
 # Filament Onboarding
 
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/wallacemartinss/filament-onboarding.svg?style=flat-square)](https://packagist.org/packages/wallacemartinss/filament-onboarding)
-[![Tests](https://img.shields.io/github/actions/workflow/status/wallacemartinss/filament-onboarding/tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/wallacemartinss/filament-onboarding/actions/workflows/tests.yml)
+[![Tests](https://img.shields.io/github/actions/workflow/status/wallacemartinss/filament-onboarding/tests.yml?branch=v1&label=tests&style=flat-square)](https://github.com/wallacemartinss/filament-onboarding/actions/workflows/tests.yml)
 [![Total Downloads](https://img.shields.io/packagist/dt/wallacemartinss/filament-onboarding.svg?style=flat-square)](https://packagist.org/packages/wallacemartinss/filament-onboarding)
 
-Database-driven onboarding for Filament v5: a progress checklist that follows the user across every page of the panel, guided spotlight tours, and steps that complete themselves — by a condition your app registers, by reaching a page, or by watching a video.
+Database-driven onboarding for Filament v4: a progress checklist that follows the user across every page of the panel, guided spotlight tours, and steps that complete themselves — by a condition your app registers, by reaching a page, or by watching a video.
 
 Journeys are authored **in the panel, not in code**, so product people can rewrite them without a deploy. And steps bound to a **condition** catch up on their own, which means **users who signed up long before the journey existed enter it already half-done** instead of being told to do things they did years ago.
 
@@ -54,17 +54,16 @@ Journeys are authored **in the panel, not in code**, so product people can rewri
 
 - PHP 8.2+
 - Laravel 12+
-- Filament 5.0+
+- Filament 4.0+
 - PostgreSQL or MySQL/MariaDB
 
 | Package | Filament |
 |---|---|
+| `^1.0` | v4 |
 | `^2.1` | v5 |
-| `^1.0` | v4 (planned) |
 
-> **2.0.0 is withdrawn** — it lets any authenticated user complete any onboarding step, and
-> a condition that throws returns a 500 on every page of the panel. Require `^2.1` (Composer
-> resolves it to 2.2+, whose migration survives the duplicate rows 2.0.0 could write).
+> On **Filament v5**, require `^2.1` from the `main` branch instead — this `1.x` line
+> tracks Filament v4.
 
 > Maintaining or extending the package? Read **[ARCHITECTURE.md](ARCHITECTURE.md)** — the data model, panel discovery, the tour runner, the player, asset versioning, and the traps that will bite you if you "clean up" the wrong line.
 
@@ -89,7 +88,7 @@ Journeys are authored **in the panel, not in code**, so product people can rewri
 ## Quick start
 
 ```bash
-composer require wallacemartinss/filament-onboarding:^2.1
+composer require wallacemartinss/filament-onboarding:^1.0
 
 php artisan vendor:publish --tag=filament-onboarding-migrations
 php artisan vendor:publish --tag=filament-onboarding-config

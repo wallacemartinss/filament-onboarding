@@ -7,7 +7,7 @@ namespace Wallacemartinss\FilamentOnboarding\Tests\Feature;
 use Filament\Support\Facades\FilamentAsset;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\ServiceProvider;
-use Livewire\Livewire;
+use Livewire\Mechanisms\ComponentRegistry;
 use Wallacemartinss\FilamentOnboarding\Livewire\OnboardingLauncher;
 use Wallacemartinss\FilamentOnboarding\Tests\TestCase;
 use Wallacemartinss\FilamentOnboarding\Widgets\OnboardingChecklistWidget;
@@ -73,15 +73,20 @@ class PackageTest extends TestCase
 
     public function test_it_registers_its_livewire_components(): void
     {
-        $this->assertTrue(Livewire::isDiscoverable('filament-onboarding-launcher'));
+        // Resolve the name through Livewire's registry, which reads the alias map
+        // that Livewire::component() fills. (Livewire 3's isDiscoverable only sees
+        // convention-named components, not manually registered ones, and the
+        // 'livewire.factory' binding is Livewire 4 only.)
+        $registry = app(ComponentRegistry::class);
+
         $this->assertSame(
             OnboardingLauncher::class,
-            app('livewire.factory')->resolveComponentClass('filament-onboarding-launcher'),
+            $registry->getClass('filament-onboarding-launcher'),
         );
 
         $this->assertSame(
             OnboardingChecklistWidget::class,
-            app('livewire.factory')->resolveComponentClass('filament-onboarding-checklist-widget'),
+            $registry->getClass('filament-onboarding-checklist-widget'),
         );
     }
 
