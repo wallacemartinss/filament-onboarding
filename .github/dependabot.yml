@@ -1,0 +1,33 @@
+version: 2
+
+updates:
+  # GitHub Actions — keeps the SHA-pinned action references current, bumping
+  # both the pinned commit and the version comment as new releases land.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  # Composer — the dev toolchain (phpunit, pint, testbench) and any runtime deps.
+  - package-ecosystem: composer
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      composer:
+        patterns:
+          - "*"
+
+  # JavaScript — the build/test toolchain behind resources/dist.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      npm:
+        patterns:
+          - "*"
