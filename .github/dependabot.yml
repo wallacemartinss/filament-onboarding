@@ -1,0 +1,38 @@
+version: 2
+
+# Both ecosystems below carry a 7-day `cooldown`: Dependabot will not open an
+# update PR until a release has been public for a week. Pulling a version the day
+# it ships is exactly when a compromised release does its damage — the xz-utils
+# backdoor was caught in that window. A week gives the community time to spot and
+# report obvious tampering before it reaches this repo. Without this block
+# Dependabot only applies its built-in 3-day cooldown, which the audit treats as
+# too short.
+#
+# No npm entry: the JavaScript lockfile is gitignored on this branch, so there is
+# no committed manifest for Dependabot to track. Add one here once a
+# package-lock.json is committed.
+updates:
+  # GitHub Actions — keeps the SHA-pinned action references current, bumping
+  # both the pinned commit and the version comment as new releases land.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  # Composer — the dev toolchain (phpunit, pint, testbench) and any runtime deps.
+  - package-ecosystem: composer
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      composer:
+        patterns:
+          - "*"
