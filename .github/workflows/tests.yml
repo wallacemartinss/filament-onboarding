@@ -2,9 +2,9 @@ name: tests
 
 on:
   push:
-    branches: [main]
+    branches: [v2]
   pull_request:
-    branches: [main]
+    branches: [v2]
 
 jobs:
   test:
@@ -72,7 +72,7 @@ jobs:
           node-version: 22
 
       - name: Install
-        run: npm ci
+        run: npm install
 
       - name: Test
         run: npm test
