@@ -1,5 +1,12 @@
 version: 2
 
+# Every ecosystem below carries a 7-day `cooldown`: Dependabot will not open an
+# update PR until a release has been public for a week. Pulling a version the day
+# it ships is exactly when a compromised release does its damage — the xz-utils
+# backdoor was caught in that window. A week gives the community time to spot and
+# report obvious tampering before it reaches this repo. Without this block
+# Dependabot only applies its built-in 3-day cooldown, which the audit treats as
+# too short.
 updates:
   # GitHub Actions — keeps the SHA-pinned action references current, bumping
   # both the pinned commit and the version comment as new releases land.
@@ -7,6 +14,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     groups:
       github-actions:
         patterns:
@@ -17,6 +26,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     groups:
       composer:
         patterns:
@@ -27,6 +38,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     groups:
       npm:
         patterns:
