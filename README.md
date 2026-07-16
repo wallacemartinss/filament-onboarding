@@ -60,7 +60,7 @@ Journeys are authored **in the panel, not in code**, so product people can rewri
 | Package | Filament |
 |---|---|
 | `^2.1` | v5 |
-| `^1.0` | v4 (planned) |
+| `^1.0` | v4 |
 
 > **2.0.0 is withdrawn** — it lets any authenticated user complete any onboarding step, and
 > a condition that throws returns a 500 on every page of the panel. Require `^2.1` (Composer
