@@ -434,10 +434,20 @@ trait InteractsWithOnboarding
             return null;
         }
 
+        $scope = $this->onboardingScope();
+
+        // The per-user switch turns the endpoints off too, not just the
+        // rendering: these are public methods on a Livewire component, and a
+        // subject the application declared done should not be able to write
+        // progress rows by calling them anyway.
+        if (Onboarding::shouldSkip($subject, $scope)) {
+            return null;
+        }
+
         // Safe to keep across the writes of this request: the engine updates
         // its own progress maps as it writes, so a completeStep() re-renders
         // with the tick already in place.
-        return $this->memoizedOnboarding = Onboarding::for($subject, $this->onboardingScope());
+        return $this->memoizedOnboarding = Onboarding::for($subject, $scope);
     }
 
     /**
