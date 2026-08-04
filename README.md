@@ -78,7 +78,8 @@ Journeys are authored **in the panel, not in code**, so product people can rewri
 - [Images and videos](#images-and-videos)
 - [Where onboarding shows up](#where-onboarding-shows-up) · [welcome](#the-welcome-screen) · [checklist](#the-floating-checklist) · [widget](#the-dashboard-widget) · [progress page](#the-progress-page)
 - [Programmatic API](#programmatic-api)
-- [Who onboards, and in what context](#who-onboards-and-in-what-context)
+- [Who onboards, and in what context](#who-onboards-and-in-what-context) · [the per-user switch](#the-per-user-switch)
+- [Authorization](#authorization)
 - [Locales](#locales)
 - [Making it look like your product](#making-it-look-like-your-product)
 - [Configuration](#configuration)
@@ -573,6 +574,84 @@ FilamentOnboardingPlugin::make()
 ```
 
 `urlParameters` fills `{placeholders}` in step URLs, so a step written as `/app/{tenant}/servers/create` lands on the right tenant.
+
+### The per-user switch
+
+Everything above runs on every page for everybody — and for somebody who finished onboarding months ago, "runs" means reading their progress out of the database to conclude, again, that there is nothing to show. `skipWhen()` is the way out:
+
+```php
+FilamentOnboardingPlugin::make()
+    ->skipWhen(fn (User $user): bool => $user->onboarded_at !== null),
+```
+
+Answer true and onboarding stays out of that person's way entirely: the launcher does not mount, the widget does not render, the progress page leaves the menu, and none of the `onboarding_*` tables are read on their requests. The closure is the only thing that runs, so keep it to something already in memory — a column on the user, not a query.
+
+Flipping the switch is the application's call, because only the application knows what "done" means — every flow completed, or simply "this account predates the product being new". The usual wiring is a timestamp, stamped when the last journey closes:
+
+```php
+use Wallacemartinss\FilamentOnboarding\Events\FlowCompleted;
+use Wallacemartinss\FilamentOnboarding\Facades\Onboarding;
+
+class MarkSubjectOnboarded
+{
+    public function handle(FlowCompleted $event): void
+    {
+        $done = Onboarding::for($event->subject, $event->scope)
+            ->flows()
+            ->every(fn ($flow): bool => $flow->isCompleted());
+
+        if ($done) {
+            $event->subject->forceFill(['onboarded_at' => now()])->save();
+        }
+    }
+}
+```
+
+`Onboarding::for()` ignores the switch on purpose: it is the explicit API, and "reset this person's onboarding" must reach exactly the people the switch has hidden. Which is also what makes the switch reversible when a new journey ships — null the column for whoever should walk it, and the machine wakes back up.
+
+---
+
+## Authorization
+
+`->manageFlows()` puts three models within the panel's reach — the journeys, their steps, and the conditions — and each ships with a policy that answers yes to everything. That default is deliberately not an opinion: who may write journeys is your call, and until you make it, the resources keep exactly the access they always had. What the policies are for is a panel running `->strictAuthorization()`, which throws for any resource model without one — now there is one to find.
+
+To decide who gets in, register a policy of your own; it wins because the application's providers boot after the package's. Extending the shipped policy means overriding only what you mean to narrow — every ability Filament probes is already answered, which matters in strict mode, where a policy that exists but lacks the method throws just the same:
+
+```php
+// app/Policies/OnboardingFlowPolicy.php
+namespace App\Policies;
+
+use App\Models\User;
+use Illuminate\Contracts\Auth\Authenticatable;
+
+class OnboardingFlowPolicy extends \Wallacemartinss\FilamentOnboarding\Policies\OnboardingFlowPolicy
+{
+    public function viewAny(Authenticatable $user): bool
+    {
+        return $user instanceof User && $user->isAdmin();
+    }
+}
+```
+
+```php
+// app/Providers/AppServiceProvider.php
+use Illuminate\Support\Facades\Gate;
+use Wallacemartinss\FilamentOnboarding\Models\OnboardingFlow;
+
+Gate::policy(OnboardingFlow::class, \App\Policies\OnboardingFlowPolicy::class);
+```
+
+Or skip the `Gate::policy()` call and name it in the config, which registers it for you:
+
+```php
+'policies' => [
+    'flow'      => \App\Policies\OnboardingFlowPolicy::class,
+    'step'      => null,   // null keeps the package default
+    'condition' => null,
+],
+```
+
+The conditions policy is the one worth narrowing first: a condition reads real columns of real models, so the audience that may author one is the audience you would hand a read-only report builder to.
 
 ---
 

@@ -5,6 +5,35 @@ All notable changes to `filament-onboarding` are documented here.
 Versions follow Filament: **2.x targets Filament v5**, and 1.x is reserved for a Filament v4
 backport. That is why the first release is 2.0.0 — there is no 1.0.0 to upgrade from.
 
+## 2.5.0
+
+**Strict panels stop throwing, and finished users stop paying.** Both filed by
+[@DarkGhostHunter](https://github.com/DarkGhostHunter) — thank you.
+
+### Fixed
+
+- **A panel running `->strictAuthorization()` no longer throws on `->manageFlows()`**
+  ([#3](https://github.com/wallacemartinss/filament-onboarding/issues/3)). Strict mode throws for
+  any resource model without a policy, and the package's three had none. Each now ships one —
+  permissive on purpose, the exact access the resources always had — sitting where Laravel's
+  guesser finds it. Narrow it by extending the shipped policy, registering your own with
+  `Gate::policy()` (yours boots later, so yours wins), or naming a class in the new
+  `policies` config block. The README grew an [Authorization](README.md#authorization) section,
+  because "where do I even put the policy" was the other half of the report.
+
+### Added
+
+- **A per-user switch: `->skipWhen()`**
+  ([#4](https://github.com/wallacemartinss/filament-onboarding/issues/4)). Onboarding used to run
+  for everybody on every page — for a user done for months, that meant reading their progress out
+  of the database to conclude, again, that there was nothing to show. Now
+  `->skipWhen(fn (User $user): bool => $user->onboarded_at !== null)` steps the whole machine
+  aside for whoever it answers true: no surface mounts, no `onboarding_*` table is read, and the
+  Livewire endpoints a browser could still call by hand write nothing. `Onboarding::for()`
+  ignores the switch on purpose — resetting a done user's onboarding must reach exactly the
+  people the switch has hidden. The README shows the full wiring: the column, the switch, and a
+  `FlowCompleted` listener that stamps the user when the last journey closes.
+
 ## 2.4.1
 
 **Two controls at the foot of a journey that nobody was pressing.** "Start over" and "Hide"
