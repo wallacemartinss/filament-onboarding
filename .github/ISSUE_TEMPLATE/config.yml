@@ -1,0 +1,24 @@
+# The chooser shown before a new issue is opened.
+#
+# Blank issues stay enabled on purpose: a bug report should never be harder to
+# file than it already is. These links are for the traffic that is *not* a bug,
+# so the tracker keeps meaning "something is broken".
+
+blank_issues_enabled: true
+
+contact_links:
+  - name: Question — how do I do X?
+    url: https://github.com/wallacemartinss/filament-onboarding/discussions/categories/q-a
+    about: Usage help lives in Q&A. An accepted answer there stays searchable for whoever asks the same thing next month, which a closed issue does not.
+
+  - name: Idea, or feedback on the shape of something
+    url: https://github.com/wallacemartinss/filament-onboarding/discussions/categories/ideas
+    about: An API you wish existed, or a rough edge on one that does. Ideas that land turn into issues from there.
+
+  - name: Show what you built with it
+    url: https://github.com/wallacemartinss/filament-onboarding/discussions/categories/show-and-tell
+    about: A journey you wrote, a theme you made it wear, a condition nobody had thought of.
+
+  - name: Security vulnerability — report privately
+    url: https://github.com/wallacemartinss/filament-onboarding/security/advisories/new
+    about: Never in a public issue. Private advisories are the preferred channel; SECURITY.md has the rest, including the 72-hour acknowledgement.
