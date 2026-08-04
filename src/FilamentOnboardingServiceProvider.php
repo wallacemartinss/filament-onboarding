@@ -8,12 +8,14 @@ use Filament\Facades\Filament;
 use Filament\Support\Assets\Asset;
 use Filament\Support\Facades\FilamentAsset;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Livewire;
 use Spatie\LaravelPackageTools\{Package, PackageServiceProvider};
 use Wallacemartinss\FilamentOnboarding\Assets\{VersionedAlpineComponent, VersionedCss};
 use Wallacemartinss\FilamentOnboarding\Commands\{MakeConditionCommand, ResetOnboardingCommand};
 use Wallacemartinss\FilamentOnboarding\Conditions\{ConditionDiscovery, ConditionRegistry};
 use Wallacemartinss\FilamentOnboarding\Livewire\OnboardingLauncher;
+use Wallacemartinss\FilamentOnboarding\Policies\{OnboardingConditionPolicy, OnboardingFlowPolicy, OnboardingStepPolicy};
 use Wallacemartinss\FilamentOnboarding\Widgets\OnboardingChecklistWidget;
 
 class FilamentOnboardingServiceProvider extends PackageServiceProvider
@@ -55,6 +57,7 @@ class FilamentOnboardingServiceProvider extends PackageServiceProvider
     {
         $this->registerDefaultResolvers();
         $this->registerConditions();
+        $this->registerPolicies();
         $this->registerPublishableAssets();
 
         Livewire::component('filament-onboarding-launcher', OnboardingLauncher::class);
@@ -152,6 +155,50 @@ class FilamentOnboardingServiceProvider extends PackageServiceProvider
                 return [];
             }
         });
+    }
+
+    /**
+     * A policy for each model the panel exposes, so `->strictAuthorization()`
+     * has something to find. The defaults answer yes to everything — the access
+     * the resources had before policies existed.
+     *
+     * For the stock models nothing needs registering at all: the policies sit
+     * in the package's Policies namespace, which is exactly where Laravel's
+     * guesser looks. What this method wires is the two other arrangements:
+     *
+     *   - a class named in `filament-onboarding.policies` is registered
+     *     explicitly, which beats the guessed default;
+     *   - a swapped model (`filament-onboarding.models`) is outside the
+     *     package namespace, so nothing is guessable for it — the default is
+     *     registered for it, unless the application's own policy already
+     *     resolves, which is left exactly where it is.
+     *
+     * A `Gate::policy()` in the application's provider boots later either way,
+     * so it simply overwrites whatever was decided here.
+     */
+    private function registerPolicies(): void
+    {
+        $manager = $this->app->make(OnboardingManager::class);
+
+        $policies = [
+            'flow'      => [$manager->flowModel(), OnboardingFlowPolicy::class],
+            'step'      => [$manager->stepModel(), OnboardingStepPolicy::class],
+            'condition' => [$manager->conditionModel(), OnboardingConditionPolicy::class],
+        ];
+
+        foreach ($policies as $key => [$model, $default]) {
+            $configured = config("filament-onboarding.policies.{$key}");
+
+            if (is_string($configured) && $configured !== '') {
+                Gate::policy($model, $configured);
+
+                continue;
+            }
+
+            if (Gate::getPolicyFor($model) === null) {
+                Gate::policy($model, $default);
+            }
+        }
     }
 
     /**

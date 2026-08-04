@@ -217,6 +217,32 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Policies
+    |--------------------------------------------------------------------------
+    |
+    | Who may write journeys, steps and conditions. The package registers a
+    | permissive policy for each — everyone who can reach the panel — which is
+    | what keeps `->strictAuthorization()` from throwing, and nothing more.
+    |
+    | To narrow it, either name your policy class here, or register one the
+    | Laravel way — `Gate::policy(OnboardingFlow::class, YourPolicy::class)` in
+    | a service provider of yours, which boots later and therefore wins. A
+    | policy the application can already resolve (a swapped model with a
+    | discoverable policy) is never overwritten.
+    |
+    |   null   → the package default, unless you already have one
+    |   class  → yours, registered for you
+    |
+    */
+
+    'policies' => [
+        'flow'      => null,
+        'step'      => null,
+        'condition' => null,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Resource
     |--------------------------------------------------------------------------
     |
