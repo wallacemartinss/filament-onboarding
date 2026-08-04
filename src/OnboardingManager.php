@@ -18,6 +18,8 @@ class OnboardingManager
 
     protected ?Closure $urlParametersResolver = null;
 
+    protected ?Closure $skipResolver = null;
+
     public function __construct(protected ConditionRegistry $conditions)
     {
     }
@@ -55,7 +57,8 @@ class OnboardingManager
     }
 
     /**
-     * Onboarding for whoever is browsing right now, or null when nobody is.
+     * Onboarding for whoever is browsing right now — null when nobody is, and
+     * null when the per-subject switch says this person is done with it.
      */
     public function current(): ?SubjectOnboarding
     {
@@ -65,7 +68,36 @@ class OnboardingManager
             return null;
         }
 
-        return new SubjectOnboarding($this, $subject, $this->resolveScope());
+        $scope = $this->resolveScope();
+
+        if ($this->shouldSkip($subject, $scope)) {
+            return null;
+        }
+
+        return new SubjectOnboarding($this, $subject, $scope);
+    }
+
+    /**
+     * The per-subject switch: answer true and onboarding stays out of that
+     * person's way entirely — no surfaces mount, and none of the progress
+     * tables are read. The closure is the only thing that runs on their
+     * requests, so keep it to something already in memory: a column on the
+     * user, typically.
+     *
+     * This gates what the *panel* shows. Onboarding::for() ignores it on
+     * purpose — it is the explicit API, and "reset this person's onboarding"
+     * must reach exactly the people the switch has hidden.
+     */
+    public function skipWhen(?Closure $callback): static
+    {
+        $this->skipResolver = $callback;
+
+        return $this;
+    }
+
+    public function shouldSkip(Model $subject, ?Model $scope = null): bool
+    {
+        return $this->skipResolver !== null && (bool) ($this->skipResolver)($subject, $scope);
     }
 
     public function resolveSubjectUsing(?Closure $callback): static

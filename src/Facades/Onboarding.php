@@ -15,6 +15,8 @@ use Wallacemartinss\FilamentOnboarding\OnboardingManager;
  * @method static \Wallacemartinss\FilamentOnboarding\OnboardingManager resolveSubjectUsing(?\Closure $callback)
  * @method static \Wallacemartinss\FilamentOnboarding\OnboardingManager resolveScopeUsing(?\Closure $callback)
  * @method static \Wallacemartinss\FilamentOnboarding\OnboardingManager resolveUrlParametersUsing(?\Closure $callback)
+ * @method static \Wallacemartinss\FilamentOnboarding\OnboardingManager skipWhen(?\Closure $callback)
+ * @method static bool shouldSkip(\Illuminate\Database\Eloquent\Model $subject, ?\Illuminate\Database\Eloquent\Model $scope = null)
  * @method static \Illuminate\Database\Eloquent\Model|null resolveSubject()
  * @method static \Illuminate\Database\Eloquent\Model|null resolveScope()
  * @method static array urlParameters()

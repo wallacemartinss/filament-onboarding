@@ -36,6 +36,8 @@ class FilamentOnboardingPlugin implements Plugin
 
     protected ?Closure $urlParametersResolver = null;
 
+    protected ?Closure $skipResolver = null;
+
     /** @var array<string, Closure|class-string> */
     protected array $conditions = [];
 
@@ -132,6 +134,10 @@ class FilamentOnboardingPlugin implements Plugin
             Onboarding::resolveUrlParametersUsing($this->urlParametersResolver);
         }
 
+        if ($this->skipResolver !== null) {
+            Onboarding::skipWhen($this->skipResolver);
+        }
+
         foreach ($this->conditions as $key => $condition) {
             Onboarding::condition($key, $condition, $this->conditionLabels[$key] ?? null);
         }
@@ -200,6 +206,25 @@ class FilamentOnboardingPlugin implements Plugin
     public function subject(Closure $callback): static
     {
         $this->subjectResolver = $callback;
+
+        return $this;
+    }
+
+    /**
+     * The per-user switch: when the closure answers true for a subject,
+     * onboarding stays out of their way entirely — nothing mounts, and none of
+     * the `onboarding_*` tables are read on their requests.
+     *
+     *     ->skipWhen(fn (User $user): bool => $user->onboarded_at !== null)
+     *
+     * The closure receives the subject and the scope, and it is the only thing
+     * that runs — so keep it to something already in memory, like a column on
+     * the user. Flipping the switch is the application's call: listen for
+     * FlowCompleted, and stamp the user when the last journey closes.
+     */
+    public function skipWhen(Closure $callback): static
+    {
+        $this->skipResolver = $callback;
 
         return $this;
     }
@@ -399,7 +424,9 @@ class FilamentOnboardingPlugin implements Plugin
             return '';
         }
 
-        if (!Onboarding::resolveSubject() instanceof \Illuminate\Database\Eloquent\Model) {
+        // Nobody to onboard — or somebody the per-user switch says is done with
+        // it. Either way, nothing mounts and no progress is read.
+        if (Onboarding::current() === null) {
             return '';
         }
 
