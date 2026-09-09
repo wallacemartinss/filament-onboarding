@@ -141,6 +141,36 @@ describe('the tour and the application walking together', () => {
         expect(clicked).toHaveBeenCalledOnce();
     });
 
+    it('presses that control when the tour arrives at the stop without being walked there', async () => {
+        const tab = withBox(document.createElement('button'));
+        tab.id = 'nl-tab';
+        document.body.append(tab);
+
+        // The field the stop points at is behind the tab: it turns up when the
+        // tab is pressed, which is exactly what a closed Filament tab does.
+        const field = withBox(document.createElement('input'), null);
+        field.id = 'behind-the-tab';
+        document.body.append(field);
+
+        tab.addEventListener('click', () => withBox(field));
+
+        const component = tour();
+
+        component.active = true;
+        component.stepKey = 'a-tour';
+        component.steps = [{ selector: '#behind-the-tab', advance: '#nl-tab', title: 'Over there' }];
+        component.index = 0;
+
+        // Not `next()`. This is how a tour arrives after crossing a page, and
+        // how one picked up out of sessionStorage arrives after a reload — and
+        // it used to sit waiting in front of a control it had been told how to
+        // press.
+        await component.render();
+
+        expect(component.waiting).toBe(false);
+        expect(component.target).toBe(field);
+    });
+
     it('does not press anything when the element is already on screen', () => {
         const field = withBox(document.createElement('input'));
         field.id = 'already-here';
@@ -331,6 +361,32 @@ describe('keeping up with a page that moves on its own', () => {
         component.render = vi.fn();
 
         field.remove();
+
+        component.measure();
+
+        expect(component.render).toHaveBeenCalledOnce();
+        expect(component.target).toBeNull();
+    });
+
+    it('goes back to waiting when the element is hidden rather than removed', () => {
+        const field = withBox(document.createElement('input'));
+        field.id = 'email';
+        document.body.append(field);
+
+        const component = tour();
+
+        component.active = true;
+        component.steps = [{ selector: '#email' }];
+        component.index = 0;
+        component.target = field;
+        component.render = vi.fn();
+
+        // Filament does not remove the tab, the wizard step or the collapsed
+        // section the subject just left — it hides it. The element stays in the
+        // page and stays connected; only its box goes. Trusting `isConnected`
+        // alone, the watcher keeps measuring nothing and paints the spotlight as
+        // a padding-sized square in the corner while `waiting` never engages.
+        withBox(field, null);
 
         component.measure();
 
