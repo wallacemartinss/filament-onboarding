@@ -20,6 +20,9 @@ class OnboardingManager
 
     protected ?Closure $skipResolver = null;
 
+    /** @var Collection<int, OnboardingFlow>|null */
+    protected ?Collection $memoizedFlows = null;
+
     public function __construct(protected ConditionRegistry $conditions)
     {
     }
@@ -197,6 +200,8 @@ class OnboardingManager
 
     public function flushCache(): void
     {
+        $this->memoizedFlows = null;
+
         $this->cacheStore()->forget($this->cacheKey());
         $this->cacheStore()->forget($this->cacheKey('conditions'));
 
@@ -327,6 +332,14 @@ class OnboardingManager
      * @return Collection<int, OnboardingFlow>
      */
     protected function cachedFlows(): Collection
+    {
+        return $this->memoizedFlows ??= $this->readFlows();
+    }
+
+    /**
+     * @return Collection<int, OnboardingFlow>
+     */
+    protected function readFlows(): Collection
     {
         if (!config('filament-onboarding.cache.enabled', true)) {
             return $this->queryFlows();
