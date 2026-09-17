@@ -200,10 +200,34 @@ class OnboardingManager
 
     public function flushCache(): void
     {
-        $this->memoizedFlows = null;
+        $this->forgetMemoized();
 
         $this->cacheStore()->forget($this->cacheKey());
         $this->cacheStore()->forget($this->cacheKey('conditions'));
+    }
+
+    /**
+     * Drop what *this process* is holding in memory, and nothing else.
+     *
+     * Not the same thing as flushCache(). That one throws away what every
+     * process shares, which is right the moment somebody writes a definition
+     * and wrong on the way into an ordinary request — it would put the whole
+     * panel back on the database, once per request, for ever.
+     *
+     * This drops only the copy this object happens to be carrying, so the next
+     * question goes back to the shared cache and reads what is actually in it.
+     *
+     * Under PHP-FPM it never needs calling: the process ends, and the memo with
+     * it. Under a worker that survives the request — Octane, or `queue:work` —
+     * the manager is the same object on the next one, and "once per request"
+     * quietly becomes "once per worker". The write that would have cleared it
+     * happened in a *different* process, where the model events fired; this one
+     * never heard about it, and would go on serving definitions that no longer
+     * exist until somebody restarted it.
+     */
+    public function forgetMemoized(): void
+    {
+        $this->memoizedFlows = null;
 
         // The registry read the panel's conditions into memory when the first
         // question of this request was asked. That copy is now yesterday's.

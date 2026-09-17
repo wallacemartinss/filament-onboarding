@@ -23,6 +23,7 @@ use Wallacemartinss\FilamentOnboarding\OnboardingManager;
  * @method static \Illuminate\Database\Eloquent\Collection flows(?string $panelId = null)
  * @method static \Wallacemartinss\FilamentOnboarding\Models\OnboardingFlow|null flow(string $key, ?string $panelId = null)
  * @method static void flushCache()
+ * @method static void forgetMemoized()
  * @method static class-string<\Wallacemartinss\FilamentOnboarding\Models\OnboardingFlow> flowModel()
  * @method static class-string<\Wallacemartinss\FilamentOnboarding\Models\OnboardingStep> stepModel()
  * @method static class-string<\Wallacemartinss\FilamentOnboarding\Models\OnboardingFlowProgress> flowProgressModel()
