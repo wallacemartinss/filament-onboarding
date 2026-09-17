@@ -5,12 +5,30 @@ All notable changes to `filament-onboarding` are documented here.
 Versions follow Filament: **2.x targets Filament v5**, and 1.x is reserved for a Filament v4
 backport. That is why the first release is 2.0.0 — there is no 1.0.0 to upgrade from.
 
-## Unreleased
+## 2.6.0
 
-**The target picker on a form built out of more than one part: it offered nothing, what it
-did offer missed, a stop that landed did not let go, and a stop reached any way but
-forwards never got in.** Found while measuring the package against a CMS panel whose
-content resources nest their fields.
+**A tour that could not see half of what it was pointing at.** The target picker read
+nothing on a form built out of more than one part; what it did offer missed; a stop that
+landed did not let go; a stop reached any way but forwards never got in; and a column a
+table was holding off the side of the screen was never scrolled to at all. Most of this
+was found and fixed by [@jyrkidn](https://github.com/jyrkidn), while measuring the package
+against a CMS panel whose content resources nest their fields — thank you. The rest was
+filed by [@DamienJolly](https://github.com/DamienJolly) and
+[@PatrickJunod](https://github.com/PatrickJunod), and the definitions cache was sharpened
+by [@felipeArnold](https://github.com/felipeArnold).
+
+### Added
+
+- **A multi-tenant panel can send somebody to its tenant profile**
+  ([#21](https://github.com/wallacemartinss/filament-onboarding/issues/21)). Where a step sends
+  somebody is picked from the panel's own dropdowns, so a destination can only ever be one that
+  exists — which means anything the panel can reach and the picker cannot see is, from the
+  author's side, simply not there. The tenant profile was one of those: it is registered
+  through `->tenantProfile()` and never through `->pages()`, so `getPages()` has never listed
+  it, while "finish setting up your team" is close to the first thing a multi-tenant onboarding
+  wants to say. It lives behind `{tenant}` like the rest of that panel, which is not the reason
+  a page gets left out — pages are left out for wanting a *record*, and `isReachable()` has
+  always known the difference. Reported with the fix already written.
 
 ### Fixed
 
@@ -59,8 +77,48 @@ content resources nest their fields.
   arrival: once, guarded by the target being absent, falling through to the same waiting
   state as before when the control reveals nothing.
 
+- **A stop reaches a column the table is holding off the side of the screen**
+  ([#15](https://github.com/wallacemartinss/filament-onboarding/issues/15)). `scrollIntoView()`
+  decided "already visible" on the vertical alone — top above the fold, bottom above the edge
+  — and a table wide enough to scroll sideways, which on a phone is every table, keeps its far
+  columns at a perfectly ordinary height several hundred pixels past the right of the window.
+  So the tour left the table where it was and drew the spotlight around a column the subject
+  could not see. Both axes are asked about now, and the scroll asks for `inline: 'center'`:
+  `'nearest'` is no movement at all for something already as near as it gets on its own axis,
+  which was exactly the case it was being used for.
+
+- **The watcher stands down while the tour waits.** `measure()` runs once a frame and hands
+  back to `render()` when the target has gone; `render()` does not reach the line that says it
+  is waiting until it has finished looking — three seconds, when the element is not coming back
+  on its own. So the next frame arrived long before that and started the search over, and so
+  did the one after it: sixty renders a second, each with a poller of its own, for as long as
+  the subject stayed on the other tab. This was reachable before by an element being removed,
+  and rare because removal usually comes with a navigation that ends the tour anyway; treating
+  a hidden element as gone, which is right and is what landed above, would have made the common
+  case a tab the subject clicked away from.
+
+- **A worker that outlives the request stops serving yesterday's definitions.** The definitions
+  are memoised for the length of one request, so a panel page does not ask the cache store the
+  same question a dozen times over. On FPM that memo cannot outlive the request that made it.
+  On Octane the manager is the same object on every request a worker serves, and under
+  `queue:work` the same object on every job — so "once per request" quietly became "once per
+  worker", and since the write that clears it fires its model events in whichever process
+  handled it, every *other* worker went on serving a flow the author had switched off. The memo
+  is now tied to the boundaries a long-lived worker does have. What gets dropped there is only
+  the copy that process is carrying, never the copy the processes share — throwing that away on
+  the way into each request would put the whole panel back on the database, for ever. The
+  condition registry had held its records the same way, and had the same hole, since before the
+  flows did; both are dropped together.
+
 Together, on that panel, 32 of 34 form resources offer targets where 2 did, and a tour
 written entirely from the picker walks a nested form end to end.
+
+### Changed
+
+- **The JavaScript toolchain moves in one piece.** esbuild 0.28.2, jsdom 30.1.0 and vitest
+  5.0.1, which carries postcss, nanoid and undici along with it. Four Dependabot pull requests
+  were open on the same lockfile and two of them disagreed about the same line, so each would
+  have been merged into a rebase of the other three. Build output is unchanged, byte for byte.
 
 ## 2.5.0
 
