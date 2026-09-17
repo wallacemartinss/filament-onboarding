@@ -5,6 +5,63 @@ All notable changes to `filament-onboarding` are documented here.
 Versions follow Filament: **2.x targets Filament v5**, and 1.x is reserved for a Filament v4
 backport. That is why the first release is 2.0.0 — there is no 1.0.0 to upgrade from.
 
+## Unreleased
+
+**The target picker on a form built out of more than one part: it offered nothing, what it
+did offer missed, a stop that landed did not let go, and a stop reached any way but
+forwards never got in.** Found while measuring the package against a CMS panel whose
+content resources nest their fields.
+
+### Fixed
+
+- **A field nested under a state path is found by its name again.** A stop stores a field's
+  *name*; the markup wears its *state path*. Those are the same string on a flat form and not
+  on a nested one — any `Group`, `Section`, `Tab` or wizard step with a state path of its own
+  prefixes what sits under it, so a field still called `title` renders as
+  `form.details.title`. The selector matched the name as the whole path only, so every stop on
+  such a form pointed at nothing. That is not a soft landing: the tour parks, `Next` stays
+  disabled, and the stall is written to `localStorage`, so it comes back stalled on every
+  reload until the subject presses Skip. The name is now matched at the end of the path as
+  well as as the whole of it, with the dot included so `subtitle` cannot answer for `title`.
+  A form that repeats a field under several paths matches under each, which the runner already
+  gets right — it takes the first match the subject can see, and a pane that is not open is
+  `display: none`, so the stop follows the subject to whichever one they open.
+
+- **A form that asks who is rendering it keeps its fields.** `formPage()` built the form
+  against a bare `Schema::make()`, and `Schema::getLivewire()` has a return type — so a form,
+  or one field inside one, that reaches for the component got a `TypeError` rather than a
+  null. The disclaimer held (nothing was taken down) but the cost was silent and landed on
+  exactly the resources worth touring: on the panel this was measured against, 8 of 34 form
+  resources offered no targets at all for this reason. The schema is now built against the
+  resource's own page — the component Filament itself would use, and the one the table side
+  already asks for its columns — falling back to the bare schema when it cannot be had.
+
+- **A stop whose target is hidden after it lands goes back to waiting.** `find()` already
+  refuses a match the subject cannot see, and `measure()` did not hold the same rule once a
+  stop had landed: it dropped a target that was *removed* and kept one that was merely
+  *hidden*. But Filament does not remove the tab, the wizard step or the collapsed section
+  the subject just left — it hides it, so the element stays connected while its rectangle
+  collapses to nothing, and the spotlight is redrawn as a padding-sized square in the corner
+  of the screen with the popover still claiming to point at something. A hidden target is now
+  dropped like a removed one and sent back through the render, which waits for it and picks
+  it up again when the subject opens that part of the form. Reachable before this release on
+  any form with tabs or a wizard; reachable much more often now that a stop can name a field
+  in a pane the subject may close.
+
+- **A stop reached without being walked to still presses the control it names.** `advance`
+  names the control a stop lives behind — a wizard's next, a tab — and only
+  `applicationRefusesToAdvance()` ever pressed it, which runs on the way *forward*. The way
+  forward is not the only way in: a tour crossing to another page arrives through the render
+  on the far side, so does one picked back up after a reload, and so does one resumed from
+  the stop the subject parked on. All three sat waiting in front of a closed tab the stop had
+  already said how to open — and, having been told to wait for the subject, waited for a
+  subject who had no idea a tab was what stood in the way. The press now also happens on
+  arrival: once, guarded by the target being absent, falling through to the same waiting
+  state as before when the control reveals nothing.
+
+Together, on that panel, 32 of 34 form resources offer targets where 2 did, and a tour
+written entirely from the picker walks a nested form end to end.
+
 ## 2.5.0
 
 **Strict panels stop throwing, and finished users stop paying.** Both filed by

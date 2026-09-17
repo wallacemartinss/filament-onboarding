@@ -5,6 +5,7 @@ declare(strict_types = 1);
 namespace Wallacemartinss\FilamentOnboarding\Tests\Fixtures;
 
 use Filament\{Panel, PanelProvider};
+use Wallacemartinss\FilamentOnboarding\Tests\Fixtures\Resources\NoteResource;
 
 /**
  * A panel for the surfaces to live on.
@@ -21,6 +22,12 @@ class TestPanelProvider extends PanelProvider
         return $panel
             ->default()
             ->id('test')
-            ->path('test');
+            ->path('test')
+            // Something for the target picker to read. Nothing else on the panel
+            // has a form, and a picker with no form to look at cannot be shown
+            // to read one wrong.
+            ->resources([
+                NoteResource::class,
+            ]);
     }
 }
