@@ -394,6 +394,42 @@ describe('keeping up with a page that moves on its own', () => {
         expect(component.target).toBeNull();
     });
 
+    it('stands the watcher down instead of starting a render on every frame', async () => {
+        const field = withBox(document.createElement('input'));
+        field.id = 'email';
+        document.body.append(field);
+
+        const component = tour();
+
+        component.active = true;
+        component.stepKey = 'a-tour';
+        component.steps = [{ selector: '#email', title: 'Here' }];
+        component.index = 0;
+        component.target = field;
+
+        let renders = 0;
+        const render = component.render.bind(component);
+        component.render = (...args) => (renders++, render(...args));
+
+        component.startWatching();
+
+        // The subject opens another tab. Filament hides what they left; it does
+        // not remove it.
+        withBox(field, null);
+
+        await new Promise((resolve) => setTimeout(resolve, 350));
+
+        component.stopWatching();
+
+        // One render, not one per frame. `render()` spends three seconds looking
+        // for an element that is not coming back on its own, and only then says
+        // it is waiting — so a watcher left running starts the search over sixty
+        // times a second, each with a poller of its own, for as long as the
+        // subject stays away.
+        expect(renders).toBe(1);
+        expect(component.target).toBeNull();
+    });
+
     it('never scrolls the subject from the watcher', () => {
         const field = withBox(document.createElement('input'), { top: -500, left: 0, width: 200, height: 40 });
         field.scrollIntoView = vi.fn();
@@ -454,6 +490,54 @@ describe('keeping up with a page that moves on its own', () => {
         expect(component.renderToken).toBeGreaterThan(before);
         expect(component.pollTimers).toHaveLength(0);
         expect(component.watchFrame).toBeNull();
+    });
+});
+
+describe('reaching a stop that is off to the side', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '';
+
+        // jsdom has no matchMedia, and the runner asks it whether the subject
+        // has asked for less motion before choosing how to scroll.
+        window.matchMedia = () => ({ matches: false });
+    });
+
+    it('scrolls to a column a wide table is holding off the right-hand edge', async () => {
+        // A perfectly ordinary height, and several hundred pixels past the edge
+        // of the window: a table wide enough to scroll sideways, which on a
+        // phone is every table.
+        const column = withBox(document.createElement('th'), {
+            top: 200, left: window.innerWidth + 320, width: 140, height: 40,
+        });
+
+        column.scrollIntoView = vi.fn();
+        document.body.append(column);
+
+        const component = tour();
+
+        await component.scrollIntoView(column);
+
+        // Judged on the vertical alone this column is already in view, so the
+        // tour used to leave the table where it was and draw the spotlight
+        // around something the subject could not see.
+        expect(column.scrollIntoView).toHaveBeenCalledOnce();
+
+        // And it asks for the horizontal axis to move: 'nearest' is no scroll at
+        // all for something already as near as it gets on its own axis.
+        expect(column.scrollIntoView.mock.calls[0][0]).toMatchObject({ inline: 'center' });
+    });
+
+    it('leaves the page alone when the element is already whole on the screen', async () => {
+        const field = withBox(document.createElement('input'), { top: 100, left: 40, width: 200, height: 40 });
+
+        field.scrollIntoView = vi.fn();
+        document.body.append(field);
+
+        const component = tour();
+
+        await component.scrollIntoView(field);
+
+        expect(field.scrollIntoView).not.toHaveBeenCalled();
     });
 });
 

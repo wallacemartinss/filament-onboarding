@@ -607,6 +607,17 @@ export default function onboardingTour() {
             if (!this.target?.isConnected || !this.isOnScreen(this.target)) {
                 this.target = null;
 
+                // Stand the watcher down before handing back. This runs on every
+                // frame, and `render()` does not reach the line that sets
+                // `waiting` until it has finished looking for the element —
+                // three seconds, when the element is not coming back on its own.
+                // Left running, the next frame arrives long before that and
+                // starts the search over, which starts it over again: sixty
+                // renders a second, each with a poller of its own, for as long
+                // as the subject stays on the other tab. `render()` puts the
+                // watcher back the moment it has something to watch.
+                this.stopWatching();
+
                 return this.render();
             }
 
@@ -734,19 +745,40 @@ export default function onboardingTour() {
          */
         scrollIntoView(element) {
             const rect = element.getBoundingClientRect();
-            const isVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
 
-            if (isVisible) {
+            if (this.isInView(rect)) {
                 return Promise.resolve(rect);
             }
 
             element.scrollIntoView({
                 behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
                 block: 'center',
-                inline: 'nearest',
+                // 'nearest' is no scroll at all for something already as near as
+                // it is going to get on its own axis, which is every column of a
+                // table that scrolls sideways. 'center' asks the browser to move
+                // the scrollable ancestor, which is the table, not the page.
+                inline: 'center',
             });
 
             return this.whenStill(element);
+        },
+
+        /**
+         * Whether the subject can see the whole of this rectangle without moving.
+         *
+         * **Both axes.** Asking only about the top and the bottom is the same
+         * mistake as trusting `querySelector`: a table wide enough to scroll
+         * sideways — which on a phone is every table — keeps its far columns at
+         * a perfectly ordinary height, several hundred pixels off the right-hand
+         * edge. Judged on the vertical alone they are already in view, so the
+         * tour never scrolls, and the spotlight is drawn around a column the
+         * subject cannot see.
+         */
+        isInView(rect) {
+            return rect.top >= 0
+                && rect.bottom <= window.innerHeight
+                && rect.left >= 0
+                && rect.right <= window.innerWidth;
         },
 
         /**
