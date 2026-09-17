@@ -223,6 +223,53 @@ export default function onboardingTour() {
         },
 
         /**
+         * Press the control a stop names, when the stop is not on the screen yet.
+         *
+         * `applicationRefusesToAdvance()` does this on the way forward, and the
+         * way forward is not the only way in. A tour crossing to another page
+         * lands through the render on the far side; so does one picked back up
+         * after a reload, and one resumed from a stop the subject parked on. All
+         * three used to arrive in front of a closed tab the stop had already said
+         * how to open, and wait there for the subject to work it out.
+         *
+         * Pressed once per arrival, never in a loop: it is guarded by the target
+         * being absent, and the render that follows starts a fresh token, so a
+         * control that does not reveal anything lands in the waiting state
+         * exactly as before rather than being pressed again.
+         *
+         * @returns {Promise<boolean>} whether the press revealed the stop, and a
+         *                             fresh render has taken over.
+         */
+        async openTheWayIn(step, token) {
+            if (!step.advance || !step.selector) {
+                return false;
+            }
+
+            const control = this.find(step.advance);
+
+            if (!control) {
+                return false;
+            }
+
+            this.press(control);
+
+            if (await this.waitForElement(step.selector, ADVANCE_TIMEOUT) === null) {
+                return false;
+            }
+
+            // Another render may have started while the application was moving —
+            // the subject pressed on, or walked away. That one is the current
+            // truth, and this one has nothing left to say.
+            if (token !== this.renderToken) {
+                return true;
+            }
+
+            this.render();
+
+            return true;
+        },
+
+        /**
          * Ask the application to go where this stop lives, and say whether it
          * refused.
          *
@@ -441,6 +488,16 @@ export default function onboardingTour() {
                     return this.isLast ? this.finish() : this.next();
                 }
 
+                // A stop that names the control it lives behind is asking to be
+                // let in, and `next()` is not the only way in. A tour that
+                // carried the subject here from another page, or one picked back
+                // up after a reload, arrives through the render — and used to sit
+                // waiting in front of a tab it had been told how to open. Press it
+                // once, and look again.
+                if (await this.openTheWayIn(step, token)) {
+                    return;
+                }
+
                 // Nothing to point at *yet*. The copy still reads, centred, and
                 // the DOM is watched: the element may live on a step of a wizard
                 // the subject has not reached, and the tour is content to wait —
@@ -537,8 +594,29 @@ export default function onboardingTour() {
 
             // Gone from the page under us: a Livewire morph, a wizard step left
             // behind. The full render knows how to wait for it to come back.
-            if (!this.target?.isConnected) {
+            //
+            // Hidden counts as gone. `find()` already refuses a match the subject
+            // cannot see, and the same rule has to hold once a stop has landed:
+            // Filament does not remove a tab, a wizard step or a collapsed
+            // section, it hides one — so the element stays connected, its
+            // rectangle collapses to nothing, and the spotlight is drawn as a
+            // padding-sized square in the corner of the screen while `waiting`
+            // never engages. Send it back through the render, which knows how to
+            // wait and how to pick the target up again when the subject opens
+            // that part of the form.
+            if (!this.target?.isConnected || !this.isOnScreen(this.target)) {
                 this.target = null;
+
+                // Stand the watcher down before handing back. This runs on every
+                // frame, and `render()` does not reach the line that sets
+                // `waiting` until it has finished looking for the element —
+                // three seconds, when the element is not coming back on its own.
+                // Left running, the next frame arrives long before that and
+                // starts the search over, which starts it over again: sixty
+                // renders a second, each with a poller of its own, for as long
+                // as the subject stays on the other tab. `render()` puts the
+                // watcher back the moment it has something to watch.
+                this.stopWatching();
 
                 return this.render();
             }
@@ -667,19 +745,40 @@ export default function onboardingTour() {
          */
         scrollIntoView(element) {
             const rect = element.getBoundingClientRect();
-            const isVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
 
-            if (isVisible) {
+            if (this.isInView(rect)) {
                 return Promise.resolve(rect);
             }
 
             element.scrollIntoView({
                 behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
                 block: 'center',
-                inline: 'nearest',
+                // 'nearest' is no scroll at all for something already as near as
+                // it is going to get on its own axis, which is every column of a
+                // table that scrolls sideways. 'center' asks the browser to move
+                // the scrollable ancestor, which is the table, not the page.
+                inline: 'center',
             });
 
             return this.whenStill(element);
+        },
+
+        /**
+         * Whether the subject can see the whole of this rectangle without moving.
+         *
+         * **Both axes.** Asking only about the top and the bottom is the same
+         * mistake as trusting `querySelector`: a table wide enough to scroll
+         * sideways — which on a phone is every table — keeps its far columns at
+         * a perfectly ordinary height, several hundred pixels off the right-hand
+         * edge. Judged on the vertical alone they are already in view, so the
+         * tour never scrolls, and the spotlight is drawn around a column the
+         * subject cannot see.
+         */
+        isInView(rect) {
+            return rect.top >= 0
+                && rect.bottom <= window.innerHeight
+                && rect.left >= 0
+                && rect.right <= window.innerWidth;
         },
 
         /**

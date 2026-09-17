@@ -66,6 +66,12 @@ class CacheTest extends TestCase
         // computed, without ever going back through the cache.
         $this->assertCount(1, Onboarding::flows());
 
+        // And then the request ends. Definitions are memoised for the length of
+        // one, so without this the second call below never reaches the cache at
+        // all — it answers from the copy the first one is still holding, and the
+        // test goes green while testing nothing.
+        Onboarding::forgetMemoized();
+
         // The read. This is the request that used to die.
         $flows = Onboarding::flows();
 

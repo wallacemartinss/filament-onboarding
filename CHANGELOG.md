@@ -6,6 +6,123 @@ Versions follow Filament: **2.x targets Filament v5**, and **1.x is the Filament
 Everything below 1.0.0 is the 2.x history the backport was cut from — the two lines are
 feature-identical, and differ only in their Composer constraints and their Livewire internals.
 
+## 1.2.0
+
+**A tour that could not see half of what it was pointing at.** The 1.x backport of 2.6.0:
+the same changes, on Filament v4, and every one of them applied unchanged — the target
+picker read nothing on a form built out of more than one part; what it did offer missed; a
+stop that landed did not let go; a stop reached any way but forwards never got in; and a
+column a table was holding off the side of the screen was never scrolled to at all. Most
+of this was found and fixed by [@jyrkidn](https://github.com/jyrkidn), while measuring the
+package against a CMS panel whose content resources nest their fields — thank you. The rest
+was filed by [@DamienJolly](https://github.com/DamienJolly) and
+[@PatrickJunod](https://github.com/PatrickJunod), and the definitions cache was sharpened
+by [@felipeArnold](https://github.com/felipeArnold).
+
+### Added
+
+- **A multi-tenant panel can send somebody to its tenant profile**
+  ([#21](https://github.com/wallacemartinss/filament-onboarding/issues/21)). Where a step sends
+  somebody is picked from the panel's own dropdowns, so a destination can only ever be one that
+  exists — which means anything the panel can reach and the picker cannot see is, from the
+  author's side, simply not there. The tenant profile was one of those: it is registered
+  through `->tenantProfile()` and never through `->pages()`, so `getPages()` has never listed
+  it, while "finish setting up your team" is close to the first thing a multi-tenant onboarding
+  wants to say. It lives behind `{tenant}` like the rest of that panel, which is not the reason
+  a page gets left out — pages are left out for wanting a *record*, and `isReachable()` has
+  always known the difference. Reported with the fix already written.
+
+### Fixed
+
+- **A field nested under a state path is found by its name again.** A stop stores a field's
+  *name*; the markup wears its *state path*. Those are the same string on a flat form and not
+  on a nested one — any `Group`, `Section`, `Tab` or wizard step with a state path of its own
+  prefixes what sits under it, so a field still called `title` renders as
+  `form.details.title`. The selector matched the name as the whole path only, so every stop on
+  such a form pointed at nothing. That is not a soft landing: the tour parks, `Next` stays
+  disabled, and the stall is written to `localStorage`, so it comes back stalled on every
+  reload until the subject presses Skip. The name is now matched at the end of the path as
+  well as as the whole of it, with the dot included so `subtitle` cannot answer for `title`.
+  A form that repeats a field under several paths matches under each, which the runner already
+  gets right — it takes the first match the subject can see, and a pane that is not open is
+  `display: none`, so the stop follows the subject to whichever one they open.
+
+- **A form that asks who is rendering it keeps its fields.** `formPage()` built the form
+  against a bare `Schema::make()`, and `Schema::getLivewire()` has a return type — so a form,
+  or one field inside one, that reaches for the component got a `TypeError` rather than a
+  null. The disclaimer held (nothing was taken down) but the cost was silent and landed on
+  exactly the resources worth touring: on the panel this was measured against, 8 of 34 form
+  resources offered no targets at all for this reason. The schema is now built against the
+  resource's own page — the component Filament itself would use, and the one the table side
+  already asks for its columns — falling back to the bare schema when it cannot be had.
+
+- **A stop whose target is hidden after it lands goes back to waiting.** `find()` already
+  refuses a match the subject cannot see, and `measure()` did not hold the same rule once a
+  stop had landed: it dropped a target that was *removed* and kept one that was merely
+  *hidden*. But Filament does not remove the tab, the wizard step or the collapsed section
+  the subject just left — it hides it, so the element stays connected while its rectangle
+  collapses to nothing, and the spotlight is redrawn as a padding-sized square in the corner
+  of the screen with the popover still claiming to point at something. A hidden target is now
+  dropped like a removed one and sent back through the render, which waits for it and picks
+  it up again when the subject opens that part of the form. Reachable before this release on
+  any form with tabs or a wizard; reachable much more often now that a stop can name a field
+  in a pane the subject may close.
+
+- **A stop reached without being walked to still presses the control it names.** `advance`
+  names the control a stop lives behind — a wizard's next, a tab — and only
+  `applicationRefusesToAdvance()` ever pressed it, which runs on the way *forward*. The way
+  forward is not the only way in: a tour crossing to another page arrives through the render
+  on the far side, so does one picked back up after a reload, and so does one resumed from
+  the stop the subject parked on. All three sat waiting in front of a closed tab the stop had
+  already said how to open — and, having been told to wait for the subject, waited for a
+  subject who had no idea a tab was what stood in the way. The press now also happens on
+  arrival: once, guarded by the target being absent, falling through to the same waiting
+  state as before when the control reveals nothing.
+
+- **A stop reaches a column the table is holding off the side of the screen**
+  ([#15](https://github.com/wallacemartinss/filament-onboarding/issues/15)). `scrollIntoView()`
+  decided "already visible" on the vertical alone — top above the fold, bottom above the edge
+  — and a table wide enough to scroll sideways, which on a phone is every table, keeps its far
+  columns at a perfectly ordinary height several hundred pixels past the right of the window.
+  So the tour left the table where it was and drew the spotlight around a column the subject
+  could not see. Both axes are asked about now, and the scroll asks for `inline: 'center'`:
+  `'nearest'` is no movement at all for something already as near as it gets on its own axis,
+  which was exactly the case it was being used for.
+
+- **The watcher stands down while the tour waits.** `measure()` runs once a frame and hands
+  back to `render()` when the target has gone; `render()` does not reach the line that says it
+  is waiting until it has finished looking — three seconds, when the element is not coming back
+  on its own. So the next frame arrived long before that and started the search over, and so
+  did the one after it: sixty renders a second, each with a poller of its own, for as long as
+  the subject stayed on the other tab. This was reachable before by an element being removed,
+  and rare because removal usually comes with a navigation that ends the tour anyway; treating
+  a hidden element as gone, which is right and is what landed above, would have made the common
+  case a tab the subject clicked away from.
+
+- **A worker that outlives the request stops serving yesterday's definitions.** The definitions
+  are memoised for the length of one request, so a panel page does not ask the cache store the
+  same question a dozen times over. On FPM that memo cannot outlive the request that made it.
+  On Octane the manager is the same object on every request a worker serves, and under
+  `queue:work` the same object on every job — so "once per request" quietly became "once per
+  worker", and since the write that clears it fires its model events in whichever process
+  handled it, every *other* worker went on serving a flow the author had switched off. The memo
+  is now tied to the boundaries a long-lived worker does have. What gets dropped there is only
+  the copy that process is carrying, never the copy the processes share — throwing that away on
+  the way into each request would put the whole panel back on the database, for ever. The
+  condition registry had held its records the same way, and had the same hole, since before the
+  flows did; both are dropped together.
+
+Together, on that panel, 32 of 34 form resources offer targets where 2 did, and a tour
+written entirely from the picker walks a nested form end to end.
+
+### Changed
+
+- **The JavaScript toolchain, and the pinned actions, catch up with the 2.x line.** esbuild
+  0.20 → 0.28.2, jsdom 30.1.0, vitest 5.0.1, and `actions/checkout` and `actions/setup-node`
+  two majors forward onto the SHAs main is already running. Dependabot only opens pull
+  requests against the default branch, so none of this reaches 1.x on its own. Build output is
+  unchanged.
+
 ## 1.1.0
 
 **Strict panels stop throwing, and finished users stop paying.** The 1.x backport of 2.5.0:

@@ -39,6 +39,32 @@ class SpotlightTargetsTest extends TestCase
         $this->assertStringContainsString('[id="form.status"]', $selector);
     }
 
+    public function test_a_field_nested_under_a_state_path_is_still_found_by_its_name(): void
+    {
+        $selector = SpotlightTargets::selector('field:title');
+
+        // What a stop stores is the field's name; what the markup wears is its
+        // state path. A form that nests its fields renders something longer —
+        // any Group, Section, Tab or wizard step with a state path of its own
+        // prefixes what is under it, and a field still called `title` comes out
+        // as `form.details.title`. The stop should not have to know that, so
+        // the name is matched at the end of the path as well as as the whole
+        // of it.
+        $this->assertStringContainsString('label[for^="form."][for$=".title"]', $selector);
+        $this->assertStringContainsString('[id^="form."][id$=".title"]', $selector);
+
+        // And the plain path still answers, for the forms that do not nest.
+        $this->assertStringContainsString('.fi-fo-field:has(label[for="form.title"])', $selector);
+    }
+
+    public function test_a_longer_field_name_is_not_caught_by_a_shorter_one(): void
+    {
+        // The dot is part of what is matched, which is what keeps `subtitle`
+        // out of `title`: `form.details.subtitle` does not end in `.title`.
+        $this->assertStringNotContainsString('[for$="title"]', SpotlightTargets::selector('field:title'));
+        $this->assertStringContainsString('[for$=".title"]', SpotlightTargets::selector('field:title'));
+    }
+
     public function test_the_save_button_answers_on_a_create_page_and_on_an_edit_one(): void
     {
         $selector = SpotlightTargets::selector('action:submit');
@@ -161,6 +187,27 @@ class SpotlightTargetsTest extends TestCase
         $advanced = $options[__('filament-onboarding::onboarding.resource.tour.targets.advanced')] ?? [];
 
         $this->assertArrayHasKey('custom', $advanced);
+    }
+
+    public function test_a_form_that_asks_who_renders_it_still_offers_its_fields(): void
+    {
+        $options = SpotlightTargets::options('filament.test.resources.notes.create', 'test');
+
+        $onThisPage = $options[__('filament-onboarding::onboarding.resource.tour.targets.on_this_page')] ?? [];
+
+        // The fixture's form reads `getLivewire()`, the way a plugin field or a
+        // label that leans on the record does. Built against nothing that is a
+        // TypeError, and the whole form loses its fields silently — on exactly
+        // the resources worth touring, the ones assembled from enough parts
+        // that one of them asks. Built against the resource's own page, it
+        // reads.
+        $this->assertArrayHasKey('field:title', $onThisPage);
+
+        // Including the one nested under a state path, offered by its name.
+        $this->assertArrayHasKey('field:subtitle', $onThisPage);
+
+        // And a form that was read has a button worth pointing at.
+        $this->assertArrayHasKey('action:submit', $onThisPage);
     }
 
     public function test_an_unknown_page_still_offers_the_escape_hatch(): void

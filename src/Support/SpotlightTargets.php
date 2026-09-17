@@ -8,6 +8,7 @@ use Filament\Facades\Filament;
 use Filament\Forms\Components\{Builder, Field, Hidden, Repeater};
 use Filament\Panel;
 use Filament\Resources\Resource;
+use Filament\Schemas\Contracts\HasSchemas;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
@@ -85,16 +86,7 @@ final class SpotlightTargets
         [$kind, $value] = array_pad(explode(':', $target, 2), 2, null);
 
         return match ($kind) {
-            // The whole field — its label and its input — and not merely the box
-            // you type in. A spotlight around an input with its label left out in
-            // the cold explains half of what it is pointing at.
-            //
-            // The `:has()` finds the wrapper; the id is the fallback for a field
-            // whose label is hidden, and the runner climbs from there. A Select
-            // has no id at all, which is why the label is what both hang off.
-            'field' => filled($value)
-                ? sprintf('.fi-fo-field:has(label[for="form.%s"]), [id="form.%s"]', $value, $value)
-                : null,
+            'field' => filled($value) ? static::fieldSelector($value) : null,
 
             'action' => match ($value) {
                 // Create pages say `create`, edit pages say `save`. One stop can
@@ -128,6 +120,45 @@ final class SpotlightTargets
     }
 
     /**
+     * A field, whole — its label and its input, and not merely the box you type
+     * in. A spotlight around an input with its label left out in the cold
+     * explains half of what it is pointing at.
+     *
+     * What a stop stores is the field's *name*; what the markup wears is its
+     * *state path*. Those are the same on a flat form — `title` renders
+     * `form.title` — and not on one that nests. Any `Group`, `Section`, `Tab`
+     * or wizard step given a state path of its own prefixes everything under
+     * it, so a field still called `title` comes out as `form.details.title`.
+     * Matching the name as the whole path finds nothing on such a form, and
+     * the stop stalls on a field that is right there on the screen.
+     *
+     * So both are matched: the exact path first, then any path ending in the
+     * name. The dot is part of what is matched, so a longer name cannot be
+     * caught by a shorter one — `form.details.subtitle` does not end in
+     * `.title`.
+     *
+     * A form that repeats the same field under several paths matches under
+     * each, which is correct rather than ambiguous: the runner takes the first
+     * match the subject can actually see, and a pane that is not open is
+     * `display: none`. The stop follows the subject to whichever one they
+     * open.
+     *
+     * The `:has()` finds the wrapper; the id is the fallback for a field whose
+     * label is hidden, and the runner climbs from there. A Select has no id at
+     * all, which is why the label is what both hang off.
+     */
+    private static function fieldSelector(string $name): string
+    {
+        return sprintf(
+            '.fi-fo-field:has(label[for="form.%1$s"]), '
+            . '.fi-fo-field:has(label[for^="form."][for$=".%1$s"]), '
+            . '[id="form.%1$s"], '
+            . '[id^="form."][id$=".%1$s"]',
+            $name,
+        );
+    }
+
+    /**
      * What is on the page this stop lives on — its fields, its buttons, its table.
      *
      * @return array<string, string>
@@ -145,7 +176,7 @@ final class SpotlightTargets
 
         return match ($page['page']) {
             'index'          => static::listPage($resource, $page['panel']),
-            'create', 'edit' => static::formPage($resource),
+            'create', 'edit' => static::formPage($resource, $page['page']),
             default          => [],
         };
     }
@@ -244,10 +275,10 @@ final class SpotlightTargets
      * @param  class-string<Resource>  $resource
      * @return array<string, string>
      */
-    private static function formPage(string $resource): array
+    private static function formPage(string $resource, string $page): array
     {
-        $fields = static::safely(function () use ($resource): array {
-            return static::fields($resource::form(Schema::make())->getComponents());
+        $fields = static::safely(function () use ($resource, $page): array {
+            return static::fields($resource::form(static::schemaFor($resource, $page))->getComponents());
         }) ?? [];
 
         if (filled($fields)) {
@@ -255,6 +286,39 @@ final class SpotlightTargets
         }
 
         return $fields;
+    }
+
+    /**
+     * A form built against the component that will render it.
+     *
+     * A schema with nothing behind it reads most forms and not all of them:
+     * `Schema::getLivewire()` has a return type, so a form — or one field
+     * inside one — that reaches for the component gets a TypeError rather than
+     * a null. That costs the whole form its fields, and it costs them silently,
+     * on exactly the resources that are worth touring: the ones whose form is
+     * built out of enough parts that one of them asks who is rendering it.
+     *
+     * The resource's own page is the component Filament itself would use, and
+     * it is already what the table side asks for its columns. If it cannot be
+     * had, the bare schema is still tried — some forms read fine without one.
+     *
+     * @param  class-string<Resource>  $resource
+     */
+    private static function schemaFor(string $resource, string $page): Schema
+    {
+        $livewire = static::safely(function () use ($resource, $page): ?HasSchemas {
+            $registration = $resource::getPages()[$page] ?? null;
+
+            if ($registration === null) {
+                return null;
+            }
+
+            $component = app($registration->getPage());
+
+            return $component instanceof HasSchemas ? $component : null;
+        });
+
+        return Schema::make($livewire);
     }
 
     /**

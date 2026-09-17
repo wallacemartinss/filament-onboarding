@@ -141,6 +141,36 @@ describe('the tour and the application walking together', () => {
         expect(clicked).toHaveBeenCalledOnce();
     });
 
+    it('presses that control when the tour arrives at the stop without being walked there', async () => {
+        const tab = withBox(document.createElement('button'));
+        tab.id = 'nl-tab';
+        document.body.append(tab);
+
+        // The field the stop points at is behind the tab: it turns up when the
+        // tab is pressed, which is exactly what a closed Filament tab does.
+        const field = withBox(document.createElement('input'), null);
+        field.id = 'behind-the-tab';
+        document.body.append(field);
+
+        tab.addEventListener('click', () => withBox(field));
+
+        const component = tour();
+
+        component.active = true;
+        component.stepKey = 'a-tour';
+        component.steps = [{ selector: '#behind-the-tab', advance: '#nl-tab', title: 'Over there' }];
+        component.index = 0;
+
+        // Not `next()`. This is how a tour arrives after crossing a page, and
+        // how one picked up out of sessionStorage arrives after a reload — and
+        // it used to sit waiting in front of a control it had been told how to
+        // press.
+        await component.render();
+
+        expect(component.waiting).toBe(false);
+        expect(component.target).toBe(field);
+    });
+
     it('does not press anything when the element is already on screen', () => {
         const field = withBox(document.createElement('input'));
         field.id = 'already-here';
@@ -338,6 +368,68 @@ describe('keeping up with a page that moves on its own', () => {
         expect(component.target).toBeNull();
     });
 
+    it('goes back to waiting when the element is hidden rather than removed', () => {
+        const field = withBox(document.createElement('input'));
+        field.id = 'email';
+        document.body.append(field);
+
+        const component = tour();
+
+        component.active = true;
+        component.steps = [{ selector: '#email' }];
+        component.index = 0;
+        component.target = field;
+        component.render = vi.fn();
+
+        // Filament does not remove the tab, the wizard step or the collapsed
+        // section the subject just left — it hides it. The element stays in the
+        // page and stays connected; only its box goes. Trusting `isConnected`
+        // alone, the watcher keeps measuring nothing and paints the spotlight as
+        // a padding-sized square in the corner while `waiting` never engages.
+        withBox(field, null);
+
+        component.measure();
+
+        expect(component.render).toHaveBeenCalledOnce();
+        expect(component.target).toBeNull();
+    });
+
+    it('stands the watcher down instead of starting a render on every frame', async () => {
+        const field = withBox(document.createElement('input'));
+        field.id = 'email';
+        document.body.append(field);
+
+        const component = tour();
+
+        component.active = true;
+        component.stepKey = 'a-tour';
+        component.steps = [{ selector: '#email', title: 'Here' }];
+        component.index = 0;
+        component.target = field;
+
+        let renders = 0;
+        const render = component.render.bind(component);
+        component.render = (...args) => (renders++, render(...args));
+
+        component.startWatching();
+
+        // The subject opens another tab. Filament hides what they left; it does
+        // not remove it.
+        withBox(field, null);
+
+        await new Promise((resolve) => setTimeout(resolve, 350));
+
+        component.stopWatching();
+
+        // One render, not one per frame. `render()` spends three seconds looking
+        // for an element that is not coming back on its own, and only then says
+        // it is waiting — so a watcher left running starts the search over sixty
+        // times a second, each with a poller of its own, for as long as the
+        // subject stays away.
+        expect(renders).toBe(1);
+        expect(component.target).toBeNull();
+    });
+
     it('never scrolls the subject from the watcher', () => {
         const field = withBox(document.createElement('input'), { top: -500, left: 0, width: 200, height: 40 });
         field.scrollIntoView = vi.fn();
@@ -398,6 +490,54 @@ describe('keeping up with a page that moves on its own', () => {
         expect(component.renderToken).toBeGreaterThan(before);
         expect(component.pollTimers).toHaveLength(0);
         expect(component.watchFrame).toBeNull();
+    });
+});
+
+describe('reaching a stop that is off to the side', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '';
+
+        // jsdom has no matchMedia, and the runner asks it whether the subject
+        // has asked for less motion before choosing how to scroll.
+        window.matchMedia = () => ({ matches: false });
+    });
+
+    it('scrolls to a column a wide table is holding off the right-hand edge', async () => {
+        // A perfectly ordinary height, and several hundred pixels past the edge
+        // of the window: a table wide enough to scroll sideways, which on a
+        // phone is every table.
+        const column = withBox(document.createElement('th'), {
+            top: 200, left: window.innerWidth + 320, width: 140, height: 40,
+        });
+
+        column.scrollIntoView = vi.fn();
+        document.body.append(column);
+
+        const component = tour();
+
+        await component.scrollIntoView(column);
+
+        // Judged on the vertical alone this column is already in view, so the
+        // tour used to leave the table where it was and draw the spotlight
+        // around something the subject could not see.
+        expect(column.scrollIntoView).toHaveBeenCalledOnce();
+
+        // And it asks for the horizontal axis to move: 'nearest' is no scroll at
+        // all for something already as near as it gets on its own axis.
+        expect(column.scrollIntoView.mock.calls[0][0]).toMatchObject({ inline: 'center' });
+    });
+
+    it('leaves the page alone when the element is already whole on the screen', async () => {
+        const field = withBox(document.createElement('input'), { top: 100, left: 40, width: 200, height: 40 });
+
+        field.scrollIntoView = vi.fn();
+        document.body.append(field);
+
+        const component = tour();
+
+        await component.scrollIntoView(field);
+
+        expect(field.scrollIntoView).not.toHaveBeenCalled();
     });
 });
 
