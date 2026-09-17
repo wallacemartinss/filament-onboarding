@@ -313,9 +313,10 @@ return [
         ],
 
         'targets' => [
-            'resources'  => 'Recursos',
-            'pages'      => 'Páginas',
-            'page_names' => [
+            'resources'      => 'Recursos',
+            'pages'          => 'Páginas',
+            'tenant_profile' => 'Perfil do tenant',
+            'page_names'     => [
                 'index'  => 'listagem',
                 'create' => 'criar',
             ],

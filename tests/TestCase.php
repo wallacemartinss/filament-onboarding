@@ -19,7 +19,7 @@ use Illuminate\Support\ViewErrorBag;
 use Livewire\LivewireServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 use Wallacemartinss\FilamentOnboarding\FilamentOnboardingServiceProvider;
-use Wallacemartinss\FilamentOnboarding\Tests\Fixtures\TestPanelProvider;
+use Wallacemartinss\FilamentOnboarding\Tests\Fixtures\{TenantPanelProvider, TestPanelProvider};
 
 abstract class TestCase extends Orchestra
 {
@@ -52,6 +52,7 @@ abstract class TestCase extends Orchestra
             FilamentServiceProvider::class,
             FilamentOnboardingServiceProvider::class,
             TestPanelProvider::class,
+            TenantPanelProvider::class,
         ];
     }
 
@@ -115,6 +116,13 @@ abstract class TestCase extends Orchestra
             $table->uuid('id')->primary();
             $table->string('name')->nullable();
             $table->timestamp('verified_at')->nullable();
+            $table->timestamps();
+        });
+
+        // Something for a panel to be multi-tenant about.
+        Schema::create('teams', function (Blueprint $table): void {
+            $table->uuid('id')->primary();
+            $table->string('name')->nullable();
             $table->timestamps();
         });
 
