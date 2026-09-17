@@ -54,6 +54,23 @@ final class PanelTargets
                     ?? Str::headline(class_basename($page));
             }
 
+            // The tenant profile is registered through ->tenantProfile(), never
+            // through ->pages(), so getPages() has never listed it and the
+            // picker has never offered it. A multi-tenant panel has every reason
+            // to send somebody there — "finish setting up your team" is the
+            // first thing onboarding wants to say — and the page lives behind
+            // {tenant} like the rest of that panel, which isReachable() already
+            // allows for. (#21)
+            $profilePage = $panel->hasTenantProfile() ? $panel->getTenantProfilePage() : null;
+
+            if ($profilePage !== null) {
+                $routeName = self::safely(fn (): string => $profilePage::getRouteName($panel));
+
+                if ($routeName !== null && self::isReachable($routeName)) {
+                    $customPages[$routeName] = __('filament-onboarding::onboarding.resource.targets.tenant_profile');
+                }
+            }
+
             $panelLabel = Str::headline($panel->getId());
 
             if (filled($resourcePages)) {
