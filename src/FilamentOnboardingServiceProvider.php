@@ -8,7 +8,7 @@ use Filament\Facades\Filament;
 use Filament\Support\Assets\Asset;
 use Filament\Support\Facades\FilamentAsset;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\{Event, Gate};
 use Livewire\Livewire;
 use Spatie\LaravelPackageTools\{Package, PackageServiceProvider};
 use Wallacemartinss\FilamentOnboarding\Assets\{VersionedAlpineComponent, VersionedCss};
@@ -59,11 +59,57 @@ class FilamentOnboardingServiceProvider extends PackageServiceProvider
         $this->registerConditions();
         $this->registerPolicies();
         $this->registerPublishableAssets();
+        $this->forgetMemosAtEveryBoundary();
 
         Livewire::component('filament-onboarding-launcher', OnboardingLauncher::class);
         Livewire::component('filament-onboarding-checklist-widget', OnboardingChecklistWidget::class);
 
         FilamentAsset::register($this->assets(), package: 'wallacemartinss/filament-onboarding');
+    }
+
+    /**
+     * Tie the in-memory copy of the definitions to the request, on the workers
+     * where the request is not the end of the process.
+     *
+     * The manager and the condition registry are singletons, and both of them
+     * memoise what they read so that one panel request does not ask the cache
+     * store the same question a dozen times. Under PHP-FPM that memo cannot
+     * outlive the request that made it. Under Octane it is the same object on
+     * every request the worker serves, and under `queue:work` it is the same
+     * object on every job — so an author who switches a flow off in the panel
+     * watches a handful of workers go on serving it.
+     *
+     * The write itself is not the problem: it flushes the shared cache, and it
+     * does so from whichever process handled it. The problem is every *other*
+     * process, which never heard. So the memo is dropped at the boundaries a
+     * long-lived worker does have.
+     *
+     * This costs one cache read per request, not one query: what is dropped is
+     * the copy in this process, never what the processes share.
+     */
+    private function forgetMemosAtEveryBoundary(): void
+    {
+        $forget = function (): void {
+            $this->app->make(OnboardingManager::class)->forgetMemoized();
+        };
+
+        $boundaries = [
+            // Octane, when it is installed. Referenced by name so that it is
+            // not a dependency: a panel on FPM never loads these.
+            'Laravel\\Octane\\Events\\RequestReceived',
+            'Laravel\\Octane\\Events\\TaskReceived',
+            'Laravel\\Octane\\Events\\TickReceived',
+
+            // A queue worker is long-lived too, and a job that completes a step
+            // for somebody is exactly the kind of thing that runs in one.
+            \Illuminate\Queue\Events\JobProcessing::class,
+        ];
+
+        foreach ($boundaries as $event) {
+            if (class_exists($event)) {
+                Event::listen($event, $forget);
+            }
+        }
     }
 
     /**
