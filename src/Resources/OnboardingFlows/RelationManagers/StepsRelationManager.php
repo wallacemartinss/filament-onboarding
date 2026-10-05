@@ -374,7 +374,7 @@ class StepsRelationManager extends RelationManager
                             ->label(__('filament-onboarding::onboarding.resource.tour.route'))
                             ->prefixIcon(Heroicon::OutlinedWindow)
                             ->helperText(__('filament-onboarding::onboarding.resource.tour.route_helper'))
-                            ->options(fn (): array => PanelTargets::pageOptions($this->panelId()))
+                            ->options(fn (): array => PanelTargets::pageOptions($this->panelId(), withRecordPages: true))
                             ->searchable()
                             ->native(false)
                             ->live()

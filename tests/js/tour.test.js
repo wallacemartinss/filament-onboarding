@@ -595,6 +595,96 @@ describe('a tour and the welcome screen do not argue over the same page', () => 
     });
 });
 
+describe('a stop that lives on a record page', () => {
+    const KEY = 'filament-onboarding.tour';
+
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        document.documentElement.classList.remove('fio-tour-running');
+        sessionStorage.clear();
+    });
+
+    afterEach(() => sessionStorage.clear());
+
+    function park(path, steps, index = 0) {
+        sessionStorage.setItem(KEY, JSON.stringify({ key: 'a-tour', steps, index, path }));
+    }
+
+    it('resumes on a page that fits the pattern, though the stored path is another', () => {
+        park('/somewhere/else', [{ selector: '#somewhere', pattern: '^/(?:[^/]+/)?[^/]*/?$' }]);
+
+        const component = tour();
+
+        component.resume();
+
+        expect(component.active).toBe(true);
+        expect(component.stepKey).toBe('a-tour');
+    });
+
+    it('is over when the page fits neither the path nor the pattern', () => {
+        park('/somewhere/else', [{ selector: '#somewhere', pattern: '^/users/[^/]+/edit/?$' }]);
+
+        const component = tour();
+
+        component.resume();
+
+        expect(component.active).toBe(false);
+        expect(sessionStorage.getItem(KEY)).toBeNull();
+    });
+
+    it('is over when the stop has no pattern and the path is another', () => {
+        park('/somewhere/else', [{ selector: '#somewhere' }]);
+
+        const component = tour();
+
+        component.resume();
+
+        expect(component.active).toBe(false);
+    });
+
+    it('does not trust a pattern it cannot parse', () => {
+        park('/somewhere/else', [{ selector: '#somewhere', pattern: '(' }]);
+
+        const component = tour();
+
+        component.resume();
+
+        expect(component.active).toBe(false);
+    });
+
+    it('parks on the stop, not the current one, before pressing a control that leaves the page', () => {
+        const steps = [
+            { selector: '#here' },
+            { selector: '#form', pattern: '^/users/[^/]+/edit/?$', advance: '#edit' },
+        ];
+        const component = tour();
+
+        component.stepKey = 'a-tour';
+        component.steps = steps;
+        component.index = 0;
+
+        component.parkBeforeLeaving(component.steps[1]);
+
+        expect(JSON.parse(sessionStorage.getItem(KEY))).toMatchObject({
+            key: 'a-tour',
+            index: 1,
+            path: window.location.pathname,
+        });
+    });
+
+    it('parks nothing when the stop has no pattern, or the page already fits it', () => {
+        const component = tour();
+
+        component.stepKey = 'a-tour';
+        component.steps = [{ selector: '#a' }, { selector: '#b', pattern: '.*' }];
+
+        component.parkBeforeLeaving(component.steps[0]);
+        component.parkBeforeLeaving(component.steps[1]);
+
+        expect(sessionStorage.getItem(KEY)).toBeNull();
+    });
+});
+
 describe('the keyboard', () => {
     beforeEach(() => {
         document.body.innerHTML = '';

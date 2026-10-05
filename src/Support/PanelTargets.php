@@ -27,11 +27,13 @@ final class PanelTargets
      * Every page a step can send the subject to, grouped for a Select.
      *
      * Pages that need a record (edit, view) are left out: onboarding has no
-     * record to point them at.
+     * record to point them at. A tour stop is the exception — it never links
+     * to the page, it only recognises it once the subject has opened a record
+     * — so it asks for them with `$withRecordPages`.
      *
      * @return array<string, array<string, string>>
      */
-    public static function pageOptions(?string $panelId = null): array
+    public static function pageOptions(?string $panelId = null, bool $withRecordPages = false): array
     {
         $groups = [];
 
@@ -40,13 +42,13 @@ final class PanelTargets
             $customPages   = [];
 
             foreach ($panel->getResources() as $resource) {
-                $resourcePages = [...$resourcePages, ...self::resourcePages($resource, $panel)];
+                $resourcePages = [...$resourcePages, ...self::resourcePages($resource, $panel, $withRecordPages)];
             }
 
             foreach ($panel->getPages() as $page) {
                 $routeName = self::safely(fn (): string => $page::getRouteName($panel));
 
-                if ($routeName === null || !self::isReachable($routeName)) {
+                if ($routeName === null || !self::isReachable($routeName, $withRecordPages)) {
                     continue;
                 }
 
@@ -66,7 +68,7 @@ final class PanelTargets
             if ($profilePage !== null) {
                 $routeName = self::safely(fn (): string => $profilePage::getRouteName($panel));
 
-                if ($routeName !== null && self::isReachable($routeName)) {
+                if ($routeName !== null && self::isReachable($routeName, $withRecordPages)) {
                     $customPages[$routeName] = __('filament-onboarding::onboarding.resource.targets.tenant_profile');
                 }
             }
@@ -186,7 +188,7 @@ final class PanelTargets
     /**
      * @return array<string, string>
      */
-    private static function resourcePages(string $resource, Panel $panel): array
+    private static function resourcePages(string $resource, Panel $panel, bool $withRecordPages = false): array
     {
         if (!is_subclass_of($resource, Resource::class)) {
             return [];
@@ -206,7 +208,7 @@ final class PanelTargets
         foreach (array_keys($resource::getPages()) as $page) {
             $routeName = "{$baseName}.{$page}";
 
-            if (!self::isReachable($routeName)) {
+            if (!self::isReachable($routeName, $withRecordPages)) {
                 continue;
             }
 
@@ -222,14 +224,19 @@ final class PanelTargets
 
     /**
      * A route onboarding can actually link to: it exists, and everything it
-     * needs is something the panel already knows (a tenant), not a record.
+     * needs is something the panel already knows (a tenant), not a record —
+     * unless record pages are welcome, when only existing is asked of it.
      */
-    private static function isReachable(string $routeName): bool
+    private static function isReachable(string $routeName, bool $withRecordPages = false): bool
     {
         $route = Route::getRoutes()->getByName($routeName);
 
         if ($route === null) {
             return false;
+        }
+
+        if ($withRecordPages) {
+            return true;
         }
 
         $unknown = array_diff($route->parameterNames(), ['tenant']);

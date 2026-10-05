@@ -7,6 +7,7 @@ namespace Wallacemartinss\FilamentOnboarding\Models;
 use Illuminate\Database\Eloquent\{Builder, Model};
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Relations\{BelongsTo, HasMany};
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Wallacemartinss\FilamentOnboarding\Concerns\HasTranslatableColumns;
 use Wallacemartinss\FilamentOnboarding\Enums\{CompletionMode, MediaSource, MediaType, ModalPosition, StepType};
@@ -143,7 +144,7 @@ class OnboardingStep extends Model
      * The tour handed to the browser, already in the reader's locale.
      *
      * @param  array<string, mixed>  $parameters
-     * @return array<int, array{selector: string|null, title: string|null, body: string|null, placement: string, url: string|null}>
+     * @return array<int, array{selector: string|null, title: string|null, body: string|null, placement: string, url: string|null, pattern: string|null}>
      */
     public function resolveTourSteps(array $parameters = []): array
     {
@@ -158,6 +159,7 @@ class OnboardingStep extends Model
                 'body'      => TranslatableText::resolve($tourStep['body'] ?? null),
                 'placement' => $tourStep['placement'] ?? 'auto',
                 'url'       => $this->resolveTourUrl($tourStep, $parameters),
+                'pattern'   => $this->resolveTourPattern($tourStep),
                 'condition' => $tourStep['condition'] ?? null,
                 'advance'   => $tourStep['advance'] ?? null,
                 'optional'  => (bool) ($tourStep['optional'] ?? false),
@@ -304,6 +306,46 @@ class OnboardingStep extends Model
         }
 
         return Str::contains($url, ['{', '}']) ? null : (string) $url;
+    }
+
+    /**
+     * The paths a route step may land on, as a regular expression the browser
+     * can test (no delimiters).
+     *
+     * A route that needs a record (`users/{record}/edit`) has no single URL to
+     * navigate to, but it still has a shape: the tour uses this to recognise
+     * the page after the subject opens a record, instead of treating it as a
+     * page the tour does not belong to.
+     *
+     * @param  array<string, mixed>  $tourStep
+     */
+    private function resolveTourPattern(array $tourStep): ?string
+    {
+        $routeName = $tourStep['route'] ?? null;
+
+        if (blank($routeName)) {
+            return null;
+        }
+
+        $route = Route::getRoutes()->getByName((string) $routeName);
+
+        if ($route === null) {
+            return null;
+        }
+
+        $pattern = '';
+
+        foreach (explode('/', trim($route->uri(), '/')) as $segment) {
+            if (preg_match('/^\{[^}]+\?\}$/', $segment) === 1) {
+                $pattern .= '(?:/[^/]+)?';
+            } elseif (preg_match('/^\{[^}]+\}$/', $segment) === 1) {
+                $pattern .= '/[^/]+';
+            } else {
+                $pattern .= '/' . preg_quote($segment, '/');
+            }
+        }
+
+        return '^' . $pattern . '/?$';
     }
 
     /**

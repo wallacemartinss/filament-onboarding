@@ -64,4 +64,14 @@ class PanelTargetsTest extends TestCase
         $this->assertNotEmpty(array_filter($groups, fn (string $g): bool => str_starts_with($g, 'Test · ')));
         $this->assertNotEmpty(array_filter($groups, fn (string $g): bool => str_starts_with($g, 'Tenancy · ')));
     }
+
+    public function test_a_page_that_needs_a_record_is_offered_only_to_a_stop_that_asks_for_it(): void
+    {
+        $offered = fn (array $groups): array => array_keys(array_merge(...array_values($groups)));
+
+        // A link has nowhere to go without a record; a tour stop only has to
+        // recognise the page once the subject has opened one.
+        $this->assertNotContains('filament.test.resources.notes.edit', $offered(PanelTargets::pageOptions('test')));
+        $this->assertContains('filament.test.resources.notes.edit', $offered(PanelTargets::pageOptions('test', withRecordPages: true)));
+    }
 }
