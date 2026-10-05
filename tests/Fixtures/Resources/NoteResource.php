@@ -47,6 +47,7 @@ class NoteResource extends Resource
     {
         return [
             'create' => CreateNote::route('/create'),
+            'edit'   => EditNote::route('/{record}/edit'),
         ];
     }
 }

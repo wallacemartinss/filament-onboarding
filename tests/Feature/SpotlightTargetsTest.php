@@ -172,6 +172,43 @@ class SpotlightTargetsTest extends TestCase
         $this->assertSame('#somewhere', $tour[1]['selector']);
     }
 
+    public function test_a_route_that_needs_a_record_gets_a_pattern_instead_of_a_url(): void
+    {
+        Route::get('/admin/users/{record}/edit', fn () => 'edit')->name('test.users.edit');
+        Route::get('/admin/users', fn () => 'index')->name('test.users.index');
+
+        $flow = OnboardingFlow::create([
+            'key'       => 'journey',
+            'title'     => ['en' => 'Get started'],
+            'is_active' => true,
+        ]);
+
+        $step = OnboardingStep::create([
+            'flow_id'         => $flow->id,
+            'key'             => 'tour',
+            'type'            => StepType::Tour,
+            'title'           => ['en' => 'A tour'],
+            'completion_mode' => CompletionMode::Manual,
+            'tour_steps'      => [
+                ['selector' => '#form', 'route' => 'test.users.edit', 'title' => ['en' => 'Edit']],
+                ['selector' => '#table', 'route' => 'test.users.index', 'title' => ['en' => 'List']],
+                ['selector' => '#plain', 'title' => ['en' => 'Plain']],
+            ],
+        ]);
+
+        $tour = $step->resolveTourSteps();
+
+        // No record to point at, so no URL: the shape of the page stands in.
+        $this->assertNull($tour[0]['url']);
+        $this->assertSame('^/admin/users/[^/]+/edit/?$', $tour[0]['pattern']);
+        $this->assertMatchesRegularExpression('#' . $tour[0]['pattern'] . '#', '/admin/users/5/edit');
+        $this->assertDoesNotMatchRegularExpression('#' . $tour[0]['pattern'] . '#', '/admin/users');
+        $this->assertDoesNotMatchRegularExpression('#' . $tour[0]['pattern'] . '#', '/admin/users/5/edit/x');
+
+        $this->assertSame('^/admin/users/?$', $tour[1]['pattern']);
+        $this->assertNull($tour[2]['pattern']);
+    }
+
     public function test_a_form_that_cannot_be_read_costs_its_fields_and_nothing_else(): void
     {
         // This is the disclaimer, as a test. A form is built to be *rendered*, and

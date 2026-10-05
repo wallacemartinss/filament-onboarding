@@ -107,7 +107,7 @@ export default function onboardingTour() {
                     return this.clearStorage();
                 }
 
-                if (path && path !== window.location.pathname) {
+                if (path && !this.pathMatches(path, steps[index ?? 0])) {
                     return this.clearStorage();
                 }
 
@@ -121,6 +121,55 @@ export default function onboardingTour() {
             } catch {
                 this.clearStorage();
             }
+        },
+
+        /**
+         * Is this the page the parked tour belongs on?
+         *
+         * The stored path is the answer when it is exact. A stop that lives on a
+         * record's page (`/users/5/edit`) has no single path to store, so it
+         * carries the shape of one instead — `pattern`, the route's URI as a
+         * regular expression — and any page of that shape will do.
+         */
+        pathMatches(path, step) {
+            if (path === window.location.pathname) {
+                return true;
+            }
+
+            if (!step?.pattern) {
+                return false;
+            }
+
+            try {
+                return new RegExp(step.pattern).test(window.location.pathname);
+            } catch {
+                return false;
+            }
+        },
+
+        /**
+         * Park the tour on a stop that lives on another page, ahead of pressing
+         * the control that goes there.
+         *
+         * Pressing it may unload this page before the tour has said anything,
+         * and what is stored is what the next page resumes from. Only stops with
+         * a `pattern` need this: without one there is no way to recognise the
+         * page they live on.
+         */
+        parkBeforeLeaving(step) {
+            if (!step?.pattern || this.pathMatches(null, step)) {
+                return;
+            }
+
+            sessionStorage.setItem(
+                STORAGE_KEY,
+                JSON.stringify({
+                    key: this.stepKey,
+                    steps: this.steps,
+                    index: this.steps.indexOf(step),
+                    path: window.location.pathname,
+                }),
+            );
         },
 
         start(key, steps) {
@@ -251,6 +300,7 @@ export default function onboardingTour() {
                 return false;
             }
 
+            this.parkBeforeLeaving(step);
             this.press(control);
 
             if (await this.waitForElement(step.selector, ADVANCE_TIMEOUT) === null) {
@@ -292,9 +342,17 @@ export default function onboardingTour() {
                 return false;
             }
 
+            this.parkBeforeLeaving(step);
             this.press(control);
 
-            return await this.waitForElement(step.selector, ADVANCE_TIMEOUT) === null;
+            const refused = await this.waitForElement(step.selector, ADVANCE_TIMEOUT) === null;
+
+            // Still here: the press went nowhere, so the tour is where it was.
+            if (refused) {
+                this.persist();
+            }
+
+            return refused;
         },
 
         /**
