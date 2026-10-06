@@ -108,7 +108,7 @@ $panel->plugins([
         ->launcher()                        // floating checklist, on every page
         ->tours()                           // guided tours
         ->progressPage()                    // optional page laying the journey out
-        ->launcherPosition('bottom-right')  // bottom-left, top-right, top-left
+        ->launcherPosition('bottom-right')  // bottom-left, top-right, top-left, topbar
         ->modalPosition('center'),          // where images and videos open
 ]);
 ```
@@ -476,9 +476,13 @@ It is never a dead end: the progress page stays in the menu, and it offers onboa
 
 ### The floating checklist
 
-`->launcher()` puts a progress button on every page of the panel — pages, resources, widgets alike, since it hangs off the body. With more than one journey, the panel shows tabs, so a finished journey never sits in front of an unfinished one.
+`->launcher()` puts a progress button on every page of the panel — pages, resources, widgets alike, since it hangs off the body. With more than one journey, the panel shows tabs — drag or swipe the row when there are enough to scroll — so a finished journey never sits in front of an unfinished one.
 
 ![The checklist open over the dashboard, with a tab per journey](docs/images/01-user/02_get_started_progress.png)
+
+Four corners, or `->launcherPosition('topbar')` to sit it among the panel's own topbar icons instead of floating over the page — sized to match them, dropping its panel down like any other topbar menu.
+
+A finished journey stays reachable, not just visible: its card offers **Restart** right there in the checklist, not only on the Progress page. Walking a journey again clears what was ticked, same as `restartFlow()`/the Progress page's own restart — this is just closer at hand for a subject who wants a refresher weeks later.
 
 ### The dashboard widget
 

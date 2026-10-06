@@ -12,6 +12,8 @@ return [
         'close'                 => 'Fechar',
         'dismiss'               => 'Ocultar',
         'done'                  => 'Concluir',
+        'restart'               => 'Recomeçar',
+        'restart_confirm'       => 'Isso reinicia cada etapa e tour que você já viu — recomeçar?',
         'completed_title'       => 'Tudo pronto',
         'completed_description' => 'Você concluiu todas as etapas. Boas-vindas.',
         'footer_note'           => 'Você pode continuar depois.',

@@ -12,6 +12,8 @@ return [
         'close'                 => 'Close',
         'dismiss'               => 'Hide',
         'done'                  => 'Done',
+        'restart'               => 'Restart',
+        'restart_confirm'       => "This resets every tick and tour you've seen — restart it?",
         'completed_title'       => 'You are all set',
         'completed_description' => 'Every step is done. Welcome aboard.',
         'footer_note'           => 'You can pick this up later.',

@@ -11,7 +11,11 @@ const isDev = process.argv.includes('--dev');
 
 esbuild
     .build({
-        entryPoints: ['./resources/js/onboarding-tour.js', './resources/js/onboarding-media.js'],
+        entryPoints: [
+            './resources/js/onboarding-tour.js',
+            './resources/js/onboarding-media.js',
+            './resources/js/onboarding-tabs.js',
+        ],
         outdir: './resources/dist/js',
         bundle: true,
         minify: !isDev,

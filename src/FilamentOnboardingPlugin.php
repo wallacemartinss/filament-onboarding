@@ -105,8 +105,14 @@ class FilamentOnboardingPlugin implements Plugin
 
         // The launcher carries the tour runner, so it is rendered whenever either
         // is on — pages, resources and widgets alike, since it hangs off the body.
+        // A 'topbar' position is the one exception: it has to sit among the
+        // panel's own topbar icons (TOPBAR_END), not float off BODY_END — a
+        // fixed-position element appended at the end of the body has no idea
+        // where the topbar's icon cluster actually is, so it cannot be *in* it,
+        // only drawn on top of it. Every other position is still a
+        // viewport-corner float, and BODY_END is exactly where that belongs.
         $panel->renderHook(
-            PanelsRenderHook::BODY_END,
+            $this->launcherPosition === 'topbar' ? PanelsRenderHook::TOPBAR_END : PanelsRenderHook::BODY_END,
             fn (): string => $this->renderLauncher(),
         );
     }
@@ -174,7 +180,9 @@ class FilamentOnboardingPlugin implements Plugin
     }
 
     /**
-     * Where the floating button sits: bottom-right, bottom-left, top-right or top-left.
+     * Where the launcher sits: bottom-right, bottom-left, top-right, top-left —
+     * a floating corner button on every page — or 'topbar', which drops it
+     * in among the panel's own topbar icons instead, sized to match them.
      */
     public function launcherPosition(string $position): static
     {

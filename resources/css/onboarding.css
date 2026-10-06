@@ -81,6 +81,55 @@
     align-items: flex-start;
 }
 
+/*
+ * Every other variant floats over the whole viewport — appended at BODY_END
+ * and pulled to a corner with `position: fixed`, which has no idea where the
+ * panel's own topbar is and does not need to: it is drawn on top of
+ * everything regardless. 'topbar' is rendered *inside* the topbar instead
+ * (TOPBAR_END, see FilamentOnboardingPlugin::register()), so it has to behave
+ * like one of the icons already there — in normal flex flow, not floating —
+ * with its dropdown panel positioned off *that*, not off the viewport corner.
+ */
+.fio-launcher--topbar {
+    position: relative;
+    inset: auto;
+    z-index: 30;
+    display: inline-flex;
+    flex-direction: row;
+    gap: 0;
+    align-items: center;
+}
+
+.fio-launcher--topbar .fio-launcher-button {
+    inline-size: 1.75rem;
+    block-size: 1.75rem;
+}
+
+.fio-launcher--topbar .fio-launcher-button svg:not(.fio-ring) {
+    inline-size: 0.875rem;
+    block-size: 0.875rem;
+}
+
+.fio-launcher--topbar .fio-launcher-count {
+    font-size: 0.5rem;
+}
+
+.fio-launcher--topbar .fio-launcher-badge {
+    min-inline-size: 0.75rem;
+    block-size: 0.75rem;
+    font-size: 0.5rem;
+    padding-inline: 0.125rem;
+}
+
+/* Escapes the inline flow entirely once open, so it overlays the page as a
+   dropdown instead of pushing the rest of the topbar's icons aside. */
+.fio-launcher--topbar .fio-panel {
+    position: absolute;
+    inset-block-start: calc(100% + 0.625rem);
+    inset-inline-end: 0;
+    z-index: 40;
+}
+
 .fio-launcher-button {
     position: relative;
     display: grid;
@@ -256,10 +305,19 @@
     gap: 0.25rem;
     overflow-x: auto;
     scrollbar-width: none;
+    cursor: grab;
 }
 
 .fio-tabs::-webkit-scrollbar {
     display: none;
+}
+
+/* Set by onboarding-tabs.js (resources/js) for as long as an actual drag —
+   not a plain tab click — is in progress; see that file for why the two have
+   to be told apart at all. */
+.fio-tabs.fio-tabs--dragging {
+    cursor: grabbing;
+    user-select: none;
 }
 
 .fio-tab {
