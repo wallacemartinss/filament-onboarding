@@ -272,4 +272,17 @@ class SpotlightTargetsTest extends TestCase
         // And the request is left as it was found.
         $this->assertNull(\Filament\Facades\Filament::getTenant());
     }
+
+    public function test_a_field_inside_a_repeater_is_not_mistaken_for_the_repeater(): void
+    {
+        $selector = SpotlightTargets::selector('field:instructions@mountedActionSchema0');
+
+        // A repeater is a field holding fields, and `:has()` answers for every
+        // ancestor: the repeater around a row's field would match first and the
+        // whole table be spotlit. Only the field whose label is its own answers.
+        $this->assertStringContainsString(
+            '.fi-fo-field:has(label[for^="mountedActionSchema0."][for$=".instructions"]):not(:has(.fi-fo-field label[for^="mountedActionSchema0."][for$=".instructions"]))',
+            $selector,
+        );
+    }
 }

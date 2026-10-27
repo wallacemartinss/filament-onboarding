@@ -5,6 +5,14 @@ All notable changes to `filament-onboarding` are documented here.
 Versions follow Filament: **2.x targets Filament v5**, and 1.x is reserved for a Filament v4
 backport. That is why the first release is 2.0.0 — there is no 1.0.0 to upgrade from.
 
+## Unreleased
+
+### Fixed
+
+- **A field inside a repeater spotlit the whole repeater.** A repeater is a field holding
+  fields, and the selector's `:has(label…)` answered for every ancestor, so the repeater around
+  a row's field matched first. Only the field whose label is its own answers now.
+
 ## 2.7.0
 
 **The settings pages were invisible to the tour picker.** It read the fields of a resource's

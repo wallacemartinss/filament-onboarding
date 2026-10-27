@@ -168,11 +168,20 @@ final class SpotlightTargets
      */
     private static function fieldSelector(string $name, string $schema = self::FORM): string
     {
+        $exact  = sprintf('label[for="%2$s.%1$s"]', $name, $schema);
+        $nested = sprintf('label[for^="%2$s."][for$=".%1$s"]', $name, $schema);
+
+        // `:has()` answers for every ancestor, and a repeater is a field holding
+        // fields: without the `:not()`, the repeater around a row's field matches
+        // first and the whole table is spotlit. The field meant is the one whose
+        // label is its own, not one of a field inside it.
         return sprintf(
-            '.fi-fo-field:has(label[for="%2$s.%1$s"]), '
-            . '.fi-fo-field:has(label[for^="%2$s."][for$=".%1$s"]), '
-            . '[id="%2$s.%1$s"], '
-            . '[id^="%2$s."][id$=".%1$s"]',
+            '.fi-fo-field:has(%1$s):not(:has(.fi-fo-field %1$s)), '
+            . '.fi-fo-field:has(%2$s):not(:has(.fi-fo-field %2$s)), '
+            . '[id="%4$s.%3$s"], '
+            . '[id^="%4$s."][id$=".%3$s"]',
+            $exact,
+            $nested,
             $name,
             $schema,
         );
