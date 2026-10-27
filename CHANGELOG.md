@@ -5,7 +5,11 @@ All notable changes to `filament-onboarding` are documented here.
 Versions follow Filament: **2.x targets Filament v5**, and 1.x is reserved for a Filament v4
 backport. That is why the first release is 2.0.0 — there is no 1.0.0 to upgrade from.
 
-## Unreleased
+## 2.7.1
+
+**A tour in a real product, walked end to end.** Four things got in the way: a field in a
+repeater lit up the whole repeater, a field made of several inputs was not found at all, and the
+launcher sat on what the tour, or a modal, was showing.
 
 ### Fixed
 
@@ -15,6 +19,10 @@ backport. That is why the first release is 2.0.0 — there is no 1.0.0 to upgrad
 - **Toggle buttons, a radio, a slider were never found.** Made of several inputs, they have
   no `<label for>`; their caption carries the field's id plus `-label`, which is now matched
   too.
+- **The checklist stayed open over a tour started from it.** Starting a tour from the
+  launcher's panel now closes the panel.
+- **The launcher button sat on a modal's footer buttons.** In the bottom corner it covered a
+  slide-over's Save. It now steps aside while a Filament modal is open, and while a tour runs.
 
 ## 2.7.0
 
