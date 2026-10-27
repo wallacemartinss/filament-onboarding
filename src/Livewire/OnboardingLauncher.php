@@ -18,7 +18,9 @@ use Wallacemartinss\FilamentOnboarding\States\FlowState;
  */
 class OnboardingLauncher extends Component
 {
-    use InteractsWithOnboarding;
+    use InteractsWithOnboarding {
+        startTour as protected startTourHere;
+    }
 
     public bool $isOpen = false;
 
@@ -86,6 +88,17 @@ class OnboardingLauncher extends Component
     }
 
     #[On('onboarding-open')]
+    /**
+     * A tour started from the checklist closes it: the panel would otherwise
+     * sit over the very screen the tour is showing.
+     */
+    public function startTour(string $stepKey, ?string $flowKey = null): void
+    {
+        $this->isOpen = false;
+
+        $this->startTourHere($stepKey, $flowKey);
+    }
+
     public function open(): void
     {
         $this->isOpen = true;

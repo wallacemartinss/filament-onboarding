@@ -57,6 +57,13 @@
     align-items: flex-end;
 }
 
+/* Out of the way while a tour runs (it would cover what the tour shows) and
+   while a Filament modal is open (it would sit on the modal's footer buttons). */
+.fio:has(.fio-tour-spotlight) .fio-launcher,
+body:has(.fi-modal-open) .fio-launcher {
+    display: none;
+}
+
 .fio-launcher--bottom-right {
     inset-block-end: 1.5rem;
     inset-inline-end: 1.5rem;
