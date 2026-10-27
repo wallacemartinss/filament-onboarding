@@ -5,7 +5,7 @@ All notable changes to `filament-onboarding` are documented here.
 Versions follow Filament: **2.x targets Filament v5**, and 1.x is reserved for a Filament v4
 backport. That is why the first release is 2.0.0 — there is no 1.0.0 to upgrade from.
 
-## Unreleased
+## 2.7.0
 
 **The settings pages were invisible to the tour picker.** It read the fields of a resource's
 create and edit pages and nothing else, while most of a product's first steps happen on a
