@@ -5,6 +5,31 @@ All notable changes to `filament-onboarding` are documented here.
 Versions follow Filament: **2.x targets Filament v5**, and 1.x is reserved for a Filament v4
 backport. That is why the first release is 2.0.0 — there is no 1.0.0 to upgrade from.
 
+## Unreleased
+
+**The settings pages were invisible to the tour picker.** It read the fields of a resource's
+create and edit pages and nothing else, while most of a product's first steps happen on a
+settings page — a custom page, often holding more than one form — or on a list that creates in
+a modal. And on a multi-tenant panel, journeys written in an admin panel had no tenant to build
+those pages with.
+
+### Added
+
+- **A custom page offers its fields.** Every form the page defines is read (`form`,
+  `applicationForm`…), with the save button. A field outside `form` is stored with its form's
+  name — `field:client_id@applicationForm` — and found under it; a stored `field:status` is
+  still `form`, so nothing written before changes.
+- **A list that creates in a modal offers its "New" button and the modal's fields**
+  (`action:create`, `field:name@mountedActionSchema0`).
+- **`->targetsTenant()`** — the tenant a tenant panel is read as, when its pages are read from
+  another panel. A form that loads the tenant's data while it is built no longer loses its
+  fields there.
+
+### Fixed
+
+- A page is read with its own panel as the current one, so a form that asks which panel it is
+  on is answered with the right one.
+
 ## 2.6.0
 
 **A tour that could not see half of what it was pointing at.** The target picker read

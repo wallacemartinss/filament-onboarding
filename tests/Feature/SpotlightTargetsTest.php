@@ -219,4 +219,57 @@ class SpotlightTargetsTest extends TestCase
             $options,
         );
     }
+
+    public function test_a_custom_page_offers_the_fields_of_each_of_its_forms(): void
+    {
+        $options    = SpotlightTargets::options('filament.test.pages.store-settings', 'test');
+        $onThisPage = $options[__('filament-onboarding::onboarding.resource.tour.targets.on_this_page')] ?? [];
+
+        // A settings screen is a page, not a resource, and it is where most of a
+        // product's first steps happen. Its main form is the `form` schema, as on
+        // any resource page; a second form says which one it is.
+        $this->assertSame('Store name', $onThisPage['field:store_name'] ?? null);
+        $this->assertSame('Client ID', $onThisPage['field:client_id@connectionForm'] ?? null);
+        $this->assertArrayHasKey('action:submit', $onThisPage);
+    }
+
+    public function test_a_field_of_another_schema_is_found_under_that_schema(): void
+    {
+        $selector = SpotlightTargets::selector('field:client_id@connectionForm');
+
+        // The schema's name is the first part of every id under it.
+        $this->assertStringContainsString('.fi-fo-field:has(label[for="connectionForm.client_id"])', $selector);
+        $this->assertStringNotContainsString('form.client_id"', $selector);
+
+        // And a stop stored before schemas were named is still the main form.
+        $this->assertStringContainsString('label[for="form.status"]', SpotlightTargets::selector('field:status'));
+    }
+
+    public function test_a_list_page_that_creates_in_a_modal_offers_the_button_and_its_fields(): void
+    {
+        $options    = SpotlightTargets::options('filament.test.resources.tags.index', 'test');
+        $onThisPage = $options[__('filament-onboarding::onboarding.resource.tour.targets.on_this_page')] ?? [];
+
+        // No create page to link to: the "New" button is an action, and the form
+        // it opens is rendered in that action's modal.
+        $this->assertArrayHasKey('action:create', $onThisPage);
+        $this->assertSame('Label', $onThisPage['field:label@mountedActionSchema0'] ?? null);
+
+        $this->assertSame('[wire\\:click="mountAction(\'create\')"]', SpotlightTargets::selector('action:create'));
+        $this->assertStringContainsString('label[for="mountedActionSchema0.label"]', SpotlightTargets::selector('field:label@mountedActionSchema0'));
+    }
+
+    public function test_a_tenant_panel_is_read_as_the_tenant_it_names(): void
+    {
+        // Journeys are written in another panel, with no tenant. A form that
+        // reads the tenant while it is built would lose its fields there; the
+        // panel names a tenant to be read as instead.
+        $options    = SpotlightTargets::options('filament.tenancy.pages.team-settings', 'tenancy');
+        $onThisPage = $options[__('filament-onboarding::onboarding.resource.tour.targets.on_this_page')] ?? [];
+
+        $this->assertSame('Invoice prefix for Acme', $onThisPage['field:invoice_prefix'] ?? null);
+
+        // And the request is left as it was found.
+        $this->assertNull(\Filament\Facades\Filament::getTenant());
+    }
 }

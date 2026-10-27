@@ -5,7 +5,8 @@ declare(strict_types = 1);
 namespace Wallacemartinss\FilamentOnboarding\Tests\Fixtures;
 
 use Filament\{Panel, PanelProvider};
-use Wallacemartinss\FilamentOnboarding\Tests\Fixtures\Resources\NoteResource;
+use Wallacemartinss\FilamentOnboarding\Tests\Fixtures\Pages\StoreSettings;
+use Wallacemartinss\FilamentOnboarding\Tests\Fixtures\Resources\{NoteResource, TagResource};
 
 /**
  * A panel for the surfaces to live on.
@@ -28,6 +29,10 @@ class TestPanelProvider extends PanelProvider
             // to read one wrong.
             ->resources([
                 NoteResource::class,
+                TagResource::class,
+            ])
+            ->pages([
+                StoreSettings::class,
             ]);
     }
 }

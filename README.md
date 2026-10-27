@@ -261,6 +261,24 @@ Nobody types a URL. When a step or a tour stop needs a destination, the dropdown
 
 What gets stored is the **route name**, not the URL, so renaming a resource slug does not break a journey, and `{tenant}` is filled in at render time.
 
+### What a tour stop can point at
+
+Once a stop has a page, its target is picked from what is on that page:
+
+- **A resource's create or edit page** — its fields, and the save button.
+- **A list page** — the table, the search, each column, and the "New" button. When the list creates in a modal (`ManageRecords`), the button is the action and the modal's fields are offered too.
+- **A custom page** — the fields of every form it defines (`form`, `applicationForm`…), and the save button. A field of a form other than `form` is stored with the form's name (`field:client_id@applicationForm`), since that name is the first part of every id under it.
+
+### A tenant panel, read from another panel
+
+Journeys are usually written in an admin panel, which has no tenant. A page of a tenant panel whose form reads the tenant's data while it is built — a settings page that loads the current team's row — cannot be built without one, and would offer no fields. Name a tenant for the picker to read that panel as; it is only read, never written to:
+
+```php
+// On the tenant panel
+FilamentOnboardingPlugin::make()
+    ->targetsTenant(fn (): ?Team => Team::query()->oldest()->first()),
+```
+
 ---
 
 ## Tours

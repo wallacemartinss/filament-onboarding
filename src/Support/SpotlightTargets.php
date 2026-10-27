@@ -6,12 +6,16 @@ namespace Wallacemartinss\FilamentOnboarding\Support;
 
 use Filament\Facades\Filament;
 use Filament\Forms\Components\{Builder, Field, Hidden, Repeater};
+use Filament\Pages\Page;
 use Filament\Panel;
+use Filament\Resources\Pages\ManageRecords;
 use Filament\Resources\Resource;
 use Filament\Schemas\Contracts\HasSchemas;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use Wallacemartinss\FilamentOnboarding\FilamentOnboardingPlugin;
 
 /**
  * What a tour stop can point at, offered as a list rather than asked for as CSS.
@@ -45,6 +49,18 @@ use Illuminate\Support\Str;
  */
 final class SpotlightTargets
 {
+    /**
+     * The schema a page's form is cached under, and so the first part of the
+     * id of every field in it.
+     */
+    private const FORM = 'form';
+
+    /**
+     * Where the form of the first action a page mounts is rendered: the modal
+     * of a "New" button on a list page that creates without leaving it.
+     */
+    private const FIRST_ACTION_MODAL = 'mountedActionSchema0';
+
     /**
      * Everything this stop could point at, grouped for a Select.
      *
@@ -86,12 +102,15 @@ final class SpotlightTargets
         [$kind, $value] = array_pad(explode(':', $target, 2), 2, null);
 
         return match ($kind) {
-            'field' => filled($value) ? static::fieldSelector($value) : null,
+            'field' => filled($value) ? static::fieldSelector(...static::fieldAndSchema($value)) : null,
 
             'action' => match ($value) {
                 // Create pages say `create`, edit pages say `save`. One stop can
                 // ride both, and only one of them is ever on the page.
                 'submit' => '[wire\:target="create"], [wire\:target="save"]',
+                // The "New" button of a list page that creates in a modal
+                // (ManageRecords): an action, not a link to a create page.
+                'create' => '[wire\:click="mountAction(\'create\')"]',
                 default  => null,
             },
 
@@ -147,15 +166,33 @@ final class SpotlightTargets
      * label is hidden, and the runner climbs from there. A Select has no id at
      * all, which is why the label is what both hang off.
      */
-    private static function fieldSelector(string $name): string
+    private static function fieldSelector(string $name, string $schema = self::FORM): string
     {
         return sprintf(
-            '.fi-fo-field:has(label[for="form.%1$s"]), '
-            . '.fi-fo-field:has(label[for^="form."][for$=".%1$s"]), '
-            . '[id="form.%1$s"], '
-            . '[id^="form."][id$=".%1$s"]',
+            '.fi-fo-field:has(label[for="%2$s.%1$s"]), '
+            . '.fi-fo-field:has(label[for^="%2$s."][for$=".%1$s"]), '
+            . '[id="%2$s.%1$s"], '
+            . '[id^="%2$s."][id$=".%1$s"]',
             $name,
+            $schema,
         );
+    }
+
+    /**
+     * A field's name and the schema it lives in. A stored `field:status` is
+     * in the page's `form`, as it has always been; a field of any other schema
+     * says which — `field:client_id@applicationForm` on a page with several
+     * forms, `field:name@mountedActionSchema0` in the modal of an action —
+     * because the schema's name is the first part of every id under it.
+     *
+     * @return array{0: string, 1: string}
+     */
+    private static function fieldAndSchema(string $value): array
+    {
+        $name   = Str::beforeLast($value, '@');
+        $schema = Str::contains($value, '@') ? Str::afterLast($value, '@') : self::FORM;
+
+        return [$name, filled($schema) ? $schema : self::FORM];
     }
 
     /**
@@ -167,18 +204,167 @@ final class SpotlightTargets
     {
         $page = static::resolvePage($routeName, $panelId);
 
-        if ($page === null) {
+        if ($page !== null) {
+            /** @var class-string<Resource> $resource */
+            $resource = $page['resource'];
+
+            return static::inPanel($page['panel'], fn (): array => match ($page['page']) {
+                'index'          => static::listPage($resource, $page['panel']),
+                'create', 'edit' => static::formPage($resource, $page['page']),
+                default          => [],
+            });
+        }
+
+        $customPage = static::resolveCustomPage($routeName, $panelId);
+
+        if ($customPage !== null) {
+            return static::inPanel($customPage['panel'], fn (): array => static::customPage($customPage['page']));
+        }
+
+        return [];
+    }
+
+    /**
+     * Reads a page the way its own panel would build it. Journeys are usually
+     * written in another panel (an admin one), and a form that asks which panel
+     * it is on — for a URL, a tenant-aware option, a guard — would otherwise be
+     * answered with the wrong one, and lose its fields.
+     *
+     * @template T
+     *
+     * @param  \Closure(): T  $callback
+     * @return T
+     */
+    private static function inPanel(Panel $panel, \Closure $callback): mixed
+    {
+        $current = static::safely(fn (): ?Panel => Filament::getCurrentPanel());
+        $tenant  = Filament::getTenant();
+
+        Filament::setCurrentPanel($panel);
+
+        // A tenant panel read from outside it has no tenant, and a form that
+        // reads the tenant's data while it is built cannot be built without one.
+        // The panel may name one to be read as (->targetsTenant()).
+        if ($tenant === null && $panel->hasTenancy()) {
+            $sample = static::safely(function () use ($panel): ?Model {
+                $plugin = $panel->getPlugin(FilamentOnboardingPlugin::make()->getId());
+
+                return $plugin instanceof FilamentOnboardingPlugin ? $plugin->resolveTargetsTenant() : null;
+            });
+
+            if ($sample !== null) {
+                Filament::setTenant($sample, isQuiet: true);
+            }
+        }
+
+        try {
+            return $callback();
+        } finally {
+            Filament::setCurrentPanel($current);
+            Filament::setTenant($tenant, isQuiet: true);
+        }
+    }
+
+    /**
+     * The fields of a custom page — a settings screen, a profile — by the
+     * labels they wear. A page may hold several forms, each a method that takes
+     * a Schema and gives one back (`form`, `applicationForm`…); each is built
+     * the way the page itself builds it, and its fields are named with the
+     * schema they live in.
+     *
+     * Only the methods the application wrote are asked: Filament's own pages
+     * declare schemas of their own (the header, the content that embeds the
+     * forms), and those carry no field that the forms do not.
+     *
+     * @param  class-string<Page>  $page
+     * @return array<string, string>
+     */
+    private static function customPage(string $page): array
+    {
+        $livewire = static::safely(fn (): mixed => app($page));
+
+        if (!$livewire instanceof HasSchemas) {
             return [];
         }
 
-        /** @var class-string<Resource> $resource */
-        $resource = $page['resource'];
+        $options = [];
 
-        return match ($page['page']) {
-            'index'          => static::listPage($resource, $page['panel']),
-            'create', 'edit' => static::formPage($resource, $page['page']),
-            default          => [],
-        };
+        foreach (static::schemaMethods($page) as $schema) {
+            $fields = static::safely(fn (): array => static::fields(
+                $livewire->getSchema($schema)?->getComponents() ?? [],
+            )) ?? [];
+
+            foreach ($fields as $target => $label) {
+                $options[$schema === self::FORM ? $target : "{$target}@{$schema}"] = $label;
+            }
+        }
+
+        if (filled($options)) {
+            $options['action:submit'] = __('filament-onboarding::onboarding.resource.tour.targets.submit');
+        }
+
+        return $options;
+    }
+
+    /**
+     * The schemas a page's own class defines: public methods that take a Schema
+     * and give one back, written outside Filament.
+     *
+     * @param  class-string<Page>  $page
+     * @return list<string>
+     */
+    private static function schemaMethods(string $page): array
+    {
+        $names = [];
+
+        foreach ((new \ReflectionClass($page))->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
+            if ($method->isStatic() || $method->getNumberOfParameters() !== 1 || $method->getName() === 'content') {
+                continue;
+            }
+
+            if (str_starts_with($method->getDeclaringClass()->getName(), 'Filament\\')) {
+                continue;
+            }
+
+            $parameter = $method->getParameters()[0]->getType();
+            $return    = $method->getReturnType();
+
+            if (!$parameter instanceof \ReflectionNamedType || !$return instanceof \ReflectionNamedType) {
+                continue;
+            }
+
+            if ($parameter->getName() === Schema::class && $return->getName() === Schema::class) {
+                $names[] = $method->getName();
+            }
+        }
+
+        return $names;
+    }
+
+    /**
+     * A custom page of a panel, by its route name.
+     *
+     * @return array{page: class-string<Page>, panel: Panel}|null
+     */
+    private static function resolveCustomPage(?string $routeName, ?string $panelId): ?array
+    {
+        if (blank($routeName)) {
+            return null;
+        }
+
+        foreach (static::panels($panelId) as $panel) {
+            foreach ($panel->getPages() as $page) {
+                if (!is_subclass_of($page, Page::class)) {
+                    continue;
+                }
+
+                if (static::safely(fn (): string => $page::getRouteName($panel)) === $routeName) {
+                    return ['page' => $page, 'panel' => $panel];
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -198,10 +384,11 @@ final class SpotlightTargets
             $options[$target] = __('filament-onboarding::onboarding.resource.tour.targets.column', ['label' => $label]);
         }
 
-        // The "New client" button is not a button the page owns — it is a link to
-        // the create page, which is a route, which we have.
+        // A list page that creates in a modal (ManageRecords) has no create page
+        // to link to: its "New" button is an action, and the form it opens is
+        // the resource's own form, rendered in that action's modal.
         if (!array_key_exists('create', $resource::getPages())) {
-            return $options;
+            return [...$options, ...static::createModal($resource)];
         }
 
         $routeName = static::safely(fn (): string => $resource::getRouteBaseName($panel) . '.create');
@@ -216,6 +403,38 @@ final class SpotlightTargets
         $options['link:' . $routeName] = __('filament-onboarding::onboarding.resource.tour.targets.new_record', [
             'label' => $label,
         ]);
+
+        return $options;
+    }
+
+    /**
+     * The "New" button of a list page that creates in a modal, and the fields
+     * of that modal — the resource's form, under the modal's schema.
+     *
+     * @param  class-string<Resource>  $resource
+     * @return array<string, string>
+     */
+    private static function createModal(string $resource): array
+    {
+        $index = static::safely(fn (): ?string => ($resource::getPages()['index'] ?? null)?->getPage());
+
+        if ($index === null || !is_subclass_of($index, ManageRecords::class)) {
+            return [];
+        }
+
+        $label = static::safely(fn (): string => (string) $resource::getModelLabel()) ?? class_basename($resource);
+
+        $options = [
+            'action:create' => __('filament-onboarding::onboarding.resource.tour.targets.new_record', ['label' => $label]),
+        ];
+
+        $fields = static::safely(function () use ($resource, $index): array {
+            return static::fields($resource::form(Schema::make(app($index)))->getComponents());
+        }) ?? [];
+
+        foreach ($fields as $target => $fieldLabel) {
+            $options[$target . '@' . self::FIRST_ACTION_MODAL] = $fieldLabel;
+        }
 
         return $options;
     }

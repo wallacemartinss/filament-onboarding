@@ -5,7 +5,8 @@ declare(strict_types = 1);
 namespace Wallacemartinss\FilamentOnboarding\Tests\Fixtures;
 
 use Filament\{Panel, PanelProvider};
-use Wallacemartinss\FilamentOnboarding\Tests\Fixtures\Pages\EditTeamProfile;
+use Wallacemartinss\FilamentOnboarding\FilamentOnboardingPlugin;
+use Wallacemartinss\FilamentOnboarding\Tests\Fixtures\Pages\{EditTeamProfile, TeamSettings};
 
 /**
  * A second panel, and the only one here with tenants.
@@ -23,6 +24,15 @@ class TenantPanelProvider extends PanelProvider
             ->id('tenancy')
             ->path('tenancy')
             ->tenant(Team::class)
-            ->tenantProfile(EditTeamProfile::class);
+            ->tenantProfile(EditTeamProfile::class)
+            ->pages([
+                TeamSettings::class,
+            ])
+            ->plugins([
+                FilamentOnboardingPlugin::make()
+                    ->launcher(false)
+                    ->tours(false)
+                    ->targetsTenant(fn (): Team => new Team(['name' => 'Acme'])),
+            ]);
     }
 }

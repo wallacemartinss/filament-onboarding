@@ -9,6 +9,7 @@ use Filament\Contracts\Plugin;
 use Filament\Panel;
 use Filament\Support\Concerns\EvaluatesClosures;
 use Filament\View\PanelsRenderHook;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Blade;
 use Wallacemartinss\FilamentOnboarding\Enums\ModalPosition;
 use Wallacemartinss\FilamentOnboarding\Facades\Onboarding;
@@ -37,6 +38,8 @@ class FilamentOnboardingPlugin implements Plugin
     protected ?Closure $urlParametersResolver = null;
 
     protected ?Closure $skipResolver = null;
+
+    protected ?Closure $targetsTenantResolver = null;
 
     /** @var array<string, Closure|class-string> */
     protected array $conditions = [];
@@ -238,6 +241,36 @@ class FilamentOnboardingPlugin implements Plugin
         $this->scopeResolver = $callback ?? fn () => null;
 
         return $this;
+    }
+
+    /**
+     * The tenant to read this panel's pages as, when a journey is written
+     * from another panel (an admin panel, which has no tenant).
+     *
+     * The target picker builds the forms of this panel to offer their fields,
+     * and a form that reads the tenant's data while it is built — a settings
+     * page filling its options from the current team — cannot be built with no
+     * tenant at all: its fields are simply not offered. Any tenant will do; it
+     * is only read, never written to.
+     *
+     *     ->targetsTenant(fn (): ?Team => Team::query()->oldest()->first())
+     */
+    public function targetsTenant(?Closure $callback): static
+    {
+        $this->targetsTenantResolver = $callback;
+
+        return $this;
+    }
+
+    public function resolveTargetsTenant(): ?Model
+    {
+        if ($this->targetsTenantResolver === null) {
+            return null;
+        }
+
+        $tenant = $this->evaluate($this->targetsTenantResolver);
+
+        return $tenant instanceof Model ? $tenant : null;
     }
 
     /**
