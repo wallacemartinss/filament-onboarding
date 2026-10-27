@@ -285,4 +285,14 @@ class SpotlightTargetsTest extends TestCase
             $selector,
         );
     }
+
+    public function test_a_field_made_of_several_inputs_is_found_by_its_caption(): void
+    {
+        $selector = SpotlightTargets::selector('field:pricing_mode');
+
+        // Toggle buttons, a radio, a slider: no single input for a `<label for>`
+        // to name. Their caption carries the field's id plus `-label`.
+        $this->assertStringContainsString('.fi-fo-field:has([id="form.pricing_mode-label"])', $selector);
+        $this->assertStringContainsString('[id^="form."][id$=".pricing_mode-label"]', $selector);
+    }
 }

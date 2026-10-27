@@ -168,23 +168,30 @@ final class SpotlightTargets
      */
     private static function fieldSelector(string $name, string $schema = self::FORM): string
     {
-        $exact  = sprintf('label[for="%2$s.%1$s"]', $name, $schema);
-        $nested = sprintf('label[for^="%2$s."][for$=".%1$s"]', $name, $schema);
+        // A field is known by its label: a `<label for>` on an input, or — on the
+        // fields made of several inputs (toggle buttons, radio, a slider, a
+        // checkbox list) — a caption carrying the field's id plus `-label`.
+        $labels = [
+            sprintf('label[for="%2$s.%1$s"]', $name, $schema),
+            sprintf('label[for^="%2$s."][for$=".%1$s"]', $name, $schema),
+            sprintf('[id="%2$s.%1$s-label"]', $name, $schema),
+            sprintf('[id^="%2$s."][id$=".%1$s-label"]', $name, $schema),
+        ];
 
         // `:has()` answers for every ancestor, and a repeater is a field holding
         // fields: without the `:not()`, the repeater around a row's field matches
         // first and the whole table is spotlit. The field meant is the one whose
         // label is its own, not one of a field inside it.
-        return sprintf(
-            '.fi-fo-field:has(%1$s):not(:has(.fi-fo-field %1$s)), '
-            . '.fi-fo-field:has(%2$s):not(:has(.fi-fo-field %2$s)), '
-            . '[id="%4$s.%3$s"], '
-            . '[id^="%4$s."][id$=".%3$s"]',
-            $exact,
-            $nested,
-            $name,
-            $schema,
+        $fields = array_map(
+            fn (string $label): string => sprintf('.fi-fo-field:has(%1$s):not(:has(.fi-fo-field %1$s))', $label),
+            $labels,
         );
+
+        return implode(', ', [
+            ...$fields,
+            sprintf('[id="%2$s.%1$s"]', $name, $schema),
+            sprintf('[id^="%2$s."][id$=".%1$s"]', $name, $schema),
+        ]);
     }
 
     /**

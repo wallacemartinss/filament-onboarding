@@ -12,6 +12,9 @@ backport. That is why the first release is 2.0.0 — there is no 1.0.0 to upgrad
 - **A field inside a repeater spotlit the whole repeater.** A repeater is a field holding
   fields, and the selector's `:has(label…)` answered for every ancestor, so the repeater around
   a row's field matched first. Only the field whose label is its own answers now.
+- **Toggle buttons, a radio, a slider were never found.** Made of several inputs, they have
+  no `<label for>`; their caption carries the field's id plus `-label`, which is now matched
+  too.
 
 ## 2.7.0
 
