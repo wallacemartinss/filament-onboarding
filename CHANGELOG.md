@@ -6,6 +6,22 @@ Versions follow Filament: **2.x targets Filament v5**, and **1.x is the Filament
 Everything below 1.0.0 is the 2.x history the backport was cut from — the two lines are
 feature-identical, and differ only in their Composer constraints and their Livewire internals.
 
+## 1.2.1
+
+**A tour inside a modal did not scroll.** The 1.x backport of 2.7.2's fix, unchanged on
+Filament v4.
+
+### Fixed
+
+- **A stop inside a modal never scrolled into view.** Whether to scroll was judged against
+  the browser window, and the window can see what a modal's own scroll, or its sticky header
+  and footer, are hiding. It is judged against the part of the screen the element can
+  really be seen through now: the window, narrowed by every ancestor that clips, less the
+  sticky bars a scrolling box keeps over its content.
+- **A stop on the edge of a modal read as cut off.** Inside a box that scrolls on its own, a
+  stop is brought towards the middle unless it clears the box's edges by a fifth of its
+  height (at most 160px). A page that scrolls the window is left exactly as before.
+
 ## 1.2.0
 
 **A tour that could not see half of what it was pointing at.** The 1.x backport of 2.6.0:
