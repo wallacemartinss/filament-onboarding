@@ -5,6 +5,24 @@ All notable changes to `filament-onboarding` are documented here.
 Versions follow Filament: **2.x targets Filament v5**, and 1.x is reserved for a Filament v4
 backport. That is why the first release is 2.0.0 — there is no 1.0.0 to upgrade from.
 
+## 2.7.2
+
+**A tour inside a modal did not scroll.** Walking a product's forms end to end, the stops
+inside a slide-over stayed where the modal happened to be: a field under the sticky footer
+was spotlit behind Save and Cancel, and one resting on the footer's edge hid everything it
+was explaining.
+
+### Fixed
+
+- **A stop inside a modal never scrolled into view.** Whether to scroll was judged against
+  the browser window, and the window can see what a modal's own scroll, or its sticky header
+  and footer, are hiding. It is judged against the part of the screen the element can
+  really be seen through now: the window, narrowed by every ancestor that clips, less the
+  sticky bars a scrolling box keeps over its content.
+- **A stop on the edge of a modal read as cut off.** Inside a box that scrolls on its own, a
+  stop is brought towards the middle unless it clears the box's edges by a fifth of its
+  height (at most 160px). A page that scrolls the window is left exactly as before.
+
 ## 2.7.1
 
 **A tour in a real product, walked end to end.** Four things got in the way: a field in a
