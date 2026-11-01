@@ -541,6 +541,87 @@ describe('reaching a stop that is off to the side', () => {
     });
 });
 
+describe('reaching a stop inside a modal', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        window.matchMedia = () => ({ matches: false });
+    });
+
+    /**
+     * A Filament modal as the browser lays it out: the window scrolls on its own,
+     * the full height of the screen, with the header and the footer held over the
+     * content by `position: sticky`. jsdom does no layout, so the boxes and the
+     * scroll extent are given by hand.
+     */
+    function modalWith(fieldBox) {
+        // Inside jsdom's window (1024 × 768): the bug is a field the window can see
+        // and the subject cannot.
+        expect(window.innerHeight).toBe(768);
+
+        const modal = withBox(document.createElement('div'), { top: 0, left: 0, width: 600, height: 760 });
+        modal.style.overflowY = 'auto';
+        Object.defineProperty(modal, 'scrollHeight', { value: 1500 });
+        Object.defineProperty(modal, 'clientHeight', { value: 760 });
+
+        const header = withBox(document.createElement('div'), { top: 0, left: 0, width: 600, height: 60 });
+        header.style.position = 'sticky';
+
+        const content = document.createElement('div');
+        const field = withBox(document.createElement('div'), fieldBox);
+        field.scrollIntoView = vi.fn();
+        content.append(field);
+
+        const footer = withBox(document.createElement('div'), { top: 700, left: 0, width: 600, height: 60 });
+        footer.style.position = 'sticky';
+
+        modal.append(header, content, footer);
+        document.body.append(modal);
+
+        return field;
+    }
+
+    it('scrolls to a field the sticky footer is sitting on', async () => {
+        // Inside the window, so the tour used to count it as in view and draw
+        // the spotlight round a field hidden behind Save and Cancel.
+        const field = modalWith({ top: 710, left: 20, width: 400, height: 40 });
+
+        await tour().scrollIntoView(field);
+
+        expect(field.scrollIntoView).toHaveBeenCalledOnce();
+        expect(field.scrollIntoView.mock.calls[0][0]).toMatchObject({ block: 'center' });
+    });
+
+    it('brings a field resting against the edge of the modal towards the middle', async () => {
+        // Whole, and just above the footer: what it explains carries on below.
+        const field = modalWith({ top: 620, left: 20, width: 400, height: 30 });
+
+        await tour().scrollIntoView(field);
+
+        expect(field.scrollIntoView).toHaveBeenCalledOnce();
+    });
+
+    it('leaves the modal alone when the field sits comfortably in it', async () => {
+        const field = modalWith({ top: 330, left: 20, width: 400, height: 40 });
+
+        await tour().scrollIntoView(field);
+
+        expect(field.scrollIntoView).not.toHaveBeenCalled();
+    });
+
+    it('keeps the page as it was: no comfort margin outside a box that scrolls', async () => {
+        const field = withBox(document.createElement('input'), {
+            top: window.innerHeight - 60, left: 40, width: 200, height: 40,
+        });
+
+        field.scrollIntoView = vi.fn();
+        document.body.append(field);
+
+        await tour().scrollIntoView(field);
+
+        expect(field.scrollIntoView).not.toHaveBeenCalled();
+    });
+});
+
 describe('a tour and the welcome screen do not argue over the same page', () => {
     beforeEach(() => {
         document.body.innerHTML = '';

@@ -22,6 +22,12 @@ const ELEMENT_TIMEOUT = 3000;
 const ADVANCE_TIMEOUT = 3000;
 const SCROLL_TIMEOUT = 800;
 const TINY_ELEMENT = 8;
+// Inside a box that scrolls on its own — a modal, a slide-over — a stop resting
+// against the box's edge reads as cut off: what it explains carries on below
+// the sticky footer. It is brought towards the middle unless it clears the edges
+// by this share of the box's height (capped, so a tall box does not over-ask).
+const CLIPPED_COMFORT = 0.2;
+const CLIPPED_COMFORT_MAX = 160;
 
 export default function onboardingTour() {
     return {
@@ -746,7 +752,7 @@ export default function onboardingTour() {
         scrollIntoView(element) {
             const rect = element.getBoundingClientRect();
 
-            if (this.isInView(rect)) {
+            if (this.isInView(rect, this.visibleArea(element))) {
                 return Promise.resolve(rect);
             }
 
@@ -774,11 +780,80 @@ export default function onboardingTour() {
          * tour never scrolls, and the spotlight is drawn around a column the
          * subject cannot see.
          */
-        isInView(rect) {
-            return rect.top >= 0
-                && rect.bottom <= window.innerHeight
-                && rect.left >= 0
-                && rect.right <= window.innerWidth;
+        isInView(rect, area = this.windowArea()) {
+            const comfort = area.clipped
+                ? Math.min((area.bottom - area.top) * CLIPPED_COMFORT, CLIPPED_COMFORT_MAX)
+                : 0;
+
+            return rect.top >= area.top + comfort
+                && rect.bottom <= area.bottom - comfort
+                && rect.left >= area.left
+                && rect.right <= area.right;
+        },
+
+        windowArea() {
+            return { top: 0, left: 0, bottom: window.innerHeight, right: window.innerWidth, clipped: false };
+        },
+
+        /**
+         * The part of the screen the element can actually be seen through.
+         *
+         * The window is not it, the moment the element lives in a box that
+         * scrolls on its own. A Filament modal is the everyday case: its body
+         * scrolls inside `.fi-modal-window`, with the header and the footer
+         * (Save, Cancel) held over the content by `position: sticky`. A field
+         * slid under that footer is inside the window — so it counted as in
+         * view, the tour never scrolled, and the spotlight went round a field
+         * hidden behind the buttons. Same for a box shorter than the window,
+         * whose overflow is simply cut.
+         *
+         * So: the window, narrowed by every ancestor that clips, less the sticky
+         * or fixed bars a scrolling ancestor keeps along its top and bottom.
+         */
+        visibleArea(element) {
+            const area = this.windowArea();
+
+            for (let node = element.parentElement; node && node !== document.body && node !== document.documentElement; node = node.parentElement) {
+                const style = window.getComputedStyle(node);
+
+                if (style.overflowX === 'visible' && style.overflowY === 'visible') {
+                    continue;
+                }
+
+                const box = node.getBoundingClientRect();
+
+                area.top = Math.max(area.top, box.top);
+                area.left = Math.max(area.left, box.left);
+                area.bottom = Math.min(area.bottom, box.bottom);
+                area.right = Math.min(area.right, box.right);
+
+                if (node.scrollHeight <= node.clientHeight) {
+                    continue;
+                }
+
+                area.clipped = true;
+
+                for (const bar of node.children) {
+                    if (bar.contains(element) || !['sticky', 'fixed'].includes(window.getComputedStyle(bar).position)) {
+                        continue;
+                    }
+
+                    const edge = bar.getBoundingClientRect();
+                    const middle = (area.top + area.bottom) / 2;
+
+                    if (edge.height <= 0 || edge.width <= 0) {
+                        continue;
+                    }
+
+                    if (edge.bottom <= middle) {
+                        area.top = Math.max(area.top, edge.bottom);
+                    } else if (edge.top >= middle) {
+                        area.bottom = Math.min(area.bottom, edge.top);
+                    }
+                }
+            }
+
+            return area;
         },
 
         /**
