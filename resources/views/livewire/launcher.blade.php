@@ -53,9 +53,27 @@
                         </div>
 
                         {{-- More than one journey: the checklist shows one at a time,
-                             so the others need a way in. --}}
+                             so the others need a way in. It already scrolls
+                             horizontally (CSS: overflow-x: auto) once there are
+                             enough of them, but the scrollbar is hidden by design
+                             (see the CSS comment), which leaves no hint that it
+                             scrolls at all short of a trackpad swipe — x-data
+                             adds click-and-drag scrolling with a mouse; see
+                             resources/js/onboarding-tabs.js for the drag-vs-click
+                             distinction `click.capture` relies on below. --}}
                         @if ($flows->count() > 1)
-                            <div class="fio-tabs">
+                            <div
+                                class="fio-tabs"
+                                x-data="onboardingTabs"
+                                x-load
+                                x-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('onboarding-tabs', 'wallacemartinss/filament-onboarding') }}"
+                                x-on:mousedown="start($event)"
+                                x-on:mousemove="move($event)"
+                                x-on:mouseup="end"
+                                x-on:mouseleave="end"
+                                x-on:click.capture="guard($event)"
+                                :class="{ 'fio-tabs--dragging': dragging }"
+                            >
                                 @foreach ($flows as $candidate)
                                     <button
                                         type="button"
@@ -88,13 +106,33 @@
                                 {{ __('filament-onboarding::onboarding.checklist.completed_description') }}
                             </p>
 
-                            @if ($flow->isDismissible())
-                                <div class="fio-stack">
-                                    <button type="button" class="fio-button fio-button--primary" wire:click="dismissFlow">
+                            <div class="fio-stack">
+                                {{-- A flow that is finished is not necessarily a flow
+                                     that is done with: the subject may want to walk
+                                     it again later, as a refresher — and, more to the
+                                     point, "Done" is the only way out of here that
+                                     used to exist, and "Done" dismisses the flow.
+                                     currentFlow() then has no way back to it short of
+                                     a separate Progress page (opt-in, and easy to
+                                     miss), so finishing a journey used to be a quiet
+                                     dead end. restartFlow() is already public on this
+                                     component (InteractsWithOnboarding) — this is
+                                     purely surfacing it where "finished" is shown. --}}
+                                <button
+                                    type="button"
+                                    class="fio-button fio-button--primary"
+                                    wire:click="restartFlow"
+                                    wire:confirm="{{ __('filament-onboarding::onboarding.checklist.restart_confirm') }}"
+                                >
+                                    {{ __('filament-onboarding::onboarding.checklist.restart') }}
+                                </button>
+
+                                @if ($flow->isDismissible())
+                                    <button type="button" class="fio-button fio-button--ghost" wire:click="dismissFlow">
                                         {{ __('filament-onboarding::onboarding.checklist.done') }}
                                     </button>
-                                </div>
-                            @endif
+                                @endif
+                            </div>
                         </div>
                     @else
                         @include('filament-onboarding::components.steps', ['flow' => $flow])

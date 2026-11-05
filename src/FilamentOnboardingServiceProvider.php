@@ -127,6 +127,7 @@ class FilamentOnboardingServiceProvider extends PackageServiceProvider
         $assets = [
             VersionedAlpineComponent::make('onboarding-tour', __DIR__ . '/../resources/dist/js/onboarding-tour.js'),
             VersionedAlpineComponent::make('onboarding-media', __DIR__ . '/../resources/dist/js/onboarding-media.js'),
+            VersionedAlpineComponent::make('onboarding-tabs', __DIR__ . '/../resources/dist/js/onboarding-tabs.js'),
         ];
 
         if (!config('filament-onboarding.styles.enabled', true)) {

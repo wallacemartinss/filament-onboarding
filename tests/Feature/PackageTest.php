@@ -4,10 +4,13 @@ declare(strict_types = 1);
 
 namespace Wallacemartinss\FilamentOnboarding\Tests\Feature;
 
+use Filament\Facades\Filament;
 use Filament\Support\Facades\FilamentAsset;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
+use Wallacemartinss\FilamentOnboarding\FilamentOnboardingPlugin;
 use Wallacemartinss\FilamentOnboarding\Livewire\OnboardingLauncher;
 use Wallacemartinss\FilamentOnboarding\Tests\TestCase;
 use Wallacemartinss\FilamentOnboarding\Widgets\OnboardingChecklistWidget;
@@ -47,6 +50,7 @@ class PackageTest extends TestCase
 
         $this->assertContains('onboarding-tour', $ids);
         $this->assertContains('onboarding-media', $ids);
+        $this->assertContains('onboarding-tabs', $ids);
 
         $css = collect(FilamentAsset::getStyles(['wallacemartinss/filament-onboarding']))
             ->map(fn ($asset): string => $asset->getId())
@@ -83,6 +87,32 @@ class PackageTest extends TestCase
             OnboardingChecklistWidget::class,
             app('livewire.factory')->resolveComponentClass('filament-onboarding-checklist-widget'),
         );
+    }
+
+    /**
+     * Every position but 'topbar' floats the launcher off the end of the body —
+     * a fixed-position element does not care where in the DOM it was appended.
+     * 'topbar' is the one exception: it has to render *inside* the topbar's own
+     * icon cluster to sit among those icons at all, so it needs a different
+     * render hook, not just different CSS.
+     */
+    public function test_the_topbar_position_uses_the_topbar_render_hook(): void
+    {
+        $panel = Filament::getPanel('test');
+
+        $floating = FilamentOnboardingPlugin::make()->launcherPosition('bottom-right');
+        $floating->register($panel);
+
+        $topbar = FilamentOnboardingPlugin::make()->launcherPosition('topbar');
+        $topbar->register($panel);
+
+        $hooks = (function (): array {
+            /** @var \Filament\Panel $this */
+            return $this->renderHooks;
+        })->call($panel);
+
+        $this->assertArrayHasKey(PanelsRenderHook::BODY_END, $hooks);
+        $this->assertArrayHasKey(PanelsRenderHook::TOPBAR_END, $hooks);
     }
 
     public function test_the_config_has_every_key_the_readme_documents(): void

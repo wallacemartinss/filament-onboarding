@@ -12,6 +12,8 @@ return [
         'close'                 => 'Cerrar',
         'dismiss'               => 'Ocultar',
         'done'                  => 'Listo',
+        'restart'               => 'Reiniciar',
+        'restart_confirm'       => 'Esto reinicia cada paso y recorrido que ya viste — ¿reiniciar?',
         'completed_title'       => 'Todo listo',
         'completed_description' => 'Completaste todos los pasos. Bienvenido.',
         'footer_note'           => 'Puedes continuar más tarde.',
